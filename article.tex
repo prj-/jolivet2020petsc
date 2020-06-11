@@ -1,0 +1,2008 @@
+% SIAM Article Template
+\documentclass[draft,review,onefignum,onetabnum]{siamart190516}
+
+% Information that is shared between the article and the supplement
+% (title and author information, macros, packages, etc.) goes into
+% ex_shared.tex. If there is no supplement, this file can be included
+% directly.
+
+\input{shared}
+
+% Optional PDF information
+\ifpdf
+\hypersetup{
+  pdftitle={KSPHPDDM and PCHPDDM: A Class of Adaptive Krylov and Overlapping Schwarz Methods in PETSc},
+  pdfauthor={P. Jolivet and S. Zampini}
+}
+\fi
+
+% The next statement enables references to information in the
+% supplement. See the xr-hyperref package for details.
+
+% \externaldocument{supplement}
+
+% FundRef data to be entered by SIAM
+%<funding-group specific-use="FundRef">
+%<award-group>
+%<funding-source>
+%<named-content content-type="funder-name"> 
+%</named-content> 
+%<named-content content-type="funder-identifier"> 
+%</named-content>
+%</funding-source>
+%<award-id> </award-id>
+%</award-group>
+%</funding-group>
+\newcommand\col{:}
+\newcommand{\pk}[1]{{\color{gray!90!black} #1}}
+\usepackage{stmaryrd}
+\usepackage{pgfplotstable}
+\pgfplotsset{compat=newest}
+\pgfplotsset{colormap={paraview}{rgb(0cm)=(0.278431,0.278431,0.858824) rgb(0.1428571429cm)=(0,0,0.360784) rgb(0.2857142857cm)=(0,1,1) rgb(0.4285714286cm)=(0,0.501961,0) rgb(0.5714285714cm)=(1,1,0) rgb(0.7142857143cm)=(1,0.380392,0) rgb(0.8571428571cm)=(0.419608,0,0) rgb(1cm)=(0.878431,0.301961,0.301961)}}
+\usepackage{fancyvrb}
+\usepackage{subfig}
+\usepackage{upquote,textcomp}
+\newcommand*{\fvtextcolor}[2]{\textcolor{#1}{#2}}
+\definecolor{last}{RGB}{44,123,182}
+\definecolor{blueaccent}{RGB}{215,25,28}
+\definecolor{myyellow}{RGB}{102,102,17}
+\definecolor{myred}{RGB}{197,65,0}
+\definecolor{myblue}{RGB}{0,0,235}
+\definecolor{myaqua}{RGB}{9,156,156}
+\definecolor{mygreen}{RGB}{63,126,28}
+\definecolor{paraviewred}{rgb}{0.278431,0.278431,0.858824}
+\definecolor{paraviewblue}{rgb}{0.878431,0.301961,0.301961}
+\definecolor{darkgray}{RGB}{253,174,97}
+\definecolor{mediumgray}{RGB}{255,255,191}
+\usepackage{tikz}
+\usepackage[binary-units=true]{siunitx}
+\usetikzlibrary{decorations.text,arrows.meta,calc,plotmarks,backgrounds,shadows,spy,fixedpointarithmetic,patterns,intersections,arrows.meta,shapes,decorations.text,decorations.pathmorphing,backgrounds,fit,positioning,shapes.symbols,chains,3d,calc,external}
+\long\def\ifnodedefined#1#2#3{%
+    \@ifundefined{pgf@sh@ns@#1}{#3}{#2}%
+}
+\makeatother
+\usepackage{amsmath,etoolbox}
+\AtBeginEnvironment{pmatrix}{\setlength{\arraycolsep}{2pt}}
+\pgfmathsetmacro{\dof}{4}
+\pgfmathsetmacro{\overlap}{1}
+\begin{document}
+
+\maketitle
+
+% REQUIRED
+\begin{abstract}
+  Contemporary applications in computational science and engineering often
+    require the solution of linear systems which may be of different sizes,
+    shapes, and structures. The goal of this paper is to explain how two
+    libraries, PETSc and HPDDM, have been interfaced together in order to offer
+    to end-users adaptive Krylov and overlapping Schwarz methods.  The
+    flexibility of the implementation, which for example may deal with various
+    matrix formats, are showcased and explained.  Diverse examples are
+    displayed, ranging from fracture mechanics to linear stability analysis, and
+    the sets of options are thoroughly documented, so that they may be readily
+    tried on other applications.
+\end{abstract}
+
+% REQUIRED
+\begin{keywords}
+  Krylov methods, domain decomposition preconditioners, distributed computing
+\end{keywords}
+
+% REQUIRED
+\begin{AMS}
+  35Q68, 65Y05
+\end{AMS}
+
+\section{Introduction}
+Implementing and maintaining robust and scalable applications is highly relevant
+in the field of computational science and engineering. Some tools exist to help
+end-users achieve this goal. One the one hand, PETSc \cite{balay1997cient}, the
+Portable and Extensible Toolkit for Scientific computation, is a
+well-established software from the community. It may be used to efficiently
+discretize partial differential equations, or solve algebraic linear or
+nonlinear systems of equations. It comes with many built-in features such as
+advanced preconditioning or tailored matrix formats. Also, it can be used to
+compile and interact with third-party libraries, such as
+\emph{hypre}~\cite{falgout2002hypre} for linear solvers, TetGen~\cite{si2013tet}
+for mesh generation, and so on. These appealing features convinced computational
+scientists to use PETSc as one of the discretization and/or algebraic backend in
+many different higher-level projects, such as finite element or finite volume
+packages. On the other hand, HPDDM is a much smaller project purely focused on
+domain decomposition preconditioners~\cite{jolivet2013scalable}, a small
+subclass of preconditioners available in PETSc as well, and advanced iterative
+methods~\cite{jolivet2016block}. Such methods deal efficiently with linear
+systems when multiple right-hand sides are available simultaneously, and are
+then referred to as block iterative methods, or when there is a recurrence of
+varying coefficient matrices and right-hand sides, and are then referred to as
+recycling iterative methods.
+% Htool ?
+In this paper, the integration of both aspects of HPDDM, its advanced iterative
+methods and its domain decomposition preconditioners, into PETSc is explained.
+The design principles of the interface are showcased, alongside minimalist and
+easy-to-run examples. The paper is divided in two main parts:
+\cref{sec:KSPHPDDM} which introduces \pk{KSPHPDDM}, and \cref{sec:PCHPDDM} which
+introduces \pk{PCHPDDM}. Eventually, concluding remarks may be found
+\cref{sec:conclusion}. All PETSc keywords are highlighted in \pk{gray}, these
+are public and documented at \url{https://www.mcs.anl.gov/petsc/petsc-master/docs}.
+\section{KSPHPDDM}\label{sec:KSPHPDDM}
+  \subsection{Related work}
+Krylov subspace methods are widely used in numerical linear algebra for solving
+systems of equations. Some of their strengths are memory efficiency and the fact
+that they are mostly format agnostic. Indeed, they mainly rely on matrix--vector
+operations such as multiplications or transpose multiplications. For
+challenging high-dimensional systems, finding appropriate preconditioners is
+mandatory to make these methods robust, but this goes beyond the scope of this
+section. In PETSc, Krylov methods inherit from the \pk{KSP} base class. Some of the
+most used types are \pk{KSPGMRES}, \pk{KSPCG}, or \pk{KSPBCGS}, which respectively implement
+the generalized minimal residual method~\cite{saad1986gmres}~(GMRES), conjugate
+gradient~\cite{hestenes1952methods}~(CG), or biconjugate gradient stabilized method~\cite{van1992bi}~(BCGS). Some of these methods are also
+available in other linear algebra backends such as~\emph{hypre} or DUNE~\cite{bastian2010generic}.
+
+Because these methods may need long-term recurrences to mitigate round-off
+errors during the generation of Krylov subspaces, it is common to introduce a
+restart parameter in order to control their memory consumption and the amount of
+global communication, e.g., when orthonormalizing a candidate basis vector. Such
+restarts may hinder convergence of iterative methods, and even introduce
+convergence plateaus. Recycling techniques have been introduced to attenuate
+these effects. In PETSc, the Loose GMRES~\cite{baker2005technique}~(LGMRES) and the
+Deflated GMRES~\cite{erhel1996restarted,wakam2013158}~(DGMRES), implemented as
+\pk{KSPLGMRES} and \pk{KSPDGMRES}, are available. Neither handle variable
+preconditioning, and the latter does not support complex arithmetic. Also note
+that when solving a sequence of linear systems $A_i x_i = b_i, i = 1, 2,
+\ldots$, it is not trivial to extend the theory of these methods to perform
+recycling throughout both the restarts and the different systems. The
+generalized conjugate residual method with inner orthogonalization and deflated
+restarting~\cite{parks2006recycling}~(GCRODR) does not suffer from this
+limitation.
+
+Recycling put aside, another important aspect of Krylov methods is their ability
+to deal with multiple right-hand sides simultaneously. Block Krylov methods~\cite{gutknecht2006block} are
+designed for solving linear systems $A X = B$, where
+$X$ and $B$ are tall-and-skinny matrices with $k \geq 1$ columns. These methods are
+less frequently implemented in general purpose libraries because they require
+somehow more involved kernels such as matrix--matrix multiplication, instead of
+matrix--vector. Still, systems with multiple right-hand sides are ubiquitous,
+e.g., in tomography~\cite{tournier2016micro} or data
+analytics~\cite{KALANTZIS2018136}. Of course, it is possible to cast a system
+with multiple right-hand sides into a sequence of systems with the same
+coefficient matrix but changing right-hand sides $A x_i = b_i, i =
+1,2,\ldots,k$. However, block Krylov methods, at the cost of higher arithmetic
+intensities, generate larger subspaces and typically converge in fewer iterates.
+There is none implemented in PETSc. It is nevertheless possible to solve
+systems with multiple right-hand sides using a specialized type of matrices,
+but with a very limited choice of preconditioners, cf.~\cref{sec:matkaij}.
+In the context of optimization, it is also
+frequent to solve a sequence of linear systems $A_i X_i = B_i, i = 1, 2,
+\ldots$
+
+Trilinos~\cite{heroux2005overview} is another well-known software for scientific
+computing. Through its Belos package~\cite{bavier2012amesos2}, it provides most
+of the advanced iterative methods aforementioned. Although having PETSc and
+Trilinos interoperate is possible, there is currently no \pk{KSP} interface to Belos.
+This limits its composability inside complete PETSc applications. Furthermore,
+as displayed in~\cref{sec:interface-ksp}, some Krylov methods implemented in
+HPDDM are not available in Belos. In the following section, the details of the
+interface between HPDDM Krylov methods and PETSc matrix and preconditioner
+classes will be explained. It is assumed that the right-hand sides, and
+consequently the solutions, are always dense vectors or matrices.
+  \subsection{Interfacing HPDDM Krylov methods in PETSc\label{sec:interface-ksp}}\
+\pk{KSPHPDDM}, the interface between HPDDM Krylov methods and PETSc, is automatically
+registered since PETSc version 3.12 when one configures PETSc with the extra
+flag -{}-download-hpddm. It is then possible to select the corresponding \pk{KSP}
+using the command line option -ksp\_type hpddm, or the routine \pk{KSPSetType}(ksp,
+\pk{KSPHPDDM}) and its Fortran equivalent.
+When \pk{KSPHPDDM} is being used, it is then possible to select between the following
+Krylov methods:
+\begin{itemize}
+    \item pseudo-block GMRES or flexible GMRES~\cite{saad1993flexible};
+    \item pseudo-block CG or flexible CG~\cite{notay2000flexible};
+    \item pseudo-block GCRODR or flexible GCRODR~\cite{carvalho2011flexible};
+    \item block GMRES or flexible GMRES~\cite{calandra2012flexible};
+    \item block CG~\cite{o1980block};
+    \item breakdown-free block CG~\cite{ji2017breakdown};
+    \item block GCRODR or flexible GCRODR.
+\end{itemize}
+In pseudo-block variants, multiple similar operations like matrix--vector
+products are fused to achieve higher arithmetic intensity, or to decrease the
+number of global synchronizations, e.g., reductions for scalar products. But they are mathematically equivalent to
+their ``standard'' counterpart. These methods may be selected using the additional
+options -ksp\_hpddm\_type (gmres$|$cg$|$gcrodr$|$bgmres$|$bcg$|$bfbcg$|$bgcrodr$|$preonly) and
+-ksp\_hpddm\_variant (left$|$right$|$flexible) to select whether preconditioning
+is applied on the left, on the right, or variable. It is also possible to set
+this option through the more common PETSc option -ksp\_pc\_side (left$|$right). 
+Note that the value of the latter option is useless for BCG or BFBCG, and HPDDM CG only handles left and
+variable preconditioning. According to the standard PETSc notation, ksp($A$, $P_B$)
+defines a \pk{KSP} used to solve a system $Ax=b$ using a preconditioner $P_B$ built
+using an operator $B$ which is usually $A$ but not necessarily. If the
+type of ksp is \pk{KSPHPDDM}, the solution phase, invoked by \pk{KSPSolve}(ksp, $b$, $x$), will be carried out by HPDDM. To do
+so, HPDDM will repeatedly call the following PETSc routines:
+\begin{itemize}
+    \item \pk{MatMult}($A$, $x$, $y$) for $y = Ax$;
+    \item \pk{MatMatMult}($A$, $X$, {\scriptsize \pk{MAT\_REUSE\_MATRIX}}, {\scriptsize
+        \pk{PETSC\_DEFAULT}}, $Y$)\footnote{or \pk{MatProductNumeric}($Y$) with PETSc 3.14.0 and above} for $Y =
+        AX$;
+    \item \pk{PCApply}($P_B$, $y$, $x$) for $x = P_By$.
+\end{itemize}
+Unfortunately, PETSc does not have a general routine for applying $P_B$ to a
+tall-and-skinny dense matrix $Y$. In HPDDM, a specialized routine has been implemented
+to compute $X = P_BY$ if the preconditioner is of one of the following type:
+\begin{itemize}
+    \item exact $LU$ or Cholesky factorization, i.e., $P_B = B^{-1}$, \pk{PCLU} or
+        \pk{PCCHOLESKY};
+    \item incomplete $LU$ or Cholesky factorization, \pk{PCILU} or \pk{PCICC};
+    \item block Jacobi with a single subdomain per process and exact or
+        incomplete subdomain solvers, \pk{PCBJACOBI};
+    \item overlapping Schwarz methods with a single subdomain per process and
+        exact or incomplete subdomain solvers, \pk{PCASM}.
+\end{itemize}
+Indeed, in these cases, it is possible to get access to a factored matrix $F$
+and call \pk{MatMatSolve}($F$, $\tilde{Y}$, $\tilde{X}$). With the two first sets of
+preconditioners, $\tilde{Y} = Y$ and $\tilde{X} = X$. With block Jacobi,
+$\tilde{Y}$, resp. $\tilde{X}$, represents only the part of the matrix $Y$,
+resp. $X$, local to a given process. With overlapping Schwarz methods, there are
+furthermore overlapping ``ghost'' unknowns, interested readers are referred to
+monographs on practical aspects of domain decomposition
+methods~\cite{smith2004domain,dolean2014ddm}. For all other types of
+preconditioners, HPDDM will loop over the columns of $Y$ and apply $P_B$
+successively to get all columns of $X$.
+
+The rest of the operations are then performed directly inside HPDDM. For
+example, in all Krylov methods using the Arnoldi process, it is mandatory to orthonormalize
+candidate basis vectors. It would be impractical to try to reuse PETSc routines
+like \pk{KSPGMRESModifiedGramSchmidtOrthogonalization} for two reasons: 1) it does
+not handle the orthonormalization of multiple vectors at once which is needed in
+pseudo-block methods 2) HPDDM may be used without PETSc as a stand-alone
+library. To give some more technical details to curious readers, in HPDDM, $QR$
+factorizations of tall-and-skinny dense matrices, which are obviously needed for
+block Krylov methods but also for recycling Krylov methods are computed using
+the CholQR algorithm~\cite{stathopoulos2002block}, or the block modified or classical
+Gram--Schmidt method. This may be adjusted with the option -ksp\_hpddm\_qr (cholqr$|$mgs$|$cgs).
+For Hessenberg matrices generated by the Arnoldi
+process, it is common to update their $QR$ decomposition using Givens
+rotations~\cite{saad2003iterative}. For block Hessenberg matrices, Householder reflectors are
+used instead~\cite{gutknecht2008updating}.
+
+To monitor convergence of a \pk{KSP} object, calls to the PETSc \pk{KSPMonitor} routine
+were added inside HPDDM Krylov methods. 
+    \subsubsection{User-defined deflation space} Recycling Krylov methods try to
+extract information at the end of each cycle or when convergence is reached by
+solving small standard or generalized dense eigenproblems. Then, during a
+subsequent solve, this information is reused appropriately. Two new routines were
+added in PETSc to either get the information generated by such recycling
+methods, or set the information in case users know what is a good initial
+deflation subspace. These routines are respectively
+\pk{KSPHPDDMGetDeflationSpace} and \pk{KSPHPDDMSetDeflationSpace}. The subspaces
+are once again stored as distributed
+dense tall-and-skinny matrices.
+    \subsubsection{MatKAIJ and systems with multiple right-hand sides\label{sec:matkaij}}
+There is a wide range of available matrix types in PETSc. One of them is
+\pk{MatKAIJ}, for which it is assumed that an operator may be written as $I \otimes S
++ A \otimes T$, with $S$ and $T$ elements of $\mathbb{K}^{p\times q}$ and
+$A$ a standard sparse matrix of dimension $n$. If $p=q=k$, $S = \lambda I$, and $T =
+\mu I$, then solving $(I \otimes S + A \otimes T) x = b$ may be cast into a
+system with multiple right-hand sides $(\lambda I + \mu A)X = B$ where $B$ is
+the row-major representation of $b$, i.e., $b_{k \cdot i + j} = B_{i, j},
+\forall (i, j) \in \llbracket 1;n\rrbracket \times \llbracket 1;k\rrbracket$.
+On the one hand, due to the structure of the operator, it is challenging to
+define appropriate preconditioners for $(I \otimes S + A \otimes T)$: only
+\pk{PCPBJACOBI} is currently implemented for \pk{MatKAIJ}. On the other hand,
+it may be simpler to efficiently approximate the inverse of $A$. In
+\pk{KSPHPDDM}, the type of the operators is checked and if it is \pk{MatKAIJ},
+the single right-hand side system is automatically cast into a system with
+multiple right-hand sides instead. The standard function \pk{KSPSolve} takes as
+input argument a \pk{KSP} and two \pk{Vec}. A new function
+\pk{KSPMatSolve} was added in PETSc 3.14.0, which takes as input argument
+a \pk{KSP} and two dense \pk{Mat}, for solving true
+multiple right-hand side systems. If the input \pk{KSP} is not of type
+\pk{KSPHPDDM}, the solution phase is done in a column by column fashion.
+Otherwise, it is possible to use any \pk{KSPHPDDM} (pseudo-)block Krylov methods.
+Furthermore, a function \pk{KSPSetMatSolveBlockSize} is also provided to decompose
+a single large block of column vectors into multiple sub-blocks.
+\pk{KSPMatSolve} is then called repeatedly until all sub-blocks are traversed.
+This was inspired by MUMPS~\cite{amestoy2001fully} option
+ICNTL(27)\footnote{\url{http://mumps.enseeiht.fr/doc/userguide_5.3.1.pdf}, section 6.1}.
+  \subsection{Applications and numerical results}
+    \subsubsection{Reproducibility of the results from Parks et
+    al.~\cite{parks2006recycling}}
+Alongside the paper introducing GCRODR, a MATLAB implementation was provided and
+is since then
+available\footnote{\url{https://www.sandia.gov/~mlparks/GCRODR.zip}}. It comes
+with a sequence of ten ``linear systems from a finite element fracture mechanics
+problem constructed by Philippe H.\ Geubelle and Spandan Maiti." The goal of
+this paragraph is to explain how the results have been reproduced in PETSc.
+Thanks to \pk{KSPHPDDM}, it is quite straightforward. First, the sequence of
+MATLAB systems had to be converted to PETSc \pk{Mat} and \pk{Vec}. Then, it is
+just a matter of calling \pk{KSPSolve} in sequence. The dataset and the source
+code are available at
+\url{https://gitlab.com/petsc/datafiles/-/tree/master/matrices/hpddm/GCRODR}
+and
+\url{https://www.mcs.anl.gov/petsc/petsc-master/src/ksp/ksp/tutorials/ex75.c.html}
+respectively. In order to check the correctness of the \pk{KSPHPDDM} interface,
+the following tests are performed:
+\begin{itemize}
+    \item in MATLAB, unpreconditioned GCRODR(40, 20), $ICC(0)$ left-preconditioned
+        GCRODR(40, 20), and Jacobi right-preconditioned GCRODR(40, 20);
+    \item in PETSc with \pk{KSPGMRES}, unpreconditioned unrestarted GMRES($\infty$);
+    \item in PETSc with \pk{KSPHPDDM}, all of the above.
+\end{itemize}
+Except for the right-preconditioned GCRODR, these tests are the same as the
+ones from the original GCRODR paper~\cite{parks2006recycling}. Furthermore,
+\pk{PCICC} and ichol from MATLAB are not consistent. All PETSc tests are run on four MPI
+processes. They can be launched using the following command line. \\[-4pt]
+\begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -pc_type none -ksp_rtol 1e-10             &fvtextcolor[myred][\]
+  -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_gmres_restart 40 -ksp_hpddm_recycle 20 &fvtextcolor[myred][\] 
+  -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -sub_pc_type icc -ksp_rtol 1e-10          &fvtextcolor[myred][\]
+  -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_gmres_restart 40 -ksp_hpddm_recycle 20 &fvtextcolor[myred][\] 
+  -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -pc_type jacobi -ksp_rtol 1e-10           &fvtextcolor[myred][\]
+  -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_gmres_restart 40 -ksp_hpddm_recycle 20 &fvtextcolor[myred][\] 
+  -ksp_pc_side right -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -pc_type none -ksp_rtol 1e-10             &fvtextcolor[myred][\]
+  -ksp_type hpddm -ksp_gmres_restart 500                                             &fvtextcolor[myred][\] 
+  -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
+\end{Verbatim}
+The various number of iterations needed to reach the convergence criterion as
+originally set to $10^{-10}$ are gathered in~\cref{fig:comparison}. Apart from
+the tests \ref{pgfplots:r2} and \ref{pgfplots:r3} using $ICC(0)$ and \ref{pgfplots:r4} and \ref{pgfplots:r5}
+using the Jacobi method, one may notice that \ref{pgfplots:r0} and
+\ref{pgfplots:r1} (resp. \ref{pgfplots:r6} and \ref{pgfplots:r7}) are almost a
+perfect match and reproduce partially Figure 4.2 from Parks et
+al.~\cite{parks2006recycling}.
+\pgfplotstableread{
+sys none-matlab icc-matlab jacobi-matlab none-hpddm icc-hpddm jacobi-hpddm icc-gmres none-gmres icc-petsc none-petsc
+401 498         293        457           497        131       460          127       438        127       438
+402 228         125        187           231        53        184          127       449        127       449
+403 209         113        182           206        47        177          127       450        127       450
+404 199         112        175           198        47        174          127       450        127       450
+405 198         110        174           198        47        172          127       451        127       451
+406 198         111        174           199        47        174          127       452        127       452
+407 206         114        180           206        49        179          126       458        126       458
+408 207         115        181           208        49        182          128       458        135       458
+409 207         110        181           207        49        181          128       458        128       458
+410 206         110        179           206        49        179          128       457        128       457
+}\loadedtable
+    \begin{figure}
+\centering \begin{tikzpicture}
+    \begin{axis}[xlabel=System index,ylabel={\# of iterations},xmin=401,xmax=410,ymin=0,ymajorgrids,
+        legend columns=1,enlarge x limits=0.05,
+        legend style={font=\small,at={(1.02,0.25)}, legend cell align=left,
+        anchor=south west}]
+\addplot[very thick,myred]                       table[x expr=\thisrowno{0},y expr=\thisrowno{1}, col sep=space] {\loadedtable};\label{pgfplots:r0}
+\addplot[very thick,mark=*,only marks,myred]     table[x expr=\thisrowno{0},y expr=\thisrowno{4}, col sep=space] {\loadedtable};\label{pgfplots:r1}
+\addplot[very thick,myaqua]                      table[x expr=\thisrowno{0},y expr=\thisrowno{2}, col sep=space] {\loadedtable};\label{pgfplots:r2}
+\addplot[very thick,mark=pentagon*,only marks,myaqua]    table[x expr=\thisrowno{0},y expr=\thisrowno{5}, col sep=space] {\loadedtable};\label{pgfplots:r3}
+\addplot[very thick,myyellow]                    table[x expr=\thisrowno{0},y expr=\thisrowno{3}, col sep=space] {\loadedtable};\label{pgfplots:r4}
+\addplot[very thick,mark=square*,only marks,myyellow]  table[x expr=\thisrowno{0},y expr=\thisrowno{6}, col sep=space] {\loadedtable};\label{pgfplots:r5}
+\addplot[very thick,last]                      table[x expr=\thisrowno{0},y expr=\thisrowno{10}, col sep=space]{\loadedtable};\label{pgfplots:r6}
+\addplot[very thick,mark=triangle*,only marks,last]    table[x expr=\thisrowno{0},y expr=\thisrowno{8}, col sep=space] {\loadedtable};\label{pgfplots:r7}
+\legend{{MATLAB unpreconditioned GCRODR},{\pk{KSPHPDDM}},% unpreconditioned GCRODR(40, 20)},
+        {MATLAB $ICC(0)$-preconditioned GCRODR},{\pk{KSPHPDDM}},% $ICC(0)$-preconditioned GCRODR(40, 20)},
+        {MATLAB Jacobi-preconditioned GCRODR},{\pk{KSPHPDDM}},% Jacobi-preconditioned GCRODR(40, 20)},
+        {Unpreconditioned \pk{KSPGMRES}},{\pk{KSPHPDDM}}}% unpreconditioned GMRES($\infty$)}}
+\end{axis}
+\end{tikzpicture}
+        \caption{\# of iterations needed to converge for various
+        configurations as originally tested by Parks et
+        al.~\cite{parks2006recycling}. Note that \pk{PCICC} and
+        \textnormal{ichol} from MATLAB are not consistent, hence the discrepancy
+        between \ref{pgfplots:r2} and \ref{pgfplots:r3}. All other \pk{KPSHPDDM}
+        numbers of iterations match with the respective MATLAB or PETSc
+        reference implementation.\label{fig:comparison}}
+    \end{figure}
+    \subsubsection{Linear stability analysis}
+SLEPc~\cite{hernandez2005ssf}, the Scalable Library for Eigenvalue Problem
+computations, is built on top of PETSc. Thus, it is possible to reuse and
+compose \pk{KSP} or preconditioners for solving eigenproblems efficiently, e.g.,
+through spectral transformations. Recently, it has been observed that in the
+field of computational fluid dynamics, the role of recycling can be quite
+significant when performing linear stability analysis~\cite{moulin2018al}. 
+The following generalized eigenvalue problem is considered next:
+\begin{equation}\label{eq:lsa}
+    J(q_b)x = \lambda \begin{bmatrix}M & 0 \\ 0 & 0 \end{bmatrix} x,
+\end{equation}
+where $J$ is the Jacobian of the incompressible steady-state Navier--Stokes equation
+evaluated using a given base flow $q_b = \begin{bmatrix}u_b & p_b\end{bmatrix}^T$ and $M$ the discretization of the mass matrix
+on the space of velocities. There are many ways to compute the eigenvalues
+of~\cref{eq:lsa} near a complex-valued shift $\sigma$, but emphasis will be put
+in this paragraph on Krylov--Schur methods~\cite{Stewart2002}. These rely on the successive
+solution of linear systems such as:
+\begin{equation}\label{eq:ks}
+    \left(J(q_b) - \sigma \begin{bmatrix}M&0\\0&0\end{bmatrix}\right)x_i = b_i, i = 1,2,\ldots
+\end{equation}
+In SLEPc, these systems may be parameterized using the -st\_ prefix, e.g.,
+-st\_pc\_type~lu. If they are solved iteratively, it is possible to
+use a \pk{KSP} of type \pk{KSPHPDDM} to recycle information between
+successive linear systems yielded by the convergence of the Krylov--Schur
+algorithm. Using the FreeFEM~\cite{hecht2012new} mini-app from \url{https://github.com/prj-/moulin2019al}
+which precondition~\cref{eq:ks} using a modified augmented Lagrangian
+approach~\cite{Benzi2011a}, the effect of such recycling is shown next for
+finding the 5 eigenpairs closest to the shift $\sigma = 10^{-6} + 0.6\mathfrak{i}$ for a
+flow past a cylinder at Reynolds 100, interested readers are again referred to
+the previously cited paper~\cite{moulin2018al} for more details and for larger
+runs. Results can be reproduced using the following four commands, the first two
+being merely for generating the base flow $q_b$ with \pk{SNESSolve} using a
+continuation method on the Reynolds number. \\[-4pt]
+\begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Nonlinear-solver.edp -Re 50 -v 0 
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Nonlinear-solver.edp -Re 100 -v 0 
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Eigensolver.edp -Re 100 -v 0 -st_ksp_rtol 1.0e-4         &fvtextcolor[myred][\] 
+  -st_ksp_type fgmres -st_ksp_gmres_restart 200 -st_ksp_converged_reason
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Eigensolver.edp -Re 100 -v 0 -st_ksp_rtol 1.0e-4         &fvtextcolor[myred][\] 
+  -st_ksp_type hpddm -st_ksp_gmres_restart 200 -st_ksp_converged_reason              &fvtextcolor[myred][\] 
+  -st_ksp_hpddm_variant flexible -st_ksp_hpddm_recycle 10 -st_ksp_hpddm_type gcrodr
+\end{Verbatim}
+The Krylov--Schur algorithm converges in six outer iterations. In each of these
+iterations, multiple linear systems having the structure of~\cref{eq:ks} are
+solved. In~\cref{fig:comparison-slepc}, numbers of iterates per inner solves
+are reported. After the first inner solve, once recycling kicks in, one may
+clearly see the benefits of switching from \pk{KSPFGMRES} to \pk{KSPHPDDM}.
+Indeed, through the 46 inner solves, these numbers are roughly decreased by 25. In terms of runtime, \SI[round-mode          = places,round-precision=1]{1.5098e+03}{\sec} (resp.~\SI[round-mode          = places,round-precision=1]{1.0524e+03}{\sec}) is spent in \pk{EPSSolve} when using \pk{KSPFGMRES} (resp.~\pk{KSPHPDDM}). These timings, and all which follow, have been obtained on {Ir\`ene}, a system composed of \pgfmathprintnumber[assume math mode=true]{1656} nodes with two 24-core Intel Xeon Platinum 8168 clocked at \SI{2.7}{\giga\hertz}. 
+\pgfplotstableread{
+sys hpddm fgmres
+1   77    77
+2   54    83
+3   53    83
+4   52    81
+5   52    81
+6   51    78
+7   51    79
+8   51    80
+9   51    80
+10  51    77
+11  51    79
+12  51    79
+13  51    79
+14  53    77
+15  52    79
+16  49    78
+17  51    77
+18  51    79
+19  52    79
+20  52    79
+21  51    77
+22  51    78
+23  51    79
+24  53    80
+25  54    79
+26  52    79
+27  49    75
+28  51    78
+29  51    78
+30  51    77
+31  50    78
+32  55    81
+33  56    79
+34  54    80
+35  53    80
+36  53    78
+37  50    78
+38  52    79
+39  53    77
+40  52    77
+41  54    80
+42  53    80
+43  55    80
+44  53    79
+45  52    77
+46  53    80
+}\loadedtableSLEPc
+    \begin{figure}
+\centering \begin{tikzpicture}
+    \begin{axis}[xlabel={Krylov--Schur system index},ylabel={\# of
+        iterations},xmin=1,xmax=46,ymin=0,ymajorgrids,
+        legend columns=1,enlarge x limits=0.05,
+        legend style={font=\small,at={(0.5,0.24)}, legend cell align=left,
+        anchor=south west}]
+\addplot[very thick,last]     table[x expr=\thisrowno{0},y expr=\thisrowno{2}, col sep=space] {\loadedtableSLEPc};\label{pgfplots:m0}
+\addplot[very thick,myred,densely dashed]       table[x expr=\thisrowno{0},y expr=\thisrowno{1}, col sep=space] {\loadedtableSLEPc};\label{pgfplots:m1}
+\legend{{\pk{KSPFGMRES}},{\pk{KSPHPDDM}}}
+\end{axis}
+\end{tikzpicture}
+        \caption{\# of inner iterations for Krylov--Schur systems~\cref{eq:ks} with~\ref{pgfplots:m0} or without~\ref{pgfplots:m1} recycling.\label{fig:comparison-slepc}}
+    \end{figure}
+\pgfplotstableread{
+N    baij-1-T    baij-1-F   sbaij-1-T   sbaij-1-F  aij-1-T     aij-1-F    baij-3-T    baij-3-F   sbaij-3-T   sbaij-3-F  aij-3-T     aij-3-F    baij-10-T   baij-10-F  sbaij-10-T  sbaij-10-F aij-10-T    aij-10-F
+1    1.8027e-01  1.4696e+08 6.1586e-02  1.4696e+08 8.0527e-02  1.4696e+08 7.1397e-01  1.3535e+09 5.1037e-01  1.3638e+09 1.0686e+00  1.3535e+09 6.1909e+00  1.5159e+10 4.6958e+00  1.5206e+10 1.6114e+01  1.5159e+10
+2    3.5192e-01  2.9392e+08 1.6650e-01  3.2482e+08 1.8615e-01  3.0422e+08 1.0437e+00  2.7071e+09 9.3575e-01  2.9234e+09 1.4753e+00  2.7380e+09 1.4970e+01  3.0319e+10 1.5530e+01  3.2482e+10 1.6267e+01  3.0422e+10
+8    6.1599e-01  1.1757e+09 7.2168e-01  1.2993e+09 3.1676e-01  1.2169e+09 2.6101e+00  1.0828e+10 3.0701e+00  1.1694e+10 2.0870e+00  1.0952e+10 2.7886e+01  1.2128e+11 3.4780e+01  1.2993e+11 2.2569e+01  1.2169e+11
+16   1.9594e+00  2.3513e+09 2.6186e+00  2.5986e+09 6.2770e-01  2.4337e+09 7.5274e+00  2.1656e+10 9.8057e+00  2.3387e+10 4.1388e+00  2.1904e+10 3.6085e+01  2.4255e+11 3.6290e+01  2.5986e+11 4.5153e+01  2.4337e+11
+32   4.3453e+00  4.7026e+09 5.4669e+00  5.1972e+09 1.2538e+00  4.8675e+09 1.6166e+01  4.3313e+10 2.0638e+01  4.6775e+10 8.1531e+00  4.3807e+10 5.2586e+01  4.8510e+11 5.2132e+01  5.1972e+11 1.0705e+02  4.8675e+11
+64   9.6799e+00  9.4053e+09 1.1616e+01  1.0394e+10 2.5713e+00  9.7350e+09 3.4513e+01  8.6626e+10 4.2465e+01  9.3549e+10 1.6444e+01  8.7615e+10 8.3267e+01  9.7020e+11 8.6683e+01  1.0394e+12 2.2792e+02  9.7350e+11
+}\loadedMatProduct
+    \subsubsection{Performance of primitives for block Krylov methods}
+As detailed in~\cref{sec:interface-ksp}, it is currently not possible with most
+PETSc preconditioners to apply them to a block of vectors. Even though there
+are efforts to enable such an operation for an increasing number of \pk{PC}, in
+this section, the focus is instead put on the matrix--matrix multiplication
+needed in block Krylov methods or when restarting recycling Krylov methods.
+In particular, the performance of three PETSc matrix types are evaluated:
+\begin{itemize}
+    \item \pk{MatSeqAIJ}, standard sequential sparse matrices, based on compressed sparse row format;
+    \item \pk{MatSeqBAIJ}, block sparse matrices, based on block compressed sparse row format;
+    \item \pk{MatSeqSBAIJ}, symmetric block sparse matrices.
+\end{itemize}
+Parallel matrices in PETSc heavily rely on sequential matrices. For example, \pk{MatMPIAIJ}, standard parallel sparse matrices, store on each rank two \pk{MatSeqAIJ}, one with local rows and columns, another with local rows and ``nonlocal'' columns.
+To keep this study succinct, only sequential sparse matrices will be evaluated next, which can help draw conclusions for the intraprocess performance of parallel sparse matrices. The Seq substring is now dropped, since in this case, \pk{MatSeqAIJ} is equivalent to \pk{MatAIJ} and so on.
+
+The Poisson equation on a cube is discretized with $\mathbb{P}_1$ finite elements in double precision. This yields a matrix $A$ of dimension one million. Though the numerical values of $A$ are of no interest here, the sparsity pattern is rather common and frequently encountered, e.g., when discretizing partial differential equations. Then, a random dense matrix $T$ of dimension $b$ is generated, for $b \in \{ 1,3,10 \}$, and the following matrix is evaluated $\mathbb{A} = A \otimes T$. The matrix $\mathbb{A}$ is then assembled into all three formats described above. For block matrices, a block size of $b$ is used. The performance of the \pk{MatProductNumeric} operation is evaluated for tall-and-skinny dense matrices with a varying number of columns $N \in \{1,2,8,16,32,64\}$. For $N=1$, the \pk{MatMult} operation for matrix--vector multiplication is used instead. All results are gathered in~\cref{fig:perfAX}. They can be reproduced using the following mini-app: \url{http://jolivet.perso.enseeiht.fr/MatProduct.cpp} and any input \pk{MatAIJ} stored in binary format, here using the default name binaryoutput.
+\begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpicxx] MatProduct.cpp -O3 -std=c++11 -I&fvtextcolor[myyellow][${PETSC_DIR}]/&fvtextcolor[myyellow][${PETSC_ARCH}]/include                     &fvtextcolor[myred][\]
+  -I&fvtextcolor[myyellow][${PETSC_DIR}]/include -L&fvtextcolor[myyellow][${PETSC_DIR}]/&fvtextcolor[myyellow][${PETSC_ARCH}]/lib -lpetsc -o MatProduct
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 1 ./MatProduct -f binaryoutput -log_view                                 &fvtextcolor[myred][\]
+  -bs 1,3,10 -N 1,2,8,16,32,64 -type aij,baij,sbaij
+\end{Verbatim}
+\begin{figure}[htbp]
+  \centering
+    \begin{tikzpicture}
+      \begin{semilogxaxis}[
+        ymin=0,
+        ybar=1.5pt,
+        bar width=3.5pt,
+        enlarge x limits=0.1, height=4cm,
+        width=0.98\textwidth,legend columns=4,
+        legend style={at={(0.5,1.65)}, legend cell align=left,
+        anchor=north},
+        xlabel={\# of right-hand sides ($N$)},
+        ylabel={Efficiency},
+        xtick = {1,2,4,8,16,32},
+ytick = {0.2,1,2.5,5},ylabel style={yshift=6pt},xtick pos=left,
+        xticklabels={1,2,8,16,32,64},
+        ymajorgrids=true,yticklabel={
+\pgfmathparse{int(10*\tick)}
+\ifnum\pgfmathresult=0
+\else
+\pgfmathparse{100*\tick}
+$\pgfmathprintnumber{\pgfmathresult}$\%
+\fi
+},
+        %xmajorgrids=true,
+          cycle list={blueaccent, darkgray, mediumgray},%, lightgray,last},
+      ]
+\pgfkeys{/pgf/fpu}
+  \pgfmathparse{1.4696e+08/8.0527e-02/1000000000.0}\edef\storeresultI{\pgfmathresult}
+  \pgfmathparse{1.3535e+09/7.1397e-01/1000000000.0}\edef\storeresultII{\pgfmathresult}
+  \pgfmathparse{1.5159e+10/6.1909e+00/1000000000.0}\edef\storeresultIII{\pgfmathresult}
+\pgfkeys{/pgf/fpu=false}
+\node[font=\tiny,rotate=45,fill=white,inner sep=0pt,anchor=west] at (axis cs:0.75, 1.2) {\pgfmathprintnumber\storeresultI~GFLOP/s};
+\node[font=\tiny,rotate=45,fill=white,inner sep=0pt,anchor=west] at (axis cs:0.97, 1.2) {\pgfmathprintnumber\storeresultII~GFLOP/s};
+\node[font=\tiny,rotate=45,fill=white,inner sep=0pt,anchor=west] at (axis cs:1.18, 1.2) {\pgfmathprintnumber\storeresultIII~GFLOP/s};
+\addlegendimage{empty legend}
+          \addplot+[draw=black,fill, area legend,postaction={pattern=crosshatch dots}] table [x expr=-0.5 + \thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-1-F}/\thisrow{aij-1-T}/(1.4696e+08/8.0527e-02)]{\loadedMatProduct};\label{pgfplots:aij1}
+          \addplot+[draw=black,fill, area legend,postaction={pattern=crosshatch dots}] table [x expr=-0.5 + \thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{baij-1-F}/\thisrow{baij-1-T}/(1.4696e+08/8.0527e-02)]{\loadedMatProduct};\label{pgfplots:baij1}
+          \addplot+[draw=black,fill, area legend,postaction={pattern=crosshatch dots}] table [x expr=-0.5 + \thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-1-F}/\thisrow{sbaij-1-T}/(1.4696e+08/8.0527e-02)]{\loadedMatProduct};\label{pgfplots:sbaij1}
+\addlegendimage{empty legend}
+           \addplot+[draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-3-F}/\thisrow{aij-3-T}/(1.3535e+09/7.1397e-01)]{\loadedMatProduct};\label{pgfplots:aij3}
+           \addplot+[draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{baij-3-F}/\thisrow{baij-3-T}/(1.3535e+09/7.1397e-01)]{\loadedMatProduct};\label{pgfplots:baij3}
+           \addplot+[draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-3-F}/\thisrow{sbaij-3-T}/(1.3535e+09/7.1397e-01)]{\loadedMatProduct};\label{pgfplots:sbaij3}
+\addlegendimage{empty legend}
+           \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=+0.5 + \thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-10-F}/\thisrow{aij-10-T}/(1.5159e+10/6.1909e+00)]{\loadedMatProduct};\label{pgfplots:aij10}
+           \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=+0.5 + \thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{baij-10-F}/\thisrow{baij-10-T}/(1.5159e+10/6.1909e+00)]{\loadedMatProduct};\label{pgfplots:baij10}
+           \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=+0.5 + \thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-10-F}/\thisrow{sbaij-10-T}/(1.5159e+10/6.1909e+00)]{\loadedMatProduct};\label{pgfplots:sbaij10}
+          \addlegendentry{$b = 1$}
+          \addlegendentry{              }
+          \addlegendentry{               }
+          \addlegendentry{                }
+          \addlegendentry{$b = 3$}
+          \addlegendentry{\pk{MatAIJ}}
+          \addlegendentry{\pk{MatBAIJ}}
+          \addlegendentry{\pk{MatSBAIJ}}
+          \addlegendentry{$b = 10$~~}
+          \addlegendentry{              }
+          \addlegendentry{               }
+          \addlegendentry{                }
+    \end{semilogxaxis}
+    \end{tikzpicture}
+   \caption{Performance of the matrix--matrix multiplication as implemented in PETSc for three sparse matrix types. As baseline values with $N=1$, for $b=1$, performance of \pk{MatAIJ} matrix--vector multiplication is used~\ref{pgfplots:aij1}, while for $b=3$ (resp.~$b=10$), it is the performance of \pk{MatBAIJ} matrix--vector multiplication~\ref{pgfplots:baij3} (resp.~\ref{pgfplots:baij10}).\label{fig:perfAX}}
+\end{figure}
+Some conclusions may be drawn:
+\begin{itemize}
+    \item with a block size of 1, using any type but \pk{MatAIJ} is counterproductive, see~\ref{pgfplots:baij1} and~\ref{pgfplots:sbaij1}. However, with this format, as soon as the number of columns is greater or equal than 8, the efficiency reaches approximately 200\%, see~\ref{pgfplots:aij1};
+    \item for block sizes lower or equal than 5, loops for matrix--vector and matrix--matrix multiplications are unrolled by hand for block formats. This yields rather disappointing performances, except for \pk{MatAIJ}, see~\ref{pgfplots:aij3}, and its 250\% efficiency, even with a moderate number of columns. For block formats \ref{pgfplots:baij3} and~\ref{pgfplots:sbaij3}, given the small value of $b$, it could be beneficial to switch to optimized libraries for small matrices, e.g., LIBXSMM~\cite{heinecke2016libxsmm};
+    \item for greater block sizes, ?gemv or ?gemm are used instead for block formats. For \pk{MatAIJ}~\ref{pgfplots:aij10}, the efficiency quickly caps below 250\% for $N\in\{8,16\}$, but for block formats, this reaches almost 500\% for large number of columns, see~\ref{pgfplots:baij10} and~\ref{pgfplots:sbaij10} for $N=64$.
+\end{itemize}
+These results are of course specific to the sparsity pattern of the initial matrix $A$, and thus $\mathbb{A} = A\otimes T$, and matrix types. For example, if the matrices were to be offloaded to a GPU, one could instead benchmark \pk{MatAIJcuSPARSE}.
+\section{PCHPDDM}\label{sec:PCHPDDM}
+  \subsection{Related work}
+Domain decomposition methods are, alongside multigrid methods, one of the
+dominant paradigms for defining efficient and robust preconditioners in
+modern large-scale applications dealing with partial differential equations.
+In PETSc, preconditioners inherit from the \pk{PC} base class.
+Historically, the block Jacobi and overlapping Schwarz methods were implemented
+as \pk{PCBJACOBI} and \pk{PCASM} respectively. ASM stands for additive Schwarz
+method, as originally introduced by Schwarz~\cite{schwarz1870alternating}, but
+the PETSc implementation is more versatile in the sense that one can easily
+switch between this method and other variants such as the restricted additive
+Schwarz method~\cite{cai1999restricted}. More details about overlapping domain decomposition
+preconditioners will be given in~\cref{sec:interface-pc}, but first the other
+related preconditioners will be quickly presented.
+
+In PETSc, there is also an implementation of two-level overlapping Schwarz
+methods using a generalized Dryja, Smith, Widlund
+preconditioner~\cite{dohrmann2008domain}. Its type is \pk{PCEXOTIC}. When it comes to
+nonoverlapping preconditioners, \pk{PCNN} implements a basic balancing
+Neumann--Neumann method~\cite{mandel1993balancing}. Much more advanced
+techniques are available in \pk{PCBDDC}~\cite{zampini2016pcbddc}: adaptive selection
+of primal constraints~\cite{pechstein2017unified}, change of basis for problems in
+$H(\text{curl})$~\cite{dohrmann2016bddc}$\ldots$ For multigrid,
+\pk{PCMG} exposes a machinery for geometric or algebraic preconditioners. In
+particular, it is used for the implementation of the smoothed-aggregation
+\pk{PCGAMG}~\cite{adams2004ultra}. There are also interfaces to other well-known
+multigrid packages such as \pk{PCHYPRE} or \pk{PCML}~\cite{gee2006ml} from Trilinos. Of
+course, there are many other available domain decomposition preconditioners,
+either accessible through high-level libraries, e.g., FROSch~\cite{Heinlein:2016:PIT} in
+Trilinos, or as stand-alone packages, e.g., BDDCML~\cite{vsistek2013parallel} or
+FEMPAR-BDDC~\cite{badia2014highly}.
+
+HPDDM implements the same one-level overlapping Schwarz methods as PETSc, albeit
+emphasis is also put on optimized Schwarz methods~\cite{gander2006optimized}.
+The main theoretical framework for defining robust two-level methods is called GenEO,
+for generalized eigenvalue problem on the overlap~\cite{spillane2011robust,spillane2013abstract}.
+GenEO was also implemented in other libraries~\cite{butler2020high}, but to the best of our knowledge,
+the interface between HPDDM and PETSc proposes the first high-level access to
+GenEO so that it can, for example, be used as a block-decomposed
+solver~\cite{brown2012composable}.
+
+  \subsection{Interfacing HPDDM overlapping Schwarz methods in PETSc\label{sec:interface-pc}}\
+\pk{PCHPDDM}, the interface between HPDDM overlapping Schwarz methods and PETSc, is automatically
+registered since PETSc version 3.12 when one configures PETSc with the extra
+flag -{}-download-hpddm -{}-download-slepc. It is then
+possible to select the corresponding \pk{PC}
+using the command line option -pc\_type hpddm, or the routine \pk{PCSetType}(pc,
+\pk{PCHPDDM}) and its Fortran equivalent. In this section, it is assumed that one
+wants to solve 
+\begin{equation}
+    Ax = b,
+\end{equation}
+for a given coefficient matrix $A$ and right-hand side $b$ of dimension $n$
+assembled on $N$ processes, using a ksp($A$, $P_A$), i.e., the matrix used to
+define the preconditioner is $A$ itself. Without anything more from the user,
+\pk{PCHPDDM} is strictly equivalent to \pk{PCASM}. That is, if $A$ is distributed among
+$N$ processes the preconditioner $M^{-1}$ is:
+\begin{equation}\label{eq:one}
+    M^{-1} = \sum_{i = 1}^N \tilde{R}_i^T (R_i A R_i^T)^{-1} R_i,
+\end{equation}
+where $\{R_i\}_{i=1}^N$ are restriction operators that act on a global vector and
+return a vector local to each process, possibly with some overlap.
+$\{\tilde{R}_i\}_{i=1}^N$ are the same operators except that coefficients on the
+overlap are set to 0. The action of the inverse of all $\{R_i A R_i^T\}_{i=1}^N$
+can be parameterized through a local \pk{KSP}. If it is assumed that $A$ is the
+discretization of a linear operator $\mathcal{L}$, e.g., $\mathcal{L}=-\Delta$, on a domain $\Omega$, it is
+extremely common to exhibit parallelism by distributing $\Omega$ on $N$
+processes, possibly with some overlap, and to construct the $\{R_i\}_{i=1}^N$ so
+that they map global unknowns to unknowns local to each process. In addition to
+the local operators $\{R_i A R_i^T\}_{i=1}^N$, GenEO needs users to supply
+the local unassembled matrices $\{\mathring{A}_i\}_{i=1}^N$, also known as
+Neumann matrices. These are yielded by the
+discretization of $\mathcal{L}$ on each subdomain, with added natural boundary
+conditions on the subdomain boundaries that are not boundaries of the initial
+domain $\Omega$. In the case of the 1D Poisson
+equation with homogeneous Dirichlet boundary conditions discretized using $\mathbb{P}_1$ finite elements, an explicit representation of these various operators is given~\cref{fig:poisson} for a
+two-domain decomposition.
+\begin{figure}[t]
+    \begin{minipage}[t]{0.495\textwidth}
+\begin{center}
+    Domain and global unknown numbering \\[0.3cm]
+\begin{tikzpicture}[darkstyle/.style={circle,draw,fill=gray!40,line
+    width=0.2mm,font=\scriptsize,minimum size=12pt,inner sep=0pt}]
+    \foreach \x in {0,...,\dof}
+        \pgfmathsetmacro\result{int(\x + 1)}
+        \node[darkstyle] (\x) at (1.25*\x,0) {\result};
+    \pgfmathsetmacro\result{\dof - 1}
+    \foreach \x [count=\xi] in {0,...,\result}
+        \draw[double=black, double distance=0.01mm] (\x) -- (\xi);
+\end{tikzpicture}
+\\[0.5cm]
+    Two-way element-based partitioning \\[0.1cm]
+\begin{tikzpicture}[darkstyle/.style={circle,draw,fill=gray!40,line
+    width=0.2mm,minimum size=12pt, inner sep=0pt}]
+    \foreach \x in {0,...,\dof}
+        \node[darkstyle] (\x) at (1.25*\x,0) {};
+    \foreach \sub/\c in {0/red!50,1/blue!50} {
+        \pgfmathsetmacro\start{int(\sub * round(\dof / 2))}
+        \ifnum\sub=1
+            \pgfmathsetmacro\finish{int(\dof - 1)}
+        \else
+            \pgfmathsetmacro\finish{int(min((\sub + 1) * round(\dof / 2), \dof) - 1)}
+        \fi
+        \foreach \x [count=\xi from \start+1] in {\start,...,\finish}
+            \draw[double=\c, double distance=0.2mm] (\x) -- (\xi);
+        \pgfmathsetmacro\finish{int(\finish+1)}
+        \pgfmathsetmacro\sub{int(\sub+1)}
+        \draw[{Tee Barb[left]}-{Tee Barb[right]}, shorten <= -0.1cm, shorten >= -0.1cm] ([yshift=0.5cm]\start.east) -- node[fill=white,inner sep=1mm,midway] {$\Omega_\sub$} ([yshift=0.5cm]\finish.west);
+    }
+\end{tikzpicture}
+\end{center}
+\begin{equation*}
+    {\scriptsize A =
+    \begin{bmatrix}1&0&0&0&0\\0&2&-1&0&0\\0&-1&2&-1&0\\0&0&-1&2&0\\0&0&0&0&1\end{bmatrix}}
+\end{equation*}
+    \end{minipage}
+    \begin{minipage}[t]{0.495\textwidth}
+\begin{center}
+    Local numbering with overlap \\[0.1cm]
+\begin{tikzpicture}[darkstyle/.style={circle,font=\scriptsize,draw,fill=gray!40,line
+    width=0.2mm,minimum size=12pt,inner sep=0}]
+    \foreach \conf/\c in {0/red!50,1/blue!50} {
+        \pgfmathsetmacro\start{int(max(min(\conf * round(\dof / 2) - \overlap, \dof - 1), 0))}
+        \ifnum\conf=1
+            \pgfmathsetmacro\finish{int(\dof - 1)}
+        \else
+            \pgfmathsetmacro\finish{int(max(0, min((\conf + 1) * round(\dof / 2) + \overlap, \dof) - 1))}
+        \fi
+        \foreach \x in {0,...,\dof} {
+            \ifnum\conf=1
+                \pgfmathparse{ifthenelse(\x < \start || \x - 1 > \finish, "",
+                int(\finish - \x + 2))} \let\nn\pgfmathresult
+            \else
+                \pgfmathparse{ifthenelse(\x < \start || \x - 1 > \finish, "",
+                int(\x - \start + 1))} \let\nn\pgfmathresult
+            \fi
+            \pgfmathparse{ifthenelse(\x < \start || \x - 1 > \finish, "0.25", "1")} \let\oo\pgfmathresult
+            \node[darkstyle, opacity = \oo] (\x\conf) at (1.25*\x,-1.25cm*\conf)
+            {\nn};
+        }
+        \pgfmathsetmacro\loop{int(\dof - 1)}
+        \foreach \x [count=\xi from 1] in {0,...,\loop} {
+            \pgfmathparse{ifthenelse(\x < \start || \x > \finish, "black!25", "\c")} \let\cc\pgfmathresult
+            \pgfmathparse{ifthenelse(\x < \start || \x > \finish, "0.25", "1")} \let\oo\pgfmathresult
+            \ifnum\conf=1
+                \pgfmathparse{ifthenelse(\x + 1 < \start || \x > \finish, "", int(\finish - \x))} \let\nn\pgfmathresult
+            \else
+                \pgfmathparse{ifthenelse(\x < \start || \x - 1 > \finish, "", int(\x - \start))} \let\nn\pgfmathresult
+            \fi
+            \pgfmathparse{ifthenelse(\conf == 1, "0.875cm", "-0.875cm"} \let\ss\pgfmathresult
+            \draw[double=\cc, opacity=\oo, double distance=0.2mm] (\x\conf) -- node[xshift=\ss, yshift=0.2cm, inner sep=1mm,midway, opacity=1] {} (\xi\conf);
+        }
+    }
+\end{tikzpicture}
+\begin{equation*}
+    {\scriptsize R_2 =
+    \begin{bmatrix}0&0&0&0&1\\0&0&0&1&0\\0&0&1&0&0\\0&1&0&0&0\end{bmatrix} \;
+        \tilde{R}_2 =
+    \begin{bmatrix}0&0&0&0&1\\0&0&0&1&0\\0&0&1&0&0\\0&0&0&0&0\end{bmatrix}}
+\end{equation*}
+\begin{equation*}
+    \hspace*{-0.5cm}  {\scriptsize \mathring{A}_i =
+    \begin{bmatrix}1&0&0&0\\0&2&-1&0\\0&-1&2&-1\\0&0&-1&1\end{bmatrix} \;
+      R_2 A R_2^T =
+    \begin{bmatrix}1&0&0&0\\0&2&-1&0\\0&-1&2&-1\\0&0&-1&2\end{bmatrix}}
+\end{equation*}
+\end{center}
+    \end{minipage}
+\caption{Notations and basics of overlapping Schwarz methods.\label{fig:poisson}}
+\end{figure}
+Then, it is possible to enrich the original one-level preconditioner
+from~\cref{eq:one} using a spectral coarse grid built in the following way:
+\begin{enumerate}
+    \item have SLEPc solve the local generalized eigenvalue problem concurrently:
+        \begin{equation}\label{eq:gevp}
+            \mathring{A}_i \Lambda_i = \lambda_i \tilde{R}_i R_i^T (R_i A R_i^T) \tilde{R}_i R_i^T \Lambda_i ;
+        \end{equation}
+    \item retrieve the $\nu_i$ smallest eigenpairs $\{\Lambda_{i_j}, \lambda_{i_j}\}_{j=1}^{\nu_i}$ and assemble a local deflation dense matrix $W_i = \begin{bmatrix} \tilde{R}_i R_i^T \Lambda_{i_1} & \cdots & \tilde{R}_i R_i^T \Lambda_{i_{\nu_j}} \end{bmatrix}$;
+    \item define a global deflation matrix $P = \begin{bmatrix} R_1^T W_1 & \cdots & R_N^T W_N\end{bmatrix}$ and a new two-level preconditioner using the Galerkin product of $A$ and $P$:
+        \begin{equation}\label{eq:two}
+            M'^{-1}_{\text{additive}} = P \left(P^T A P\right)^{-1} P^T + \sum_{i = 1}^N \tilde{R}_i^T (R_i A R_i^T)^{-1} R_i.
+        \end{equation}
+\end{enumerate}
+Note that $\{\tilde{R}_i R_i^T\}_{i=1}^N$ define a partition of unity, i.e.,
+\begin{equation*}
+    \sum_{i = 1}^N R_i^T \tilde{R}_i R_i^T R_i = I.
+\end{equation*}
+When used without PETSc and thus SLEPc, step \#1 is solved in HPDDM with
+ARPACK~\cite{lehoucq1998arpack}. Step \#3 is common to most domain
+decomposition or multigrid preconditioners. However, in HPDDM, the special
+structure of the deflation matrix~$P$ which is sparse with dense blocks is
+exploited. Interested readers are referred to the paper describing the technical
+details of the implementation~\cite{jolivet2013scalable}. One important point to
+notice is that the size of the coarse operator $P^TAP$ is much lower
+than $n$, the size of $A$. It is thus common to have the coarse operator distributed on
+fewer processes than for $A$, see for example the concept of telescoping later
+introduced in PETSc~\cite{may2016extreme}. In HPDDM, the coarse operator is
+computed and redistributed simultaneously. This could be technical to implement
+in PETSc as the result of the routine \pk{MatPtAP} is distributed on the same communicator as the one of the input matrix $A$.
+
+Of course, users do not have to implement the three previous steps themselves.
+The auxiliary operators $\{\mathring{A}_i\}_{i=1}^N$ have simply to be provided
+as well as the correspondence from local to global numbering,
+see~\cref{fig:poisson}, using the routine \pk{PCHPDDMSetAuxiliaryMat}.  If there
+is a \pk{DM} attached to the \pk{PC} of type \pk{DMPLEX}~\cite{knepley2009mesh}
+or \pk{DMP4EST}~\cite{BursteddeWilcoxGhattas11}, then these auxiliary
+overlapping operators and the correspondence are automatically assembled by
+PETSc for users. Other \pk{DMType} may be supported by implementing the proper
+\pk{DMCreateNeumannOverlap} callback. With the local matrix pencils available,
+new options will be automatically registered such as
+-pc\_hpddm\_levels\_1\_eps\_nev or -pc\_hpddm\_levels\_1\_eps\_threshold, which
+may be used to set how many eigenpairs SLEPc should compute in step \#2.  The
+default -eps\_nev value is 20, i.e., the dimension of the coarse space is
+$20\times N$ under the assumption that all concurrent SLEPc solves converge.
+Another important option is -pc\_hpddm\_coarse\_p, which sets the size of the
+communicator on which the coarse operator should be distributed. The default
+value is 1, i.e., the matrix $P^TAP$ is centralized on a single process.
+The action of both inverses from~\cref{eq:two} can be parameterized through the
+-pc\_hpddm\_coarse\_ksp\_type and -pc\_hpddm\_levels\_1\_ksp\_type options
+respectively.
+    \subsubsection{Coarse corrections and eigenvalue problems}
+Some other parameters may be adjusted to define how the one-level preconditioner
+and the coarse grid operator interact with each other. In fact, the additive
+correction from~\cref{eq:two} is the simplest to write down, but most often not
+very efficient numerically~\cite{tang2009comparison}, and thus not used as
+default in \pk{PCHPDDM}. Users can choose between
+$M'^{-1}_{\text{additive}}$ and:
+\begin{align*}
+    M'^{-1}_{\text{deflated}} &= Q + M^{-1}\left(I - AQ\right)\quad
+    \text{(default)}\\
+    M'^{-1}_{\text{balanced}} &= Q + \left(I - AQ\right)M^{-1}\left(I - AQ\right),
+\end{align*}
+with $Q = P \left(P^T A P\right)^{-1} P^T$. These preconditioners may be selected using the additional
+options -pc\_hpddm\_coarse\_correction (deflated$|$additive$|$balanced) or the
+routine \pk{PCHPDDMSetCoarseCorrectionType}(pc, type) and its Fortran equivalent.
+
+The local generalized eigenvalue problems~\cref{eq:gevp} solved by SLEPc can also be adjusted.
+For example, in addition to the local unassembled Neumann matrices
+$\{\mathring{A}_i\}_{i=1}^N$, if one has access to local matrices with optimized
+boundary conditions, e.g., Robin transmission conditions, $\{B_i\}_{i=1}^N$, it
+is possible to pass these using the routine \pk{PCHPDDMSetRHSMat}(pc, $B_i$).
+The following generalized eigenvalue problems, called GenEO-2 in the
+literature~\cite{haferssas2017soras}, are then solved in each subdomain:
+\begin{equation*}
+    \mathring{A}_i \Lambda_i = \lambda_i B_i \Lambda_i.
+\end{equation*}
+    \subsubsection{Multilevel extension}\label{sec:ml}
+In the previous sections, it was shown how to supply the required information to
+\pk{PCHPDDM} in order to build robust two-level overlapping domain decomposition preconditioners.
+A multilevel extension of the GenEO framework is also
+possible~\cite{aldaas2019multi}. It can be used without any additional
+information provided by users. Since the dimension of the
+coarse operator of the second level grows with the number of subdomains of the
+fine level, switching to a multilevel scheme may alleviate the increasing cost
+of solving coarse systems. \pk{PCHPDDM} follows the same numbering of
+\pk{PCBDDC}\footnote{which itself follows the opposite numbering of \pk{PCMG}}: the
+finest level is always numbered 1, the level index increases, up until the
+coarsest level whose options are always prefixed by coarse\_. In order to
+register an additional level $l' = l+1$, the following conditions must be met at
+level $l$:
+\begin{itemize}
+    \item there must be more than one subdomain;
+    \item at least one local eigenvector must be computed.
+\end{itemize}
+Here are some examples with $N = 16$ subdomains on the finest level:
+\begin{itemize}
+    \item -pc\_hpddm\_levels\_1\_eps\_threshold 0.4 -pc\_hpddm\_coarse\_p 8 would
+        define a two-level method with the coarse operator being distributed
+        among 8 processes, assuming that there is globally enough $\lambda_i$ in~\cref{eq:gevp} lower than 0.4;
+    \item -pc\_hpddm\_levels\_1\_eps\_nev 10 -pc\_hpddm\_levels\_2\_p 8
+        -pc\_hpddm\_levels\_2\_eps\_nev 10 -pc\_hpddm\_coarse\_p 2 would define
+        a three-level method with the second level (resp.~ coarse operator)
+        being distributed among 8 (resp.~2) processes;
+    \item -pc\_hpddm\_levels\_1\_eps\_nev 10 -pc\_hpddm\_levels\_2\_p 8 is not
+        valid because there are only two levels, so the options levels\_2\_ are
+        not registered and coarse\_ has to be used instead;
+    \item -pc\_hpddm\_levels\_1\_eps\_nev 10 -pc\_hpddm\_levels\_2\_eps\_nev 10 -pc\_hpddm\_coarse\_p 2 
+        is not valid because there is no option levels\_2\_p, so the default
+        value of 1 is used for the second level, and it is thus not possible to
+        define a third level with a single second-level subdomain.
+\end{itemize}
+    \subsubsection{MatIS}
+Because of the intrinsic nature of balancing domain
+decomposition methods, \pk{PCNN} and \pk{PCBDDC} must be supplied local unassembled
+matrices. These matrices are equivalent to the $\{\mathring{A}_i\}_{i=1}^N$
+defined \cref{sec:interface-pc}, assuming the domain decomposition is without
+overlap, see for example $\Omega_1$ and $\Omega_2$ from~\cref{fig:poisson} in a
+finite element context. Using a local to global mapping, it is possible to
+reconstruct the local assembled matrices, equivalent to the $\{R_i A
+R_i^T\}_{i=1}^N$ from~\cref{sec:interface-pc}. All tools needed by the GenEO
+framework are thus readily available. Note however that one-level overlapping
+Schwarz methods are known for converging slowly when there is in fact no
+overlap. It is common in the field of BDD to see the coarse problem as an
+unassembled operator as well. In fact, this is mandatory to define efficient
+multilevel variants, as implemented in \pk{PCBDDC}. In~\cref{sec:bddc}, it will be
+shown how a coarse problem obtained in \pk{PCBDDC} may be solved using
+\pk{PCHPDDM}.
+  \subsection{Applications and numerical results}
+    \subsubsection{System of elasticity}\label{sec:linear-elasticity}
+Considering only small displacements, this linear problem with highly heterogeneous elastic moduli is solved in 3D.
+Its strong formulation is given by:
+\begin{align}
+	\label{eq:elasticity}
+	\begin{split}
+		\text{div }\sigma (u)  + f	&= 0	\quad \text{in } \Omega,\\
+		u														&= 0	\quad \text{on } \Gamma_D, \\
+		\sigma (u) \cdot n					&= 0	\quad \text{on } \Gamma_N.
+	\end{split}
+\end{align}
+The physical domain $\Omega$ is a beam of dimensions $[0,6] \times [0,1] \times [0,1]$. It is decomposed in $13{,}824$ subdomains using the automatic graph partitioner ParMETIS~\cite{karypis1998fast}.
+The Cauchy stress tensor $\sigma$ is given by Hooke’s law: it can be expressed in terms of Young’s modulus $E$ and Poisson’s ratio $\nu$.
+\[
+	\sigma_{ij}(u) = 
+	\begin{cases}
+		2\mu \varepsilon_{ij}(u)													\quad	& i \ne j, \\
+		2\mu \varepsilon_{ii}(u) + \lambda \text{div}(u)	\quad	& i = j,
+	\end{cases}
+\]
+where
+\[
+	\varepsilon_{ij}(u) = \frac{1}{2} \left(\frac{\partial u_i}{\partial x_i} + \frac{\partial u_j}{\partial x_j} \right), \mu = \frac{E}{2(1+\nu)}, \text{ and }\lambda = \frac{E\nu}{1-2\nu}.
+\]
+$\Gamma_D$ is the subset of the boundary of $\Omega$ corresponding to $x = 0$.
+$\Gamma_N$ is defined as the complementary of $\Gamma_D$ with respect to the boundary of $\Omega$.
+\Cref{eq:elasticity} is discretized using 
+$(\mathbb{P}_1, \mathbb{P}_1, \mathbb{P}_1)$ finite elements.
+The number of unknowns is $\pgfmathprintnumber{593} \times 10^6$, with approximately $\pgfmathprintnumber{45}$ nonzero coefficients per row.
+There are heterogeneities due to jumps in $E$ and $\nu$. The following discontinuous piecewise constant values are considered: $(E_1, \nu_1) = (2\times 10^{11}, 0.25)$, $(E_2, \nu_2) = (10^{7}, 0.45)$, see~\cref{fig:elas}.
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[remember picture]
+      \node[inner sep=-0.1cm] (fig) {\includegraphics[width=0.55\textwidth]{Data/elasticity.png}};
+  \end{tikzpicture}
+      \begin{tikzpicture}[overlay,remember picture]
+      \begin{axis}[
+              at=(fig.south west),
+          xshift=-2.25cm,yshift=-2cm,
+    enlargelimits=false,
+    colorbar,
+    colormap name=paraview,
+    point meta min=-4.9e-3,
+    point meta max=4.9e-3,
+    hide axis,
+    colorbar style={
+        ytick style={draw=none},
+          title={$u(x, \cdot, z)$},
+        scaled y ticks = false,
+        height = 2.0cm,
+        font = \tiny,
+        width = 0.3cm,
+        ytick={-4.9e-3,0.0,4.9e-3}
+    }
+    ]
+      \end{axis}
+  \end{tikzpicture}
+    \caption{Deformed geometrical configuration of a 3D clamped beam subject to gravity. The striped plane in the background shows a cut of the resting configuration with the jumps in the coefficient $E_1={\color{paraviewblue}10^7}$ and $E_2={\color{paraviewred}2\times 10^{11}}$, aligned with those of $\nu$.\label{fig:elas}}
+\end{figure}
+The following solvers are compared:
+\begin{enumerate}
+    \item \pk{PCGAMG};\label{enum:gamg}
+    \item \pk{PCHPDDM} with an exact coarse solver;\label{enum:exact}
+    \item \pk{PCHPDDM} with an inexact coarse solver using \pk{PCHYPRE};\label{enum:inexacthypre}
+    \item \pk{PCHPDDM} with inexact coarse solvers using GenEO multilevel extension, cf.~\cref{sec:ml}.\label{enum:inexact}
+\end{enumerate}
+The options -ksp\_gmres\_modifiedgramschmidt
+-ksp\_gmres\_restart 50
+-ksp\_type fgmres are used in conjunction with all \pk{PC}. The options specific to each solver described above are given next. \\[-4pt]
+\begin{minipage}[t]{0.34\textwidth}
+\begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=\\\{\}]
+\fvtextcolor{mygreen}{# cf. \cref{enum:gamg}}
+-pc_type gamg
+-prefix_push pc_gamg_
+ -threshold 0.03
+ -square_graph 4
+ -sym_graph true
+ -asm_use_agg true
+ -repartition true
+-prefix_pop
+-prefix_push mg_levels_
+ -pc_asm_overlap 0
+ -sub_pc_type cholesky
+-prefix_pop
+-prefix_push mg_coarse_
+ -pc_type redundant
+ -redundant_pc_type cholesky
+-prefix_pop
+\end{Verbatim}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.49\textwidth}
+\begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=\\\{\}]
+\fvtextcolor{mygreen}{# cf. \cref{enum:exact}}
+-pc_type hpddm
+-prefix_push pc_hpddm_
+ -prefix_push levels_1_
+  -pc_type     asm
+  -eps_nev     40
+  -sub_pc_type cholesky
+  -sub_pc_factor_mat_solver_type mumps
+  -st_pc_factor_mat_solver_type mumps
+ -prefix_pop
+ -prefix_push coarse_
+  -p 24
+  -pc_factor_mat_solver_type mkl_cpardiso
+ -prefix_pop
+ -define_subdomains
+ -has_neumann
+-prefix_pop
+\end{Verbatim}
+\end{minipage} \\
+By default, the coarse problem in \pk{PCHPDDM} is solved using an exact $LU$ or Cholesky factorization, in this case using 24 processes and MKL CPARDISO. Thanks to the flexibility of PETSc, switching to an inexact solver using \pk{PCHYPRE} (resp.~GenEO multilevel extension), cf.~\cref{enum:inexacthypre} (resp.~\cref{enum:inexact}), is straightforward. \\[-4pt]
+\begin{minipage}[t]{0.4\textwidth}
+\begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=\\\{\}, codes={\catcode`$=3\catcode`^=7}]
+\fvtextcolor{mygreen}{# cf. \cref{enum:inexacthypre}}
+-prefix_push pc_hpddm_coarse_
+ -ksp_type    gmres
+ -ksp_rtol    1.0e-2
+ -ksp_max_it  100
+ -ksp_pc_side right
+ -pc_type     hypre
+ -prefix_push pc_hypre_
+  -boomeramg_interp_type  ext+i
+  -boomeramg_coarsen_type hmis
+ -prefix_pop
+-prefix_pop
+\end{Verbatim}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.525\textwidth}
+\begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=\\\{\}, codes={\catcode`$=3\catcode`^=7}]
+\fvtextcolor{mygreen}{# cf. \cref{enum:inexact}}
+-prefix_push pc_hpddm_levels_2_
+ -p           $M$
+ -ksp_type    gmres            
+ -ksp_rtol    1.0e-2           
+ -ksp_pc_side right            
+ -pc_type     asm
+ -eps_nev     80
+ -sub_pc_type cholesky
+ -sub_pc_factor_mat_solver_type mkl_pardiso
+ -st_pc_factor_mat_solver_type mkl_pardiso
+-prefix_pop
+\end{Verbatim}
+\vspace*{-0.5cm}
+\end{minipage} \\
+$M$ is the number of subdomains used to define the second-level domain decomposition, which is an aggregation of first-level subdomain.
+When it comes to convergence, first note that BoomerAMG from \emph{hypre} has a really hard time reaching the stopping criterion of $10^{-2}$ when solving GenEO coarse problems. This is emphasized in~\cref{fig:hypre-conv}, where the lack of convergence at the coarse level with \pk{PCHYPRE} greatly deteriorates the outer solver convergence, this configuration is thus discarded next and motivates the need for GenEO multilevel extension.
+\pgfplotstableread{
+it res inner
+  0  3.059298477541e+01 nan
+  1  3.059296797779e+01 100
+  2  3.059296195928e+01 15
+  3  3.059296184099e+01 15
+  4  3.059295742636e+01 13
+  5  3.059295742508e+01 15
+  6  3.059294966626e+01 14
+  7  3.059293719161e+01 95
+  8  3.059292563008e+01 100
+  9  3.059286757287e+01 100
+ 10  3.059276348161e+01 100
+ 11  3.059259253443e+01 100
+ 12  3.059200963623e+01 100
+ 13  3.059116858285e+01 100
+ 14  3.059008706025e+01 100
+ 15  3.058899295395e+01 100
+ 16  3.058765538548e+01 100
+ 17  3.058718339920e+01 100
+ 18  3.058690573439e+01 100
+ 19  3.058631705473e+01 100
+ 20  3.058529856313e+01 100
+ 21  3.058458303471e+01 100
+ 22  3.058441527393e+01 100
+ 23  3.058404813350e+01 100
+ 24  3.058350395496e+01 100
+ 25  3.058297671639e+01 100
+ 26  3.058267730942e+01 100
+ 27  3.058267032565e+01 100
+ 28  3.058260186627e+01 19
+ 29  3.058233416052e+01 100
+ 30  3.058177883143e+01 100
+ 31  3.058107492291e+01 100
+ 32  3.058053304435e+01 100
+ 33  3.058021917750e+01 100
+ 34  3.057991067536e+01 100
+ 35  3.057984123224e+01 100
+ 36  3.057981166461e+01 100
+ 37  3.057969981702e+01 100
+ 38  3.057951130340e+01 100
+ 39  3.057909738295e+01 100
+ 40  3.057879065735e+01 100
+ 41  3.057844662403e+01 100
+ 42  3.057813110973e+01 100
+ 43  3.057805844313e+01 100
+ 44  3.057748148817e+01 100
+ 45  3.057716298347e+01 100
+ 46  3.057695365582e+01 100
+ 47  3.057687162665e+01 100
+ 48  3.057685976587e+01 100
+ 49  3.057676977855e+01 100
+ 50  3.057666112196e+01 100
+ 51  3.057666112157e+01 100
+ 52  3.057666066500e+01 15
+ 53  3.057666020080e+01 15
+ 54  3.057666000522e+01 12
+ 55  3.057666000081e+01 15
+ 56  3.057665991326e+01 15
+ 57  3.057665913485e+01 95
+ 58  3.057665848806e+01 100
+ 59  3.057665837181e+01 100
+ 60  3.057665830553e+01 100
+ 61  3.057665733071e+01 100
+ 62  3.057665722344e+01 100
+ 63  3.057665608783e+01 100
+ 64  3.057664613215e+01 100
+ 65  3.057661541445e+01 100
+ 66  3.057659606149e+01 100
+ 67  3.057657581806e+01 100
+ 68  3.057648665398e+01 100
+ 69  3.057648651148e+01 100
+ 70  3.057647274070e+01 100
+ 71  3.057646787321e+01 100
+ 72  3.057646700351e+01 100
+ 73  3.057646583987e+01 100
+ 74  3.057640958561e+01 100
+ 75  3.057640655402e+01 100
+ 76  3.057640464884e+01 100
+ 77  3.057634384959e+01 100
+ 78  3.057630002417e+01 100
+ 79  3.057628670010e+01 100
+ 80  3.057628640121e+01 100
+ 81  3.057628480757e+01 100
+ 82  3.057625930943e+01 100
+ 83  3.057619950478e+01 100
+ 84  3.057615004023e+01 100
+ 85  3.057605590648e+01 100
+ 86  3.057603257752e+01 100
+ 87  3.057575042666e+01 100
+ 88  3.057537924704e+01 100
+ 89  3.057516167721e+01 100
+ 90  3.057445320162e+01 100
+ 91  3.057434150644e+01 100
+ 92  3.057433943630e+01 100
+ 93  3.057431618884e+01 100
+ 94  3.057419597979e+01 100
+ 95  3.057412470447e+01 100
+ 96  3.057409280981e+01 100
+ 97  3.057407988562e+01 100
+ 98  3.057397192115e+01 100
+ 99  3.057365742468e+01 100
+100  3.057298339599e+01 100
+}\loadedtableHYPRE
+\begin{figure}[htbp]
+    \centering
+        \begin{tikzpicture}[font=\scriptsize]
+\begin{axis}[%title=\framebox{{\upcase diffusion 2D, $\mathbb{P}_4$ FE, $\varepsilon = \num[exponent-product=\cdot]{1e-06}$}},
+        axis y line*=left,ymajorgrids, unbounded coords=jump, xmin=0,xmax=100,extra y ticks={100}, width=0.5\textwidth,extra y tick labels=\empty, extra y tick style={grid=major}, ylabel = {\# of inner iterations~\ref{pgfplots:inner-hypre}}, xlabel = {Outer iteration index}]
+\addplot[last, very thick] table[x=it, y=inner] {\loadedtableHYPRE};\label{pgfplots:inner-hypre}
+% \node[rectangle, draw, font=\scriptsize, text width = 4.6cm] at (axis cs:12.9, 18) {\texttt{-hpddm\_master\_p 32 \\ -hpddm\_master\_aggregate\_size 16}};
+\end{axis}
+\begin{axis}[axis x line=none,ymax=31,ymin=30, axis y line*=right, xmin=0,xmax=100,width=0.5\textwidth, ylabel near ticks=right, ylabel = {Unpreconditioned residual~\ref{pgfplots:res-hypre}}]
+\addplot[myred, densely dashed, very thick] table[x=it, y=res] {\loadedtableHYPRE};\label{pgfplots:res-hypre}
+\end{axis}
+\end{tikzpicture}
+    \caption{Convergence history of \pk{PCHPDDM} using \pk{PCHYPRE} on 24 processes
+    as a coarse solver. The maximum number of iterations of both the inner coarse solver and the outer solver is set to 100.\label{fig:hypre-conv}}
+\end{figure}
+
+Second, when properly parametrized, \cref{enum:exact} and \cref{enum:inexact} yield the same number of outer iterates. In~\cref{fig:gamg-geneo}, the convergence history of \pk{PCGAMG} and \pk{PCHPDDM} are reported. In~\cref{fig:inexact}, the number of inner coarse iterations are reported for various values of $M$. In the case of a two-level method,~\cref{enum:exact}, this number is equal to one and is thus not reported in the figure.
+\pgfplotstableread{
+    it gamg hpddm
+  0 3.859411178402e+00 3.859411178402e+00
+  1 3.859411159689e+00 3.859411176864e+00
+  2 3.859410249427e+00 3.859411160502e+00
+  3 3.859409408276e+00 3.859411009079e+00
+  4 3.859405618616e+00 3.859410641267e+00
+  5 3.859384473758e+00 3.859409504108e+00
+  6 3.859336132196e+00 3.859406284759e+00
+  7 3.859180574117e+00 3.859396774066e+00
+  8 3.858527456325e+00 3.859371139173e+00
+  9 3.855946156750e+00 3.859291203708e+00
+ 10 3.847882304613e+00 3.859050327998e+00
+ 11 3.823783202371e+00 3.858349404873e+00
+ 12 3.761793608189e+00 3.856196410336e+00
+ 13 3.604276380304e+00 3.850223368267e+00
+ 14 3.219169630144e+00 3.833574948206e+00
+ 15 2.524138668209e+00 3.789137446493e+00
+ 16 1.612332237539e+00 3.677085304126e+00
+ 17 9.250281017522e-01 3.416685094366e+00
+ 18 5.244208314872e-01 2.914257430799e+00
+ 19 2.900205723223e-01 2.201797784976e+00
+ 20 1.639686082701e-01 1.504764597680e+00
+ 21 8.999329395027e-02 9.651409800649e-01
+ 22 4.806932060093e-02 5.991352736022e-01
+ 23 2.623490189992e-02 3.709375100943e-01
+ 24 1.420399852677e-02 2.262545029178e-01
+ 25 7.785203261213e-03 1.386897546734e-01
+ 26 4.279336819903e-03 8.468744514883e-02
+ 27 2.392528915920e-03 5.199440557582e-02
+ 28 1.398509701362e-03 3.167797843106e-02
+ 29 7.951946917375e-04 1.958093540992e-02
+ 30 4.302913355532e-04 1.195194560026e-02
+ 31 2.336327784594e-04 7.371078209494e-03
+ 32 1.242918661343e-04 4.565136636812e-03
+ 33 6.466088102124e-05 2.757997749188e-03
+ 34 3.347704352999e-05 1.722488935062e-03
+ 35               nan  1.040719253466e-03 
+ 36               nan  6.471646548950e-04 
+ 37               nan  3.944692230299e-04 
+ 38               nan  2.413209464780e-04 
+ 39               nan  1.481390561258e-04 
+ 40               nan  9.041135719421e-05 
+ 41               nan  5.606739576810e-05 
+ 42               nan  3.445256788047e-05 
+}\comparisontable
+\pgfplotstableread{
+it p-16  p-256  p-1024
+ 1 26    16     13
+ 2 9     6      6
+ 3 10    7      6
+ 4 8     6      6
+ 5 9     6      5
+ 6 5     5      5
+ 7 8     6      5
+ 8 9     6      5
+ 9 7     5      5
+10 7     6      5
+11 7     6      5
+12 8     6      5
+13 5     5      5
+14 6     6      4
+15 6     5      5
+16 8     6      5
+17 6     5      5
+18 6     5      5
+19 7     5      4
+20 8     6      5
+21 8     6      5
+22 7     5      4
+23 7     6      5
+24 6     6      5
+25 6     6      5
+26 6     5      5
+27 6     5      4
+28 5     5      5
+29 6     5      5
+30 6     5      5
+31 7     5      5
+32 8     6      5
+33 7     6      4
+34 5     5      5
+35 5     5      5
+36 6     5      4
+37 6     5      4
+38 6     5      5
+39 7     5      4
+40 5     5      5
+41 5     5      5
+42 6     5      nan
+43 5     nan    nan
+}\comparisonP
+\begin{figure}[htbp]
+  \centering
+    \subfloat[\parbox{5cm}{Numerical comparison of \pk{PCGAMG} and \pk{PCHPDDM}.\label{fig:gamg-geneo}}]{
+\begin{tikzpicture}[font=\scriptsize]
+\begin{semilogyaxis}[xmin=0,xmax=50,width=0.46\textwidth,
+    legend style={at={(1.05,0.95)},cells={anchor=west}},ymajorgrids,
+    xlabel={Iteration number},
+    ylabel={Unpreconditioned residual},
+    enlarge x limits=0.05,
+% yticklabel={
+% \pgfmathparse{int(\tick)}
+% \ifnum\pgfmathresult=0
+% $1$
+% \else
+% \pgfmathparse{int(\tick/ln(10))}{$10^{\pgfmathresult}$}
+% \fi
+% }
+]
+\addplot[very thick,last] table [x=it, y index=1] {\comparisontable};
+\addplot[very thick,myred, densely dashed] table [x=it, y index=2]       {\comparisontable};
+    \legend{{\pk{PCGAMG}},{\pk{PCHPDDM}}}
+% lightgray
+\end{semilogyaxis}
+\end{tikzpicture}
+}
+    \subfloat[\parbox{5cm}{\# of inner coarse iterations for various values of $M$, the number of second-level subdomains.}\label{fig:inexact}]{
+        \begin{tikzpicture}[font=\scriptsize]
+\begin{axis}[%title=\framebox{{\upcase diffusion 2D, $\mathbb{P}_4$ FE, $\varepsilon = \num[exponent-product=\cdot]{1e-06}$}},
+        ymajorgrids, unbounded coords=jump, xmin=-1,extra y ticks={100}, width=0.46\textwidth,extra y tick labels=\empty, extra y tick style={grid=major},legend columns=3,legend cell align=left, ylabel = {\# of inner iterations}, xlabel = {Outer iteration index}]
+\addlegendimage{empty legend}
+\addlegendimage{empty legend}
+\addlegendimage{empty legend}
+\addplot[last, very thick] table[x=it, y=p-16] {\comparisonP};\label{pgfplots:p-16}
+\addplot[myred, densely dashed, very thick] table[x=it, y=p-256] {\comparisonP};\label{pgfplots:p-256}
+\addplot[myyellow, densely dotted, very thick] table[x=it, y=p-1024] {\comparisonP};\label{pgfplots:p-1024}
+
+   \addlegendentry{\hspace{-.6cm}-pc\_hpddm\_levels\_2\_p $M$ \hspace*{-2.5cm}}
+   \addlegendentry{}
+   \addlegendentry{}
+   \addlegendentry{16}
+   \addlegendentry{256}
+    \addlegendentry{\pgfmathprintnumber{1024}}
+\end{axis}
+        \end{tikzpicture}
+    }
+    \caption{Convergence histories of \pk{PCGAMG} and \pk{PCHPDDM} for solving the 3D system of linear elasticity. For \pk{PCHPDDM}, a comparison of the number of inner coarse iterations is displayed when using an inexact method, cf.~\cref{enum:inexact}.}
+\end{figure}
+Note that in this test case, \pk{PCGAMG} is faster than all \pk{PCHPDDM}
+alternatives. Its setup (resp.~solution) phase takes 70 (resp.~19) seconds while
+for the best parameters of \pk{PCHPDDM}, which is
+configuration~\ref{pgfplots:p-256} with 256 second-level subdomains, its
+respectively 64 and 36 seconds. Out of these 64 seconds, 31 are spent in SLEPc
+\pk{EPSSolve} for solving GenEO at each level but the coarsest. The code used to
+produce these results was borrowed from the original paper about the multilevel
+extension of GenEO~\cite{aldaas2019multi} and is available
+at~\url{https://github.com/prj-/aldaas2019multi}.
+    \subsubsection{Liouville--Bratu--Gelfand equation} The strong formulation of this nonlinear problem is given by:
+\begin{equation}
+    -\nabla \cdot (\kappa \nabla u) - 6.2 \exp^u = 0,\label{eq:bratu}
+\end{equation}
+where $\kappa$ is a heterogeneous coefficient distribution,
+see~\cref{fig:kappa}. This equation may model the temperature distribution in
+combustion models. Here, it is merely used to test \pk{PCHPDDM} in the context
+of solving successive linearized equations, but there are many other techniques
+for solving such a nonlinear equation, such as first decomposing the domain and
+then linearizing the equation~\cite{dryja1997nonlinear}.
+The physical domain $\Omega$ is the unit cube. It is decomposed in $10{,}272$ subdomains.
+\Cref{eq:bratu} is discretized using $\mathbb{P}_2$ finite elements.
+The number of unknowns is $\pgfmathprintnumber{217} \times 10^6$, with
+approximately $\pgfmathprintnumber{29}$ nonzero coefficients per row.
+It is solved using a \pk{SNES}, with \pk{PCHPDDM} being the preconditioner for
+solving each linearized system, see~\cref{fig:u}.
+\begin{figure}[htbp]
+  \centering
+  \subfloat[Coefficient distribution.\label{fig:kappa}]{
+  \begin{tikzpicture}[remember picture]
+      \node[inner sep=-0.1cm] (fig) {\includegraphics[width=0.45\textwidth]{Data/kappa.png}};
+  \end{tikzpicture}
+  }
+    \subfloat[Isosurfaces of the solution.\label{fig:u}]{
+  \begin{tikzpicture}[remember picture]
+      \node[inner sep=-0.1cm] (fq) {\includegraphics[width=0.45\textwidth]{Data/u.png}};
+  \end{tikzpicture}
+      \begin{tikzpicture}[overlay,remember picture]
+      \begin{axis}[
+              at=(fig.south west),
+          xshift=-1.5cm,yshift=-2cm,
+    enlargelimits=false,
+    colorbar,
+    colormap name=paraview,
+    point meta min=6e-2,
+    point meta max=8.5,
+    hide axis,
+    colorbar style={
+        ytick style={draw=none},
+        title={$\kappa$},
+        scaled y ticks = false,
+        height = 2.0cm,
+        font = \tiny,
+        width = 0.3cm,
+        ytick={6e-2,4.0,8.5}
+    }
+    ]
+      \end{axis}
+      \begin{axis}[
+              at=(fq.south east),
+          xshift=0.0cm,yshift=-2cm,
+    enlargelimits=false,
+    colorbar,
+    colormap name=paraview,
+    point meta min=-1.9,
+    point meta max=1.9,
+    hide axis,
+    colorbar style={
+        ytick style={draw=none},
+        title={$u$},
+        scaled y ticks = false,
+        height = 2.0cm,
+        font = \tiny,
+        width = 0.3cm,
+        ytick={-1.9,0,1.9}
+    }
+    ]
+      \end{axis}
+  \end{tikzpicture}
+  }
+    \caption{Solving the Liouville--Bratu--Gelfand equation using \pk{SNESNEWTONLS} and \pk{PCHPDDM}.}
+\end{figure}
+The GenEO framework has seldom been used in the context of nonlinear problems, but
+here, it is shown that it can solve the linearized equations
+from~\cref{eq:bratu} in few iterates.  There are two strategies to define the
+\pk{PC} here:
+\begin{itemize}
+\item supply whenever the Jacobian is being updated in the \pk{SNESSetJacobian}
+function new unassembled Neumann matrices at the current linearization point with the previously
+explained \pk{PCHPDDMSetAuxiliaryMat} function, this is done automatically with a
+\pk{DMPLEX} or a \pk{DMP4EST};
+\item by reusing the \pk{PCHPDDM} hierarchy assembled when solving the first
+    linearized system, using the \pk{SNESSetLagPreconditioner} option.
+\end{itemize}
+Since the system is not too stiff here, both strategies lead to the same
+convergence history, which is displayed in~\cref{fig:bratu-conv}. The complete set of
+options is given in~\cref{fig:bratu-options}.
+\pgfplotstableread{
+it first                second               third                  fourth
+ 0 1.199398376742e+01   3.397386070782e-04   1.863266214507e-05     8.796157053238e-07
+ 1 3.105058690048e+00   3.396971540287e-04   1.863121679230e-05     8.795510768269e-07
+ 2 7.493003609951e-01   3.394715205399e-04   1.862509132651e-05     8.792972699303e-07
+ 3 2.066956200353e-01   3.372614259474e-04   1.860041089031e-05     8.783878285049e-07
+ 4 6.309969159499e-02   3.127230257133e-04   1.838790479520e-05     8.701902993653e-07
+ 5 1.933161037163e-02   2.148249088439e-04   1.707968608004e-05     8.181649294279e-07
+ 6 6.550219066971e-03   9.681223676375e-05   1.238892191333e-05     6.183954841666e-07
+ 7 2.324009861121e-03   3.933958932173e-05   6.179174147298e-06     3.194732043996e-07
+ 8 8.476764474277e-04   1.558086376310e-05   2.605805785728e-06     1.363806062938e-07
+ 9 3.138242119678e-04   6.269961516841e-06   1.052999054933e-06     5.522010168719e-08
+10 1.183695049547e-04   2.522978646378e-06   4.300851965899e-07     2.257459993685e-08
+11                nan   1.024961124607e-06   1.753694476531e-07     9.219016303441e-09
+12                nan   4.249085515277e-07   7.338448965970e-08     3.852685693794e-09
+13                nan   1.763394120011e-07   3.059024771687e-08     1.609255024084e-09
+14                nan   7.432342714299e-08   1.297122798875e-08     6.817901759942e-10
+15                nan   3.135242203325e-08   5.496143820621e-09     2.896018108835e-10
+16                nan   1.326698994886e-08   2.331975304171e-09     1.226613149417e-10
+17                nan   5.639489438404e-09   9.871150757910e-10     5.194784893432e-11
+18                nan   2.342602656325e-09   4.069402853378e-10     2.137940700304e-11
+19                nan                  nan   1.679412238393e-10     8.828401758238e-12
+20                nan                  nan                  nan     3.628457807677e-12
+}\comparisonBratu
+% 4 SNES Function norm 2.502417058684e-09
+\begin{SaveVerbatim}[commandchars=\\\{\}]{VerbEnv}
+-snes_type            newtonls
+-snes_linesearch_type basic
+-ksp_pc_side          right
+-pc_type              hpddm
+-prefix_push pc_hpddm_
+ -prefix_push levels_1_
+  -pc_type     asm
+  -eps_nev     10
+  -sub_pc_type cholesky
+  -sub_pc_factor_mat_solver_type mumps
+ -prefix_pop
+ -coarse_p 128
+ -define_subdomains
+ -has_neumann
+-prefix_pop
+\end{SaveVerbatim}
+\begin{figure}[htbp]
+  \centering
+    \subfloat[Convergence histories of the four linearized systems.
+    At the top of each curve, for the first iterate, the value of the function
+    norm is displayed.\label{fig:bratu-conv}]{
+\begin{tikzpicture}[font=\scriptsize]
+\begin{semilogyaxis}[clip=false,xmin=0,xmax=68,width=0.49\textwidth,
+    legend style={at={(1.05,0.95)},cells={anchor=west}},ymajorgrids,
+    xlabel={Iteration number},
+    extra x ticks={0, 10, 28, 47, 67},extra x tick labels=\empty,
+    extra x tick style={grid=major},
+    ylabel={Relative unpreconditioned residual},
+    enlarge x limits=0.05,
+yticklabel={
+\pgfmathparse{int(\tick)}
+\ifnum\pgfmathresult=0
+$1$
+\else
+\pgfmathparse{int(\tick/ln(10))}{$10^{\pgfmathresult}$}
+\fi
+}
+]
+\addplot[very thick,last] table [x=it, y expr=\thisrowno{1}/1.199398376742e+01] {\comparisonBratu};
+\addplot[very thick,last] table [x expr=\thisrowno{0}+10, y expr=\thisrowno{2}/3.397386070782e-04] {\comparisonBratu};
+\addplot[very thick,last] table [x expr=\thisrowno{0}+28, y expr=\thisrowno{3}/1.863266214507e-05] {\comparisonBratu};
+\addplot[very thick,last] table [x expr=\thisrowno{0}+47, y expr=\thisrowno{4}/8.796157053238e-07] {\comparisonBratu};
+\node[font=\tiny,fill=white,inner sep=1pt] at (axis cs:0, 2) {12.0};
+\node[font=\tiny,fill=white,inner sep=1pt] at (axis cs:12, 2) {3.4E-4};
+\node[font=\tiny,fill=white,inner sep=1pt] at (axis cs:28, 2) {1.9E-5};
+\node[font=\tiny,fill=white,inner sep=1pt] at (axis cs:47, 2) {8.8E-7};
+\node[font=\tiny,fill=white,inner sep=1pt] at (axis cs:67, 2) {2.5E-9};
+\end{semilogyaxis}
+\end{tikzpicture}
+}
+    \subfloat[\parbox{5cm}{\pk{SNES}, \pk{KSP}, and \pk{PC} options for the
+    solving~\cref{eq:bratu}}\label{fig:bratu-options}]{
+        {\setlength{\fboxrule}{0.1mm}
+        \fbox{\BUseVerbatim[fontsize=\footnotesize]{VerbEnv}}
+        }
+    }
+    \caption{Numerical performance of \pk{PCHPDDM} in a nonlinear context for
+    solving the Liouville--Bratu--Gelfand equation. Default PETSc tolerances are used:
+    $10^{-5}$ decrease of relative residuals for linear solves, $10^{-8}$ decrease
+    of function norms for nonlinear solves.}
+\end{figure}
+    \subsubsection{Using PCHPDDM as a coarse grid solver for PCBDDC\label{sec:bddc}}
+A last toy problem is explained to show how one may switch between a multilevel
+BDDC solver to a two-level BDDC solver using \pk{PCHPDDM} for solving the
+coarse problem. The problem is generated using MFEM~\cite{anderson2019mfem}
+definite Maxwell example available at \url{https://github.com/mfem/mfem/blob/master/examples/petsc/ex3p.cpp}.
+The strong formulation of the continuous problem is given by:
+\begin{align}
+	\label{eq:maxwell}
+	\begin{split}
+        \nabla \times (\nabla \times E) + E	&= 0	\quad \text{in } \Omega,\\
+        E \times n					&= (1+16\pi^2)\begin{bmatrix} \sin{4\pi y}&
+        \sin{4\pi z}&\sin{4\pi x} \end{bmatrix}^T \text{on } \partial \Omega.
+	\end{split}
+\end{align}
+It is discretized using order 1 N\'ed\'elec finite elements. There is a command
+line option -{}-nonoverlapping to activate \pk{PCBDDC}. The following command line
+is thus used. \\[-4pt]
+\begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 512 ./ex3p -m ../../data/fichera.mesh -f 4 --petscopts rc_ex3p_bddc      &fvtextcolor[myred][\]
+  --nonoverlapping
+\end{Verbatim}
+The option file shows how \pk{PCHPDDM} may be composed into \pk{PCBDDC}. \\[-4pt]
+\begin{minipage}[t]{0.565\textwidth}
+\begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][cat] rc_ex3p_bddc
+-ksp_type      fgmres
+-ksp_norm_type unpreconditioned
+-ksp_rtol      1.0e-8
+
+-prefix_push pc_bddc_
+ -use_deluxe_scaling
+ -levels             1
+ -adaptive_threshold 2.0
+ -coarsening_ratio   8
+ 
+ -neumann_pc_factor_mat_solver_type   mumps
+ -dirichlet_pc_factor_mat_solver_type mumps
+&fvtextcolor[mygreen][# continue on the left column]
+\end{Verbatim}
+\end{minipage}
+\begin{minipage}[t]{0.425\textwidth}
+\begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
+&fvtextcolor[mygreen][# continued from the right column]
+ -prefix_push coarse_
+  -ksp_converged_reason
+  -ksp_type      gmres
+  -ksp_max_it    100
+  -ksp_rtol      1.0e-1
+  -pc_type       hpddm
+  -ksp_norm_type preconditioned
+  -prefix_push pc_hpddm_
+   -levels_1_pc_type     asm
+   -levels_1_eps_nev     10
+   -levels_1_sub_pc_type cholesky
+   -coarse_pc_type       cholesky
+  -prefix_pop
+ -prefix_pop
+-prefix_pop
+\end{Verbatim}
+\end{minipage}
+Deluxe scaling is used to build an adaptive second level with \pk{PCBDDC}. On this
+second level, new subdomains are built by aggregating the constraints
+of 8 fine-level subdomains. The BDDC coarse problem composed of $\frac{512}{8} =
+64$ subdomains is then solved using \pk{PCHPDDM}, which itself builds another adaptive
+level using $10$ local eigenvectors per subdomains. The coarsest level is
+aggregated on a single process and solved using an exact Cholesky factorization.
+The magnitude of the electric field is plotted~\cref{fig:E}. For the
+convergence history of the solver, it is~\cref{fig:BDDC}. The outer solver
+reaches the prescribed convergence criterion in 17 iterations~\ref{pgfplots:res}. The number of
+inner iterations for solving the BDDC coarse problem is reported as well~\ref{pgfplots:inner}.
+\pgfplotstableread{
+it res inner
+  0 2.362991511979e+02 nan
+  1 3.301059014393e+01 3
+  2 9.008361295505e+00 4
+  3 4.198372502615e+00 7
+  4 4.193238438798e+00 8
+  5 3.757039752765e+00 7
+  6 1.610223090345e+00 23
+  7 4.119318170796e-01 5
+  8 1.304562389595e-01 7
+  9 3.996802619765e-02 6
+ 10 1.230923272811e-02 6
+ 11 4.922752304029e-03 6
+ 12 1.532991950467e-03 6
+ 13 3.772099626068e-04 6
+ 14 1.206814967573e-04 6
+ 15 3.229192953782e-05 6
+ 16 7.563953270757e-06 6
+ 17 1.638139681380e-06 6
+}\loadedtableBDDC
+\begin{figure}[htbp]
+  \centering
+  \subfloat[Magnitude of the electric field.\label{fig:E}]{
+  \begin{tikzpicture}[remember picture]
+      \node[inner sep=-0.1cm] (fig) {\includegraphics[width=0.45\textwidth]{Data/fichera.png}};
+  \end{tikzpicture}
+      \begin{tikzpicture}[overlay,remember picture]
+      \begin{axis}[
+              at=(fig.south west),
+          xshift=-1.25cm,yshift=-2cm,
+    enlargelimits=false,
+    colorbar,
+    colormap name=paraview,
+    point meta min=0,
+    point meta max=1.4,
+    hide axis,
+    colorbar style={
+        ytick style={draw=none},
+        title={$||E||$},
+        scaled y ticks = false,
+        height = 2.0cm,
+        font = \tiny,
+        width = 0.3cm,
+        ytick={0,0.7,1.4}
+    }
+    ]
+      \end{axis}
+  \end{tikzpicture}
+  }
+    \subfloat[\parbox{5cm}{Convergence history of \pk{PCBDDC} using \pk{PCHPDDM}
+    as a coarse solver.\label{fig:BDDC}}]{
+        \begin{tikzpicture}[font=\scriptsize]
+\begin{axis}[%title=\framebox{{\upcase diffusion 2D, $\mathbb{P}_4$ FE, $\varepsilon = \num[exponent-product=\cdot]{1e-06}$}},
+        axis y line*=left,ymajorgrids, unbounded coords=jump, xmin=-1,extra y ticks={100}, width=0.5\textwidth,extra y tick labels=\empty, extra y tick style={grid=major}, ylabel = {\# of inner iterations~\ref{pgfplots:inner}}, xlabel = {Outer iteration index}]
+\addplot[last, very thick] table[x=it, y=inner] {\loadedtableBDDC};\label{pgfplots:inner}
+% \node[rectangle, draw, font=\scriptsize, text width = 4.6cm] at (axis cs:12.9, 18) {\texttt{-hpddm\_master\_p 32 \\ -hpddm\_master\_aggregate\_size 16}};
+\end{axis}
+\begin{semilogyaxis}[axis x line=none, axis y line*=right, xmin=-1,width=0.5\textwidth, ylabel near ticks=right, ylabel = {Unpreconditioned residual~\ref{pgfplots:res}}]
+\addplot[myred, densely dashed, very thick] table[x=it, y=res] {\loadedtableBDDC};\label{pgfplots:res}
+\end{semilogyaxis}
+\end{tikzpicture}
+  }
+    \caption{MFEM example ex3p for solving the Fichera corner problem.}
+\end{figure}
+\section{Conclusion and perspectives}\label{sec:conclusion}
+In this paper, the interface between PETSc and HPDDM is presented. The new
+registered Krylov and overlapping Schwarz methods are explained and numerical
+examples are provided to show the applicability of these. Solving well-known
+problems, various options have been described. Some more unconventional test
+cases were commented as well, for example using \pk{MatKAIJ} or \pk{MatIS} matrix types.
+Overall, the interface paves the way for having recycling and block Krylov
+methods plus robust overlapping Schwarz methods using the GenEO framework in
+PETSc.
+
+Concerning PETSc, one may notice that it is now possible to do some code
+refactorization for applications that had to deal with multiple right-hand sides.
+As a striking example, LOBPCG~\cite{knyazev2001toward} or
+CISS~\cite{sakurai2003projection} implementations in SLEPc are
+currently\footnote{in version 3.13.2} not using blocking when applying 
+spectral transformations, but this is being rewritten to use the new routine
+\pk{KSPMatSolve}\footnote{\url{https://gitlab.com/slepc/slepc/-/merge_requests/63}} and should be available in version 3.14.0.
+
+Concerning HPDDM, its integration inside PETSc offers a much-needed flexibility
+compared to the standard implementation. Indeed, it is now possible to switch at
+runtime many parameters that are determined at compile-time in the standard implementation, e.g.,
+subdomain solvers, matrix types, and such.
+
+
+\section*{Acknowledgments}
+The authors would like to thank S. Balay, J. Brown, V. Hapla, M. Knepley, J.
+Roman, and B. Smith for reviewing the successive merge requests in PETSc and
+SLEPc repositories. This work was granted access to the HPC resources of
+TGCC@CEA under the allocations A0070607519 made by GENCI.
+% We would like to acknowledge the assistance of volunteers in putting
+% together this example manuscript and supplement.
+
+\bibliographystyle{siamplain}
+\begin{thebibliography}{10}
+
+\bibitem{adams2004ultra}
+{\sc M.~Adams, H.~H. Bayraktar, T.~M. Keaveny, and P.~Papadopoulos}, {\em
+  {Ultrascalable Implicit Finite Element Analyses in Solid Mechanics with over
+  a Half a Billion Degrees of Freedom}}, in Proceedings of the 2004 ACM/IEEE
+  Conference on Supercomputing, SC04, IEEE Computer Society, 2004,
+  pp.~\mbox{34:1--34:15}.
+
+\bibitem{aldaas2019multi}
+{\sc H.~Al~Daas, L.~Grigori, P.~Jolivet, and P.-H. Tournier}, {\em {A
+  Multilevel Schwarz Preconditioner Based on a Hierarchy of Robust Coarse
+  Spaces}}, Journal of Scientific Computing,  (2019), p.~submitted for
+  publication, \url{https://github.com/prj-/aldaas2019multi}.
+
+\bibitem{amestoy2001fully}
+{\sc P.~Amestoy, I.~Duff, J.-Y. L'Excellent, and J.~Koster}, {\em A fully
+  asynchronous multifrontal solver using distributed dynamic scheduling}, SIAM
+  Journal on Matrix Analysis and Applications, 23 (2001), pp.~15--41,
+  \url{http://mumps.enseeiht.fr}.
+
+\bibitem{anderson2019mfem}
+{\sc R.~Anderson, J.~Andrej, A.~Barker, J.~Bramwell, J.-S. Camier, J.~Cerveny,
+  V.~Dobrev, Y.~Dudouit, A.~Fisher, T.~Kolev, et~al.}, {\em {MFEM: a modular
+  finite element methods library}}, arXiv:1911.09220,  (2019),
+  \url{http://mfem.org}.
+
+\bibitem{badia2014highly}
+{\sc S.~Badia, A.~F. Mart{\'\i}n, and J.~Principe}, {\em A highly scalable
+  parallel implementation of balancing domain decomposition by constraints},
+  SIAM Journal on Scientific Computing, 36 (2014), pp.~C190--C218.
+
+\bibitem{baker2005technique}
+{\sc A.~H. Baker, E.~R. Jessup, and T.~Manteuffel}, {\em {A Technique for
+  Accelerating the Convergence of Restarted GMRES}}, SIAM Journal on Matrix
+  Analysis and Applications, 26 (2005), pp.~962--984.
+
+\bibitem{balay1997cient}
+{\sc S.~Balay, W.~Gropp, L.~Curfman~McInnes, and B.~Smith}, {\em Efficient
+  management of parallelism in object-oriented numerical software libraries},
+  Modern Software Tools in Scientific Computing,  (1997), pp.~163--202.
+
+\bibitem{bastian2010generic}
+{\sc P.~Bastian, F.~Heimann, and S.~Marnach}, {\em {Generic implementation of
+  finite element methods in the distributed and unified numerics environment
+  (DUNE)}}, Kybernetika, 46 (2010), pp.~294--315,
+  \url{https://www.dune-project.org}.
+
+\bibitem{bavier2012amesos2}
+{\sc E.~Bavier, M.~Hoemmen, S.~Rajamanickam, and H.~Thornquist}, {\em {Amesos2
+  and Belos: Direct and Iterative Solvers for Large Sparse Linear Systems}},
+  Scientific Programming, 20 (2012), pp.~241--255.
+
+\bibitem{Benzi2011a}
+{\sc M.~Benzi, M.~A. Olshanskii, and Z.~Wang}, {\em {Modified augmented
+  Lagrangian preconditioners for the incompressible Navier--Stokes equations}},
+  International Journal for Numerical Methods in Fluids, 66 (2011),
+  pp.~486--508.
+
+\bibitem{brown2012composable}
+{\sc J.~Brown, M.~G. Knepley, D.~A. May, L.~C. McInnes, and B.~F. Smith}, {\em
+  Composable linear solvers for multiphysics}, in 2012 11th International
+  Symposium on Parallel and Distributed Computing, IEEE, 2012, pp.~55--62.
+
+\bibitem{BursteddeWilcoxGhattas11}
+{\sc C.~Burstedde, L.~C. Wilcox, and O.~Ghattas}, {\em {\texttt{p4est}}:
+  Scalable algorithms for parallel adaptive mesh refinement on forests of
+  octrees}, SIAM Journal on Scientific Computing, 33 (2011), pp.~1103--1133,
+  \url{http://www.p4est.org}.
+
+\bibitem{butler2020high}
+{\sc R.~Butler, T.~Dodwell, A.~Reinarz, A.~Sandhu, R.~Scheichl, and
+  L.~Seelinger}, {\em High-performance dune modules for solving large-scale,
+  strongly anisotropic elliptic problems with applications to aerospace
+  composites}, Computer Physics Communications, 249 (2020).
+
+\bibitem{cai1999restricted}
+{\sc X.-C. Cai and M.~Sarkis}, {\em {A restricted additive Schwarz
+  preconditioner for general sparse linear systems}}, SIAM Journal on
+  Scientific Computing, 21 (1999), pp.~792--797.
+
+\bibitem{calandra2012flexible}
+{\sc H.~Calandra, S.~Gratton, J.~Langou, X.~Pinel, and X.~Vasseur}, {\em
+  {Flexible Variants of Block Restarted GMRES Methods with Application to
+  Geophysics}}, SIAM Journal on Scientific Computing, 34 (2012),
+  pp.~A714--A736.
+
+\bibitem{carvalho2011flexible}
+{\sc L.~M. Carvalho, S.~Gratton, R.~Lago, and X.~Vasseur}, {\em {A Flexible
+  Generalized Conjugate Residual Method With Inner Orthogonalization and
+  Deflated Restarting}}, SIAM Journal on Matrix Analysis and Applications, 32
+  (2011), pp.~1212--1235.
+
+\bibitem{dohrmann2008domain}
+{\sc C.~R. Dohrmann, A.~Klawonn, and O.~B. Widlund}, {\em {Domain decomposition
+  for less regular subdomains: Overlapping Schwarz in two dimensions}}, SIAM
+  Journal on Numerical Analysis, 46 (2008), pp.~2153--2168.
+
+\bibitem{dohrmann2016bddc}
+{\sc C.~R. Dohrmann and O.~B. Widlund}, {\em {A BDDC Algorithm with Deluxe
+  Scaling for Three-Dimensional $H(\textnormal{curl})$ Problems}},
+  Communications on Pure and Applied Mathematics, 69 (2016), pp.~745--770.
+
+\bibitem{dolean2014ddm}
+{\sc V.~Dolean, P.~Jolivet, and F.~Nataf}, {\em An Introduction to Domain
+  Decomposition Methods\col\ Algorithms, Theory and Parallel Implementation},
+  SIAM, 2015.
+
+\bibitem{dryja1997nonlinear}
+{\sc M.~Dryja and W.~Hackbusch}, {\em On the nonlinear domain decomposition
+  method}, BIT Numerical Mathematics, 37 (1997), pp.~296--311.
+
+\bibitem{erhel1996restarted}
+{\sc J.~Erhel, K.~Burrage, and B.~Pohl}, {\em {Restarted GMRES preconditioned
+  by deflation}}, Journal of Computational and Applied Mathematics, 69 (1996),
+  pp.~303--318.
+
+\bibitem{falgout2002hypre}
+{\sc R.~Falgout and U.~Yang}, {\em \emph{hypre}: a library of high performance
+  preconditioners}, Computational Science---ICCS 2002,  (2002), pp.~632--641,
+  \url{https://www.llnl.gov/casc/hypre}.
+
+\bibitem{gander2006optimized}
+{\sc M.~J. Gander}, {\em Optimized {S}chwarz {M}ethods}, SIAM Journal on
+  Numerical Analysis, 44 (2006), pp.~699--731.
+
+\bibitem{gee2006ml}
+{\sc M.~Gee, C.~Siefert, J.~Hu, R.~Tuminaro, and M.~Sala}, {\em {ML} 5.0
+  smoothed aggregation user's guide}, Tech. Report SAND2006-2649, Sandia
+  National Laboratories, 2006, \url{http://trilinos.sandia.gov/packages/ml}.
+
+\bibitem{gutknecht2006block}
+{\sc M.~H. Gutknecht}, {\em Block {K}rylov space methods for linear systems
+  with multiple right-hand sides: an introduction}, in Modern Mathematical
+  Models, Methods and Algorithms for Real World Systems, A.~Siddiqui, I.~Duff,
+  and O.~Christensen, eds., 2006, pp.~420--447.
+
+\bibitem{gutknecht2008updating}
+{\sc M.~H. Gutknecht and T.~Schmelzer}, {\em {Updating the $QR$ decomposition
+  of block tridiagonal and block Hessenberg matrices}}, {Applied Numerical
+  Mathematics}, 58 (2008), pp.~871--883.
+
+\bibitem{haferssas2017soras}
+{\sc R.~Haferssas, P.~Jolivet, and F.~Nataf}, {\em {An additive Schwarz method
+  type theory for Lions's algorithm and a Symmetrized Optimized Restricted
+  Additive Schwarz Method}}, Journal on Scientific Computing, 39 (2017),
+  pp.~A1345--A1365.
+
+\bibitem{hecht2012new}
+{\sc F.~Hecht}, {\em New development in {FreeFem++}}, Journal of Numerical
+  Mathematics, 20 (2012), pp.~251--266, \url{http://freefem.org}.
+
+\bibitem{heinecke2016libxsmm}
+{\sc A.~Heinecke, G.~Henry, M.~Hutchinson, and H.~Pabst}, {\em {LIBXSMM:
+  accelerating small matrix multiplications by runtime code generation}}, in
+  Proceedings of the 2016 International Conference for High Performance
+  Computing, Networking, Storage and Analysis, SC16, IEEE, 2016,
+  \url{https://github.com/hfp/libxsmm}.
+
+\bibitem{Heinlein:2016:PIT}
+{\sc A.~Heinlein, A.~Klawonn, and O.~Rheinbach}, {\em A parallel implementation
+  of a two-level overlapping {S}chwarz method with energy-minimizing coarse
+  space based on {T}rilinos}, SIAM Journal on Scientific Computing, 38 (2016),
+  pp.~C713--C747.
+
+\bibitem{hernandez2005ssf}
+{\sc V.~Hernandez, J.~E. Roman, and V.~Vidal}, {\em {SLEP}c: A scalable and
+  flexible toolkit for the solution of eigenvalue problems}, ACM Transactions
+  on Mathematical Software, 31 (2005), pp.~351--362,
+  \url{https://slepc.upv.es}.
+
+\bibitem{heroux2005overview}
+{\sc M.~A. Heroux, R.~A. Bartlett, V.~E. Howle, R.~J. Hoekstra, J.~J. Hu, T.~G.
+  Kolda, R.~B. Lehoucq, K.~R. Long, R.~P. Pawlowski, E.~T. Phipps, et~al.},
+  {\em {An overview of the Trilinos project}}, ACM Transactions on Mathematical
+  Software (TOMS), 31 (2005), pp.~397--423, \url{https://trilinos.github.io}.
+
+\bibitem{hestenes1952methods}
+{\sc M.~R. Hestenes and E.~Stiefel}, {\em {Methods of Conjugate Gradients for
+  Solving Linear Systems}}, Journal of Research of the National Bureau of
+  Standards, 49 (1952), pp.~409--436.
+
+\bibitem{ji2017breakdown}
+{\sc H.~Ji and Y.~Li}, {\em A breakdown-free block conjugate gradient method},
+  BIT Numerical Mathematics, 57 (2017), pp.~379--403.
+
+\bibitem{jolivet2013scalable}
+{\sc P.~Jolivet, F.~Hecht, F.~Nataf, and C.~Prud'homme}, {\em {Scalable Domain
+  Decomposition Preconditioners for Heterogeneous Elliptic Problems}}, in
+  Proceedings of the International Conference on High Performance Computing,
+  Networking, Storage and Analysis, SC13, ACM, 2013.
+
+\bibitem{jolivet2016block}
+{\sc P.~Jolivet and P.-H. Tournier}, {\em {Block Iterative Methods and
+  Recycling for Improved Scalability of Linear Solvers}}, in Proceedings of the
+  2016 International Conference for High Performance Computing, Networking,
+  Storage and Analysis, SC16, IEEE, 2016.
+
+\bibitem{KALANTZIS2018136}
+{\sc V.~Kalantzis, A.~C.~I. Malossi, C.~Bekas, A.~Curioni, E.~Gallopoulos, and
+  Y.~Saad}, {\em A scalable iterative dense linear system solver for multiple
+  right-hand sides in data analytics}, Parallel Computing, 74 (2018),
+  pp.~136--153.
+
+\bibitem{karypis1998fast}
+{\sc G.~Karypis and V.~Kumar}, {\em A fast and high quality multilevel scheme
+  for partitioning irregular graphs}, SIAM Journal on Scientific Computing, 20
+  (1998), pp.~359--392,
+  \url{http://glaros.dtc.umn.edu/gkhome/metis/parmetis/overview}.
+
+\bibitem{knepley2009mesh}
+{\sc M.~G. Knepley and D.~A. Karpeev}, {\em {Mesh algorithms for PDE with Sieve
+  I: Mesh distribution}}, Scientific Programming, 17 (2009), pp.~215--230.
+
+\bibitem{knyazev2001toward}
+{\sc A.~V. Knyazev}, {\em {Toward the optimal preconditioned eigensolver:
+  Locally optimal block preconditioned conjugate gradient method}}, SIAM
+  journal on scientific computing, 23 (2001), pp.~517--541.
+
+\bibitem{lehoucq1998arpack}
+{\sc R.~Lehoucq, D.~Sorensen, and C.~Yang}, {\em {ARPACK} users’ guide\col\
+  solution of large-scale eigenvalue problems with implicitly restarted Arnoldi
+  methods}, vol.~6, Society for Industrial and Applied Mathematics, 1998,
+  \url{http://www.caam.rice.edu/software/ARPACK}.
+
+\bibitem{mandel1993balancing}
+{\sc J.~Mandel}, {\em Balancing domain decomposition}, Communications in
+  Numerical Methods in Engineering, 9 (1993), pp.~233--241.
+
+\bibitem{may2016extreme}
+{\sc D.~A. May, P.~Sanan, K.~Rupp, M.~G. Knepley, and B.~F. Smith}, {\em
+  {Extreme-scale multigrid components within PETSc}}, in Proceedings of the
+  Platform for Advanced Scientific Computing Conference, 2016.
+
+\bibitem{moulin2018al}
+{\sc J.~Moulin, P.~Jolivet, and O.~Marquet}, {\em {Augmented Lagrangian
+  Preconditioner for Large-Scale Hydrodynamic Stability Analysis}}, Computer
+  Methods in Applied Mechanics and Engineering, 351 (2019), pp.~718--743,
+  \url{https://github.com/prj-/moulin2019al}.
+
+\bibitem{notay2000flexible}
+{\sc Y.~Notay}, {\em Flexible conjugate gradients}, SIAM Journal on Scientific
+  Computing, 22 (2000), pp.~1444--1460.
+
+\bibitem{o1980block}
+{\sc D.~P. O'Leary}, {\em {The Block Conjugate Gradient Algorithm and Related
+  Methods}}, Linear Algebra and its Applications, 29 (1980), pp.~293--322.
+
+\bibitem{parks2006recycling}
+{\sc M.~L. Parks, E.~de~Sturler, G.~Mackey, D.~D. Johnson, and S.~Maiti}, {\em
+  {Recycling Krylov Subspaces for Sequences of Linear Systems}}, SIAM Journal
+  on Scientific Computing, 28 (2006), pp.~1651--1674.
+
+\bibitem{pechstein2017unified}
+{\sc C.~Pechstein and C.~R. Dohrmann}, {\em {A unified framework for adaptive
+  BDDC}}, Electronic Transactions on Numerical Analysis, 46 (2017),
+  pp.~273--336.
+
+\bibitem{saad1993flexible}
+{\sc Y.~Saad}, {\em {A Flexible Inner--Outer Preconditioned GMRES Algorithm}},
+  SIAM Journal on Scientific Computing, 14 (1993), pp.~461--469.
+
+\bibitem{saad2003iterative}
+{\sc Y.~Saad}, {\em {Iterative Methods for Sparse Linear Systems}}, SIAM, 2003.
+
+\bibitem{saad1986gmres}
+{\sc Y.~Saad and M.~H. Schultz}, {\em {GMRES: a generalized minimal residual
+  algorithm for solving nonsymmetric linear systems}}, SIAM Journal on
+  Scientific and Statistical Computing, 7 (1986), pp.~856--869.
+
+\bibitem{sakurai2003projection}
+{\sc T.~Sakurai and H.~Sugiura}, {\em A projection method for generalized
+  eigenvalue problems using numerical integration}, Journal of Computational
+  and Applied Mathematics, 159 (2003), pp.~119--128.
+
+\bibitem{schwarz1870alternating}
+{\sc H.~Schwarz}, {\em {\"Uber einen Grenz\"ubergang durch alternierendes
+  Verfahren}}, Vierteljahrsschrift der Naturforschenden Gesellschaft in
+  Z\"urich, 15 (1870), pp.~272--286.
+
+\bibitem{si2013tet}
+{\sc H.~Si}, {\em {TetGen: A Quality Tetrahedral Mesh Generator and 3D Delaunay
+  Triangulator}}, Tech. Report~13, 2013,
+  \url{http://wias-berlin.de/software/tetgen}.
+
+\bibitem{vsistek2013parallel}
+{\sc J.~{\v{S}}{\'\i}stek, J.~Mandel, B.~Soused{\'\i}k, and P.~Burda}, {\em
+  Parallel implementation of multilevel {BDDC}}, in Numerical Mathematics and
+  Advanced Applications 2011, Springer, 2013, pp.~681--689,
+  \url{http://users.math.cas.cz/~sistek/software/bddcml.html}.
+
+\bibitem{smith2004domain}
+{\sc B.~F. Smith, P.~Bj{\o}rstad, and B.~Gropp}, {\em Domain decomposition:
+  parallel multilevel methods for elliptic partial differential equations},
+  Cambridge University Press, 2004.
+
+\bibitem{spillane2011robust}
+{\sc N.~Spillane, V.~Dolean, P.~Hauret, F.~Nataf, C.~Pechstein, and
+  R.~Scheichl}, {\em A robust two-level domain decomposition preconditioner for
+  systems of {PDE}s}, Comptes Rendus Mathématique, 349 (2011), pp.~1255--1259.
+
+\bibitem{spillane2013abstract}
+{\sc N.~Spillane, V.~Dolean, P.~Hauret, F.~Nataf, C.~Pechstein, and
+  R.~Scheichl}, {\em Abstract robust coarse spaces for systems of {PDEs} via
+  generalized eigenproblems in the overlaps}, Numerische Mathematik, 126
+  (2013), pp.~741--700.
+
+\bibitem{stathopoulos2002block}
+{\sc A.~Stathopoulos and K.~Wu}, {\em {A Block Orthogonalization Procedure with
+  Constant Synchronization Requirements}}, SIAM Journal on Scientific
+  Computing, 23 (2002), pp.~2165--2182.
+
+\bibitem{Stewart2002}
+{\sc G.~W. Stewart}, {\em {A Krylov--Schur Algorithm for Large Eigenproblems}},
+  SIAM Journal on Matrix Analysis and Applications, 23 (2002), pp.~601--614.
+
+\bibitem{tang2009comparison}
+{\sc J.~Tang, R.~Nabben, C.~Vuik, and Y.~Erlangga}, {\em Comparison of
+  two-level preconditioners derived from deflation, domain decomposition and
+  multigrid methods}, Journal of Scientific Computing, 39 (2009), pp.~340--370.
+
+\bibitem{tournier2016micro}
+{\sc P.-H. Tournier, I.~Aliferis, M.~Bonazzoli, M.~de~Buhan, M.~Darbas,
+  V.~Dolean, F.~Hecht, P.~Jolivet, I.~El~Kanfoud, C.~Migliaccio, F.~Nataf,
+  C.~Pichot, and S.~Semenov}, {\em {Microwave Tomographic Imaging of
+  Cerebrovascular Accidents by Using High-Performance Computing}}, Parallel
+  Computing, 85 (2019), pp.~88--97.
+
+\bibitem{van1992bi}
+{\sc H.~A. Van~der Vorst}, {\em {Bi-CGSTAB: a fast and smoothly converging
+  variant of Bi-CG for the solution of nonsymmetric linear systems}}, SIAM
+  Journal on Scientific and Statistical Computing, 13 (1992), pp.~631--644.
+
+\bibitem{wakam2013158}
+{\sc D.~N. Wakam and F.~Pacull}, {\em Memory efficient hybrid algebraic solvers
+  for linear systems arising from compressible flows}, Computers \& Fluids, 80
+  (2013), pp.~158--167.
+
+\bibitem{zampini2016pcbddc}
+{\sc S.~Zampini}, {\em {PCBDDC: a class of robust dual--primal methods in
+  PETSc}}, SIAM Journal on Scientific Computing, 38 (2016), pp.~S282--S306,
+  \url{https://www.mcs.anl.gov/petsc/petsc-master/docs/manualpages/PC/PCBDDC.html}.
+
+\end{thebibliography}
+\end{document}
