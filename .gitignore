@@ -1,0 +1,79 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran Module Files
+*.mod
+
+# Compiled Static Libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+*.pyc
+
+# Documentation
+*.html
+*.htm
+*.css
+*.js
+*.nd
+
+# Temporary Files
+*.sw?
+*~
+.#*
+.DS_Store
+.fuse*
+.trash
+Makefile.inc
+
+# Log
+*.vtu
+*.pvd
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.log
+*.lof
+*.maf
+*.figlist
+*.nav
+*.pdf
+*.run.xml
+*.snm
+*.vrb
+*.toc
+*.glg
+*.glo
+*.gls
+*.glsdefs
+*.xdy
+*.ist
+*.listing
+*.mtc*
+*.md5
+*.dep
+*.dpth
+*.thm
+
+*.dSYM
+lib/
+bin/

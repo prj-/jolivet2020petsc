@@ -1,0 +1,111 @@
+/*
+   Author(s): Pierre Jolivet <pierre.jolivet@enseeiht.fr>
+              Jose E. Roman <jroman@dsic.upv.es>
+              Stefano Zampini <stefano.zampini@kaust.edu.sa>
+        Date: 2020-07-10
+
+   Copyright (C) 2020-     Centre National de la Recherche Scientifique
+                 2020-     Universitat Politècnica de València
+                 2020-     King Abdullah University of Science and Technology
+
+   This script is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+   If you use this script, you are kindly asked to cite the following article:
+
+   "KSPHPDDM and PCHPDDM: Extending PETSc with Robust Overlapping Schwarz Preconditioners and Advanced Krylov Methods",
+   P. Jolivet, J. E. Roman, and S. Zampini (2020).
+ */
+
+load "SLEPc"
+load "Element_P3"
+load "qf11to25"
+macro dimension()3//
+include "macro_ddm.idp"
+
+func Pk = P3;
+mesh3 Th;
+fespace Vh(Th, Pk);
+Mat A;
+{
+  int[int] LL(6);
+  LL = 1;
+  Th = cube(getARGV("-N", 10), getARGV("-N", 10), getARGV("-N", 10), [x, y, z], label = LL);
+  createMat(Th, A, Pk);
+}
+
+func bool channel(real a, real b, real dx1, real dy1, real dx2, real dy2, real width) {
+  real slope = (dy2 - dy1) / (dx2 - dx1);
+  if(a >= dx1 && a <= dx2) {
+    if(b >= (slope * (x - dx2) + dy2) && b <= (slope * (x - dx2) + dy2 + width))
+      return true;
+  }
+  return false;
+}
+func real skyscraper(real a, real b) {
+  int da = int(9 * a);
+  int db = int(9 * b);
+  real kappa;
+  if((da + 1) % 2 && (db + 1) % 2)
+    kappa = 1e+1 * real(da + db + 1);
+  else {
+    if(channel(a, b, 0.1, 0.2, 0.5, 0.6, 0.15))
+      kappa = b * 1e+1;
+    else if(channel(a, b, 0.5, 0.15, 0.9, 0.05, 0.2))
+      kappa = a * 1e+1;
+    else if(channel(a, b, 0.3, 0.6, 0.9, 0.5, 0.2))
+      kappa = (a + b) * 1e+1;
+    else
+      kappa = 1;
+  }
+  return kappa;
+}
+varf vA(u, v) = int3d(Th)(skyscraper(x,y)*(dx(u)*dx(v) + dy(u)*dy(v) + dz(u)*dz(v)))
+              + on(1, u = 0.0);
+varf vB(u, v) = int3d(Th, qfV = qfVp6)(u*v);
+
+matrix AN = vA(Vh, Vh, tgv = -2);
+matrix BN = vB(Vh, Vh, tgv = -20);
+A = AN;
+Mat B(A, BN, clean = true);
+
+string params = "";
+if(usedARGV("-hpddm") != -1)
+  params = "-pc_type hpddm -pc_hpddm_levels_1_sub_pc_type cholesky -pc_hpddm_levels_1_sub_pc_factor_mat_solver_type mumps " +
+           " -pc_hpddm_coarse_p " + min(24, mpisize/2) + " -pc_hpddm_coarse_pc_type cholesky -pc_hpddm_coarse_pc_factor_mat_solver_type mumps " +
+           " -pc_hpddm_levels_1_eps_nev 15 -pc_hpddm_levels_1_st_pc_type cholesky -pc_hpddm_levels_1_st_pc_factor_mat_solver_type mumps " +
+           " -pc_hpddm_has_neumann -pc_hpddm_define_subdomains";
+else if(usedARGV("-gamg") != -1)
+  params = "-pc_type gamg -pc_gamg_threshold 0.01 -mg_levels_ksp_type chebyshev -mg_levels_esteig_ksp_type cg";
+else if(usedARGV("-asm") != -1)
+  params = "-pc_type asm -sub_pc_type cholesky -sub_pc_factor_mat_solver_type mumps";
+if(params.length > 0)
+  set(A, sparams  = "-prefix_push st_ -ksp_type hpddm -ksp_max_it 5 -ksp_rtol 1e-8 " + params + " -prefix_pop", prefix = "st_", setup = 1);
+
+Vh<real>[int] ev(1); // array to store eigenvectors
+
+if(getARGV("-eps_type", "") == "ciss")
+  params = " -eps_type ciss" +
+           " -eps_ciss_usest" +
+           " -rg_type ellipse -rg_ellipse_center 630 -rg_ellipse_radius 318 -rg_ellipse_vscale 0.1";
+else
+  params = " -eps_nev 20" +
+           " -eps_type lobpcg" +
+           " -eps_lobpcg_blocksize 40";
+           " -st_type precond";
+params = params + " -st_matstructure same" +
+                  " -bv_orthog_block svqb -bv_type contiguous" +
+                  " -eps_view" +
+                  " -eps_gen_hermitian";
+
+PetscLogStagePush("Eigensolve");
+int k = EPSSolve(A, B, vectors = ev, sparams = params);
+PetscLogStagePop();
+
+if(usedARGV("-output") != -1)
+  for(int i = 0; i < k; ++i) {
+      int[int] fforder(1);
+      fforder = [1];
+      savevtk("eigenvalues.vtu", Th, ev[i], order = fforder, append = i ? true : false);
+  }
