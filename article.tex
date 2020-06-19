@@ -11,7 +11,7 @@
 % Optional PDF information
 \ifpdf
 \hypersetup{
-  pdftitle={KSPHPDDM and PCHPDDM: A Class of Adaptive Krylov and Overlapping Schwarz Methods in PETSc},
+  pdftitle={KSPHPDDM and PCHPDDM: Two Classes of Adaptive Krylov and Overlapping Schwarz Methods in PETSc},
   pdfauthor={P. Jolivet and S. Zampini}
 }
 \fi
@@ -54,9 +54,13 @@
 \definecolor{paraviewblue}{rgb}{0.878431,0.301961,0.301961}
 \definecolor{darkgray}{RGB}{253,174,97}
 \definecolor{mediumgray}{RGB}{255,255,191}
+\usepackage[outline]{contour}
 \usepackage{tikz}
 \usepackage[binary-units=true]{siunitx}
-\usetikzlibrary{decorations.text,arrows.meta,calc,plotmarks,backgrounds,shadows,spy,fixedpointarithmetic,patterns,intersections,arrows.meta,shapes,decorations.text,decorations.pathmorphing,backgrounds,fit,positioning,shapes.symbols,chains,3d,calc,external}
+\usetikzlibrary{decorations.text,arrows.meta,calc,plotmarks,shadows,spy,fixedpointarithmetic,patterns,intersections,arrows.meta,shapes,decorations.text,decorations.pathmorphing,backgrounds,fit,positioning,shapes.symbols,chains,3d,calc,external}
+\pgfdeclarelayer{background}
+\pgfdeclarelayer{foreground}
+\pgfsetlayers{background,main,foreground}
 \long\def\ifnodedefined#1#2#3{%
     \@ifundefined{pgf@sh@ns@#1}{#3}{#2}%
 }
@@ -76,11 +80,11 @@
     shapes, and structures. The goal of this paper is to explain how two
     libraries, PETSc and HPDDM, have been interfaced together in order to offer
     to end-users adaptive Krylov and overlapping Schwarz methods.  The
-    flexibility of the implementation, which for example may deal with various
-    matrix formats, are showcased and explained.  Diverse examples are
+    flexibility of the implementation %, which for example may deal with various matrix formats, 
+    are showcased and explained.  Diverse examples are
     displayed, ranging from fracture mechanics to linear stability analysis, and
     the sets of options are thoroughly documented, so that they may be readily
-    tried on other applications.
+    tried on other applications and reproduce results.
 \end{abstract}
 
 % REQUIRED
@@ -101,15 +105,15 @@ Portable and Extensible Toolkit for Scientific computation, is a
 well-established software from the community. It may be used to efficiently
 discretize partial differential equations, or solve algebraic linear or
 nonlinear systems of equations. It comes with many built-in features such as
-advanced preconditioning or tailored matrix formats. Also, it can be used to
-compile and interact with third-party libraries, such as
+advanced preconditioning or tailored matrix formats. Also, it can % be used to compile and 
+interact with third-party libraries, such as
 \emph{hypre}~\cite{falgout2002hypre} for linear solvers, TetGen~\cite{si2013tet}
 for mesh generation, and so on. These appealing features convinced computational
 scientists to use PETSc as one of the discretization and/or algebraic backend in
 many different higher-level projects, such as finite element or finite volume
 packages. On the other hand, HPDDM is a much smaller project purely focused on
-domain decomposition preconditioners~\cite{jolivet2013scalable}, a small
-subclass of preconditioners available in PETSc as well, and advanced iterative
+domain decomposition preconditioners~\cite{jolivet2013scalable} % , a small subclass of preconditioners available in PETSc as well, 
+and advanced iterative
 methods~\cite{jolivet2016block}. Such methods deal efficiently with linear
 systems when multiple right-hand sides are available simultaneously, and are
 then referred to as block iterative methods, or when there is a recurrence of
@@ -118,8 +122,8 @@ recycling iterative methods.
 % Htool ?
 In this paper, the integration of both aspects of HPDDM, its advanced iterative
 methods and its domain decomposition preconditioners, into PETSc is explained.
-The design principles of the interface are showcased, alongside minimalist and
-easy-to-run examples. The paper is divided in two main parts:
+The design principles of the interface are showcased, with % alongside
+minimalist and easy-to-run examples. The paper is divided in two main parts:
 \cref{sec:KSPHPDDM} which introduces \pk{KSPHPDDM}, and \cref{sec:PCHPDDM} which
 introduces \pk{PCHPDDM}. Eventually, concluding remarks may be found
 \cref{sec:conclusion}. All PETSc keywords are highlighted in \pk{gray}, these
@@ -131,12 +135,12 @@ systems of equations. Some of their strengths are memory efficiency and the fact
 that they are mostly format agnostic. Indeed, they mainly rely on matrix--vector
 operations such as multiplications or transpose multiplications. For
 challenging high-dimensional systems, finding appropriate preconditioners is
-mandatory to make these methods robust, but this goes beyond the scope of this
-section. In PETSc, Krylov methods inherit from the \pk{KSP} base class. Some of the
+mandatory to make these methods robust. %, but this goes beyond the scope of this section.
+In PETSc, Krylov methods belong to the \pk{KSP} base class. Some of the
 most used types are \pk{KSPGMRES}, \pk{KSPCG}, or \pk{KSPBCGS}, which respectively implement
 the generalized minimal residual method~\cite{saad1986gmres}~(GMRES), conjugate
-gradient~\cite{hestenes1952methods}~(CG), or biconjugate gradient stabilized method~\cite{van1992bi}~(BCGS). Some of these methods are also
-available in other linear algebra backends such as~\emph{hypre} or DUNE~\cite{bastian2010generic}.
+gradient~\cite{hestenes1952methods}~(CG), or biconjugate gradient stabilized method~\cite{van1992bi}~(BCGS). % Some of these methods are also
+% available in other linear algebra backends such as~\emph{hypre} or DUNE~\cite{bastian2010generic}.
 
 Because these methods may need long-term recurrences to mitigate round-off
 errors during the generation of Krylov subspaces, it is common to introduce a
@@ -155,7 +159,8 @@ generalized conjugate residual method with inner orthogonalization and deflated
 restarting~\cite{parks2006recycling}~(GCRODR) does not suffer from this
 limitation.
 
-Recycling put aside, another important aspect of Krylov methods is their ability
+% Recycling put aside, 
+Another important aspect of Krylov methods is their ability
 to deal with multiple right-hand sides simultaneously. Block Krylov methods~\cite{gutknecht2006block} are
 designed for solving linear systems $A X = B$, where
 $X$ and $B$ are tall-and-skinny matrices with $k \geq 1$ columns. These methods are
@@ -178,8 +183,8 @@ frequent to solve a sequence of linear systems $A_i X_i = B_i, i = 1, 2,
 Trilinos~\cite{heroux2005overview} is another well-known software for scientific
 computing. Through its Belos package~\cite{bavier2012amesos2}, it provides most
 of the advanced iterative methods aforementioned. Although having PETSc and
-Trilinos interoperate is possible, there is currently no \pk{KSP} interface to Belos.
-This limits its composability inside complete PETSc applications. Furthermore,
+Trilinos interoperate is possible, there is currently no \pk{KSP} interface to Belos. % This limits its composability inside complete PETSc applications.
+Furthermore,
 as displayed in~\cref{sec:interface-ksp}, some Krylov methods implemented in
 HPDDM are not available in Belos. In the following section, the details of the
 interface between HPDDM Krylov methods and PETSc matrix and preconditioner
@@ -187,10 +192,10 @@ classes will be explained. It is assumed that the right-hand sides, and
 consequently the solutions, are always dense vectors or matrices.
   \subsection{Interfacing HPDDM Krylov methods in PETSc\label{sec:interface-ksp}}\
 \pk{KSPHPDDM}, the interface between HPDDM Krylov methods and PETSc, is automatically
-registered since PETSc version 3.12 when one configures PETSc with the extra
+registered since PETSc version 3.12 when configuring PETSc with the extra
 flag -{}-download-hpddm. It is then possible to select the corresponding \pk{KSP}
 using the command line option -ksp\_type hpddm, or the routine \pk{KSPSetType}(ksp,
-\pk{KSPHPDDM}) and its Fortran equivalent.
+\pk{KSPHPDDM}).% and its Fortran equivalent.
 When \pk{KSPHPDDM} is being used, it is then possible to select between the following
 Krylov methods:
 \begin{itemize}
@@ -223,7 +228,7 @@ so, HPDDM will repeatedly call the following PETSc routines:
         AX$;
     \item \pk{PCApply}($P_B$, $y$, $x$) for $x = P_By$.
 \end{itemize}
-Unfortunately, PETSc does not have a general routine for applying $P_B$ to a
+Currently, PETSc does not have a general routine for applying $P_B$ to a
 tall-and-skinny dense matrix $Y$. In HPDDM, a specialized routine has been implemented
 to compute $X = P_BY$ if the preconditioner is of one of the following type:
 \begin{itemize}
@@ -503,13 +508,13 @@ sys hpddm fgmres
         \caption{\# of inner iterations for Krylov--Schur systems~\cref{eq:ks} with~\ref{pgfplots:m0} or without~\ref{pgfplots:m1} recycling.\label{fig:comparison-slepc}}
     \end{figure}
 \pgfplotstableread{
-N    baij-1-T    baij-1-F   sbaij-1-T   sbaij-1-F  aij-1-T     aij-1-F    baij-3-T    baij-3-F   sbaij-3-T   sbaij-3-F  aij-3-T     aij-3-F    baij-10-T   baij-10-F  sbaij-10-T  sbaij-10-F aij-10-T    aij-10-F
-1    1.8027e-01  1.4696e+08 6.1586e-02  1.4696e+08 8.0527e-02  1.4696e+08 7.1397e-01  1.3535e+09 5.1037e-01  1.3638e+09 1.0686e+00  1.3535e+09 6.1909e+00  1.5159e+10 4.6958e+00  1.5206e+10 1.6114e+01  1.5159e+10
-2    3.5192e-01  2.9392e+08 1.6650e-01  3.2482e+08 1.8615e-01  3.0422e+08 1.0437e+00  2.7071e+09 9.3575e-01  2.9234e+09 1.4753e+00  2.7380e+09 1.4970e+01  3.0319e+10 1.5530e+01  3.2482e+10 1.6267e+01  3.0422e+10
-8    6.1599e-01  1.1757e+09 7.2168e-01  1.2993e+09 3.1676e-01  1.2169e+09 2.6101e+00  1.0828e+10 3.0701e+00  1.1694e+10 2.0870e+00  1.0952e+10 2.7886e+01  1.2128e+11 3.4780e+01  1.2993e+11 2.2569e+01  1.2169e+11
-16   1.9594e+00  2.3513e+09 2.6186e+00  2.5986e+09 6.2770e-01  2.4337e+09 7.5274e+00  2.1656e+10 9.8057e+00  2.3387e+10 4.1388e+00  2.1904e+10 3.6085e+01  2.4255e+11 3.6290e+01  2.5986e+11 4.5153e+01  2.4337e+11
-32   4.3453e+00  4.7026e+09 5.4669e+00  5.1972e+09 1.2538e+00  4.8675e+09 1.6166e+01  4.3313e+10 2.0638e+01  4.6775e+10 8.1531e+00  4.3807e+10 5.2586e+01  4.8510e+11 5.2132e+01  5.1972e+11 1.0705e+02  4.8675e+11
-64   9.6799e+00  9.4053e+09 1.1616e+01  1.0394e+10 2.5713e+00  9.7350e+09 3.4513e+01  8.6626e+10 4.2465e+01  9.3549e+10 1.6444e+01  8.7615e+10 8.3267e+01  9.7020e+11 8.6683e+01  1.0394e+12 2.2792e+02  9.7350e+11
+N    baij-1-T    baij-1-F   sbaij-1-T   sbaij-1-F  aij-1-T     aij-1-F    baij-3-T    baij-3-F   sbaij-3-T   sbaij-3-F  aij-3-T     aij-3-F    baij-10-T   baij-10-F  sbaij-10-T  sbaij-10-F aij-10-T    aij-10-F     cusparse-1-T    cusparse-1-F    cusparse-3-T    cusparse-3-F    cusparse-10-T   cusparse-10-F    aijmkl-seq-1-T      aijmkl-seq-3-T      aijmkl-seq-10-T     baijmkl-seq-1-T      baijmkl-seq-3-T      baijmkl-seq-10-T   sbaijmkl-seq-1-T      sbaijmkl-seq-3-T      sbaijmkl-seq-10-T         aijmkl-1-T      aijmkl-3-T      aijmkl-10-T     baijmkl-1-T      baijmkl-3-T      baijmkl-10-T   sbaijmkl-1-T      sbaijmkl-3-T      sbaijmkl-10-T     
+1      2.0126e-01   1.4696e+08 8.0098e-02   1.4696e+08   9.3388e-02   1.4696e+08     8.9584e-01   1.3535e+09    6.2428e-01   1.3638e+09     1.2072e+00   1.3535e+09   4.0734e+00   5.4450e+09    2.2476e+00   5.4708e+09    5.0428e+00   5.4450e+09   4.4800e-02   1.5211e+08   3.7933e-01   1.3690e+09   1.5043e+00   5.4759e+09   6.6857e-02  7.4649e-01   3.1128e+00   4.7672e-01   6.2903e-01  2.2271e+00   4.7675e-01   6.2990e-01    2.2273e+00    7.8399e-03    8.6487e-02    3.5536e-01   5.2814e-02 6.6225e-02   2.4584e-01   4.5115e-02   6.6404e-02   2.4489e-01
+2      3.2635e-01   2.9392e+08 2.4204e-01   3.2482e+08   1.1522e-01   3.0422e+08     1.2835e+00   2.7071e+09    1.0697e+00   2.9234e+09     9.9480e-01   2.7380e+09   1.4504e+01   1.0890e+10    1.5265e+01   1.1694e+10    3.7799e+00   1.0952e+10   5.2164e-03   3.0422e+08   3.4056e-02   2.7380e+09   7.7659e-02   1.0952e+10   1.1703e-01  9.3872e-01   3.5976e+00   4.7905e-01   7.3497e-01  3.3331e+00   4.7886e-01   7.3415e-01    3.3297e+00    1.2450e-02    1.0124e-01    3.9873e-01   4.7633e-02 7.4107e-02   2.8513e-01   4.7733e-02   7.4693e-02   2.8507e-01
+8      7.9573e-01   1.1757e+09 1.0070e+00   1.2993e+09   3.3729e-01   1.2169e+09     3.3663e+00   1.0828e+10    3.9830e+00   1.1694e+10     2.4656e+00   1.0952e+10   2.2209e+01   4.3560e+10    2.2545e+01   4.6775e+10    9.2040e+00   4.3807e+10   1.3652e-02   1.2169e+09   8.2139e-02   1.0952e+10   1.8984e-01   4.3807e+10   4.2722e-01  2.8760e+00   1.0913e+01   1.3256e+00   1.7457e+00  7.9644e+00   1.3210e+00   1.7410e+00    7.9679e+00    4.2997e-02    2.6899e-01    1.6814e+00   1.3183e-01 1.7832e-01   8.8593e-01   1.3082e-01   1.7947e-01   8.8420e-01
+16     2.1378e+00   2.3513e+09 3.0837e+00   2.5986e+09   6.7295e-01   2.4337e+09     9.1522e+00   2.1656e+10    1.1762e+01   2.3387e+10     4.9326e+00   2.1904e+10   3.1530e+01   8.7120e+10    2.9334e+01   9.3549e+10    1.8462e+01   8.7615e+10   2.4907e-02   2.4337e+09   1.3832e-01   2.1904e+10   3.3609e-01   8.7615e+10   8.5514e-01  5.7493e+00   2.1980e+01   2.6391e+00   3.4887e+00  1.5947e+01   2.6455e+00   3.4893e+00    1.5928e+01    8.4255e-02    5.4284e-01    3.3861e+00   2.6162e-01 3.5777e-01   1.7955e+00   2.6238e-01   3.5880e-01   1.7923e+00
+32     4.2781e+00   4.7026e+09 6.5426e+00   5.1972e+09   1.3447e+00   4.8675e+09     1.8545e+01   4.3313e+10    2.4015e+01   4.6775e+10     9.8656e+00   4.3807e+10   4.4678e+01   1.7424e+11    4.1021e+01   1.8710e+11    3.6822e+01   1.7523e+11   4.7533e-02   4.8675e+09   2.6294e-01   4.3807e+10   6.3836e-01   1.7523e+11   1.7075e+00  1.1487e+01   4.3644e+01   5.2831e+00   6.9603e+00  3.1855e+01   5.2907e+00   6.9739e+00    3.1852e+01    1.6480e-01    1.0807e+00    6.7653e+00   5.2012e-01 7.1464e-01   3.5401e+00   5.2109e-01   7.1542e-01   3.5382e+00
+64     9.9341e+00   9.4053e+09 1.3822e+01   1.0394e+10   2.6927e+00   9.7350e+09     3.5490e+01   8.6626e+10    4.6966e+01   9.3549e+10     1.9724e+01   8.7615e+10   6.7668e+01   3.4848e+11  6.3229e+01   3.7420e+11  7.4386e+01   3.5046e+11   8.3249e-02   9.7350e+09   5.0956e-01   8.7615e+10   1.2334e+00   3.5046e+11   3.4264e+00  2.3052e+01   8.7358e+01   1.0573e+01   1.3960e+01  6.3695e+01   1.0581e+01   1.3961e+01    6.3949e+01    3.2990e-01    2.1734e+00    1.3526e+01   1.0453e+00 1.4281e+00   7.0763e+00   1.0497e+00   1.4326e+00   7.1714e+00
 }\loadedMatProduct
     \subsubsection{Performance of primitives for block Krylov methods}
 As detailed in~\cref{sec:interface-ksp}, it is currently not possible with most
@@ -526,29 +531,128 @@ In particular, the performance of three PETSc matrix types are evaluated:
 Parallel matrices in PETSc heavily rely on sequential matrices. For example, \pk{MatMPIAIJ}, standard parallel sparse matrices, store on each rank two \pk{MatSeqAIJ}, one with local rows and columns, another with local rows and ``nonlocal'' columns.
 To keep this study succinct, only sequential sparse matrices will be evaluated next, which can help draw conclusions for the intraprocess performance of parallel sparse matrices. The Seq substring is now dropped, since in this case, \pk{MatSeqAIJ} is equivalent to \pk{MatAIJ} and so on.
 
-The Poisson equation on a cube is discretized with $\mathbb{P}_1$ finite elements in double precision. This yields a matrix $A$ of dimension one million. Though the numerical values of $A$ are of no interest here, the sparsity pattern is rather common and frequently encountered, e.g., when discretizing partial differential equations. Then, a random dense matrix $T$ of dimension $b$ is generated, for $b \in \{ 1,3,10 \}$, and the following matrix is evaluated $\mathbb{A} = A \otimes T$. The matrix $\mathbb{A}$ is then assembled into all three formats described above. For block matrices, a block size of $b$ is used. The performance of the \pk{MatProductNumeric} operation is evaluated for tall-and-skinny dense matrices with a varying number of columns $N \in \{1,2,8,16,32,64\}$. For $N=1$, the \pk{MatMult} operation for matrix--vector multiplication is used instead. All results are gathered in~\cref{fig:perfAX}. They can be reproduced using the following mini-app: \url{http://jolivet.perso.enseeiht.fr/MatProduct.cpp} and any input \pk{MatAIJ} stored in binary format, here using the default name binaryoutput.
+The Poisson equation on a cube is discretized with $\mathbb{P}_1$ finite elements in double precision. This yields a matrix $A$ of dimension one million. Though the numerical values of $A$ are of no interest here, the sparsity pattern is rather common and frequently encountered, e.g., when discretizing partial differential equations. Then, a random dense matrix $T$ of dimension $b$ is generated, for $b \in \{ 1,3,6 \}$, and the following matrix is evaluated $\mathbb{A} = A \otimes T$. The matrix $\mathbb{A}$ is then assembled into all three formats described above. For block matrices, a block size of $b$ is used. The performance of the \pk{MatProductNumeric} operation is evaluated for tall-and-skinny dense matrices with a varying number of columns $N \in \{1,2,8,16,32,64\}$. For $N=1$, the \pk{MatMult} operation for matrix--vector multiplication is used instead. All results are gathered in~\cref{fig:perfAX}. They can be reproduced using the following mini-app: \url{http://jolivet.perso.enseeiht.fr/MatProduct.cpp} and any input \pk{MatAIJ} stored in binary format, here using the default name binaryoutput.
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpicxx] MatProduct.cpp -O3 -std=c++11 -I&fvtextcolor[myyellow][${PETSC_DIR}]/&fvtextcolor[myyellow][${PETSC_ARCH}]/include                     &fvtextcolor[myred][\]
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpicc] MatProduct.c -O3 -I&fvtextcolor[myyellow][${PETSC_DIR}]/&fvtextcolor[myyellow][${PETSC_ARCH}]/include                        &fvtextcolor[myred][\]
   -I&fvtextcolor[myyellow][${PETSC_DIR}]/include -L&fvtextcolor[myyellow][${PETSC_DIR}]/&fvtextcolor[myyellow][${PETSC_ARCH}]/lib -lpetsc -o MatProduct
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 1 ./MatProduct -f binaryoutput -log_view                                 &fvtextcolor[myred][\]
-  -bs 1,3,10 -N 1,2,8,16,32,64 -type aij,baij,sbaij
+  -bs 1,3,6 -N 1,2,8,16,32,64 -type aij,aijmkl,baij,baijmkl,sbaij,sbaijmkl
 \end{Verbatim}
 \begin{figure}[htbp]
+\pgfkeys{/pgf/fpu}
+  \pgfmathparse{1.4696e+08/9.3388e-02/1000000000.0}\edef\storeresultI{\pgfmathresult}
+  \pgfmathparse{1.3535e+09/8.9584e-01/1000000000.0}\edef\storeresultII{\pgfmathresult}
+  \pgfmathparse{5.4450e+09/4.0734e+00/1000000000.0}\edef\storeresultIII{\pgfmathresult}
+\pgfkeys{/pgf/fpu=false}
+  % \hspace*{-1.5cm}
   \centering
     \begin{tikzpicture}
       \begin{semilogxaxis}[
         ymin=0,
         ybar=1.5pt,
         bar width=3.5pt,
-        enlarge x limits=0.1, height=4cm,
-        width=0.98\textwidth,legend columns=4,
-        legend style={at={(0.5,1.65)}, legend cell align=left,
-        anchor=north},
-        xlabel={\# of right-hand sides ($N$)},
+        enlarge x limits=0.101,height=4cm,
+        width=0.8\textwidth,
+        ylabel={},
+        legend columns=3, legend style={legend cell align=left,at={(0.5,1.03)},anchor=south},
+        xtick = {\empty},
+        xmajorgrids=true,
+        extra x ticks = {1,2,4,8,16,32},
+        extra x tick labels = {\empty},
+        extra tick style={
+            grid style={dotted,black}
+        },
+        xtick pos=left,name=plot1,
+        xticklabels={\empty},xmajorticks=false,
+        ytick = {0.5,1,1.5,2},
+        ymajorgrids=true,yticklabel={
+\pgfmathparse{int(10*\tick)}
+\ifnum\pgfmathresult=0
+\else
+\pgfmathparse{100*\tick}
+$\pgfmathprintnumber{\pgfmathresult}$\%
+\fi
+},
+          cycle list={blueaccent, darkgray, mediumgray},%,last},
+          clip=false,point meta=exp(x),
+      ]
+          \addplot+[nodes near coords style={xshift=0.5cm,yshift=-0.1cm,above}, nodes near coords*={\rotatebox{45}{\tiny\color{black}{\pgfmathfloattofixed{\pgfplotspointmeta}\pgfmathparse{int(round(\pgfmathresult))}\ifnum\pgfmathresult=1\pgfmathprintnumber\storeresultI~GFLOP/s\fi}}},
+draw=black,fill, area legend,postaction={pattern=crosshatch dots}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-1-F}/\thisrow{aij-1-T}/(\storeresultI*1000000000.0)]{\loadedMatProduct};\label{pgfplots:aij1}
+          \addplot+[draw=black,fill, area legend,postaction={pattern=crosshatch dots}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{baij-1-F}/\thisrow{baij-1-T}/(\storeresultI*1000000000.0)]{\loadedMatProduct};\label{pgfplots:baij1}
+          \addplot+[draw=black,fill, area legend,postaction={pattern=crosshatch dots}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-1-F}/\thisrow{sbaij-1-T}/(\storeresultI*1000000000.0)]{\loadedMatProduct};\label{pgfplots:sbaij1}
+           \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-1-F}/\thisrow{aijmkl-seq-1-T}/(\storeresultI*1000000000.0)]{\loadedMatProduct};\label{pgfplots:mklaijseq1}
+           \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{baij-1-F}/\thisrow{baijmkl-seq-1-T}/(\storeresultI*1000000000.0)]{\loadedMatProduct};\label{pgfplots:mklbaijseq1}
+           \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-1-F}/\thisrow{sbaijmkl-seq-1-T}/(\storeresultI*1000000000.0)]{\loadedMatProduct};\label{pgfplots:mklsbaijseq1}
+           \addlegendentry{\pk{MatAIJ}}
+           \addlegendentry{\pk{MatBAIJ}}
+           \addlegendentry{\pk{MatSBAIJ}}
+           \addlegendentry{\pk{MatAIJMKL}}
+           \addlegendentry{\pk{MatBAIJMKL}}
+           \addlegendentry{MatSBAIJMKL}
+\node[rotate=0,fill=white,inner sep=0pt,anchor=west] at (rel axis cs:1.02, 0.5) {$b=1$};
+    \end{semilogxaxis}
+      \begin{semilogxaxis}[
+        ymin=0,
+        ybar=1.5pt,
+        bar width=3.5pt,
+        enlarge x limits=0.101,height=4cm,
+        width=0.8\textwidth,
+        % legend columns=1, legend style={legend cell align=left,at={(1.02,0.5)},anchor=west},
         ylabel={Efficiency},
-        xtick = {1,2,4,8,16,32},
-ytick = {0.2,1,2.5,5},ylabel style={yshift=6pt},xtick pos=left,
+        xtick = {\empty},
+        xmajorgrids=true,
+        extra x ticks = {1,2,4,8,16,32},
+        extra x tick labels = {\empty},
+        extra tick style={
+            grid style={dotted,black}
+        },
+        xtick pos=left,name=plot2,at={($(plot1.south)-(0,0.2cm)$)},anchor=north,
+        xticklabels={\empty},xmajorticks=false,
+        ytick = {1,2,3,4},
+        ymajorgrids=true,yticklabel={
+\pgfmathparse{int(10*\tick)}
+\ifnum\pgfmathresult=0
+\else
+\pgfmathparse{100*\tick}
+$\pgfmathprintnumber{\pgfmathresult}$\%
+\fi
+},
+          cycle list={blueaccent, darkgray, mediumgray},%,last},
+          clip=false,point meta=exp(x)
+      ]
+          \addplot+[draw=black,fill, area legend,postaction={pattern=crosshatch dots}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-3-F}/\thisrow{aij-3-T}/(\storeresultII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:aij3}
+          \addplot+[nodes near coords style={xshift=0.5cm,yshift=-0.1cm,above}, nodes near coords*={\rotatebox{45}{\tiny\color{black}{\pgfmathfloattofixed{\pgfplotspointmeta}\pgfmathparse{int(round(\pgfmathresult))}\ifnum\pgfmathresult=1\pgfmathprintnumber\storeresultII~GFLOP/s\fi}}},
+              draw=black,fill, area legend,postaction={pattern=crosshatch dots}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{baij-3-F}/\thisrow{baij-3-T}/(\storeresultII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:baij3}
+          \addplot+[draw=black,fill, area legend,postaction={pattern=crosshatch dots}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-3-F}/\thisrow{sbaij-3-T}/(\storeresultII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:sbaij3}
+           \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-3-F}/\thisrow{aijmkl-seq-3-T}/(\storeresultII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:mklaijseq3}
+           \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{baij-3-F}/\thisrow{baijmkl-seq-3-T}/(\storeresultII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:mklbaijseq3}
+           \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-3-F}/\thisrow{sbaijmkl-seq-3-T}/(\storeresultII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:mklsbaijseq3}
+           % \addlegendentry{\pk{MatAIJ}}
+           % \addlegendentry{\pk{MatBAIJ}}
+           % \addlegendentry{\pk{MatSBAIJ}}
+           % \addlegendentry{\pk{MatAIJMKL}}
+           % \addlegendentry{\pk{MatBAIJMKL}}
+           % \addlegendentry{MatSBAIJMKL}
+\node[rotate=0,fill=white,inner sep=0pt,anchor=west] at (rel axis cs:1.02, 0.5) {$b=3$};
+    \end{semilogxaxis}
+      \begin{semilogxaxis}[
+        ymin=0,
+        ybar=1.5pt,
+        bar width=3.5pt,
+        enlarge x limits=0.101,height=4cm,
+        width=0.8\textwidth,
+        xlabel={\# of right-hand sides ($N$)},
+        ylabel={},
+        xtick = {\empty},
+        xmajorgrids=true,
+        extra x ticks = {1,2,4,8,16,32},
+        extra x tick labels = {1,2,8,16,32,64},
+        extra tick style={
+            grid style={dotted,black}
+        },
+        xtick pos=left,name=plot3,at={($(plot2.south)-(0,0.2cm)$)},anchor=north,
         xticklabels={1,2,8,16,32,64},
+        ytick = {1,2,3,4},
         ymajorgrids=true,yticklabel={
 \pgfmathparse{int(10*\tick)}
 \ifnum\pgfmathresult=0
@@ -558,51 +662,182 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
 \fi
 },
         %xmajorgrids=true,
-          cycle list={blueaccent, darkgray, mediumgray},%, lightgray,last},
+          cycle list={blueaccent, darkgray, mediumgray},%,last},
+          clip=false, point meta = exp(x)
       ]
-\pgfkeys{/pgf/fpu}
-  \pgfmathparse{1.4696e+08/8.0527e-02/1000000000.0}\edef\storeresultI{\pgfmathresult}
-  \pgfmathparse{1.3535e+09/7.1397e-01/1000000000.0}\edef\storeresultII{\pgfmathresult}
-  \pgfmathparse{1.5159e+10/6.1909e+00/1000000000.0}\edef\storeresultIII{\pgfmathresult}
-\pgfkeys{/pgf/fpu=false}
-\node[font=\tiny,rotate=45,fill=white,inner sep=0pt,anchor=west] at (axis cs:0.75, 1.2) {\pgfmathprintnumber\storeresultI~GFLOP/s};
-\node[font=\tiny,rotate=45,fill=white,inner sep=0pt,anchor=west] at (axis cs:0.97, 1.2) {\pgfmathprintnumber\storeresultII~GFLOP/s};
-\node[font=\tiny,rotate=45,fill=white,inner sep=0pt,anchor=west] at (axis cs:1.18, 1.2) {\pgfmathprintnumber\storeresultIII~GFLOP/s};
-\addlegendimage{empty legend}
-          \addplot+[draw=black,fill, area legend,postaction={pattern=crosshatch dots}] table [x expr=-0.5 + \thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-1-F}/\thisrow{aij-1-T}/(1.4696e+08/8.0527e-02)]{\loadedMatProduct};\label{pgfplots:aij1}
-          \addplot+[draw=black,fill, area legend,postaction={pattern=crosshatch dots}] table [x expr=-0.5 + \thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{baij-1-F}/\thisrow{baij-1-T}/(1.4696e+08/8.0527e-02)]{\loadedMatProduct};\label{pgfplots:baij1}
-          \addplot+[draw=black,fill, area legend,postaction={pattern=crosshatch dots}] table [x expr=-0.5 + \thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-1-F}/\thisrow{sbaij-1-T}/(1.4696e+08/8.0527e-02)]{\loadedMatProduct};\label{pgfplots:sbaij1}
-\addlegendimage{empty legend}
-           \addplot+[draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-3-F}/\thisrow{aij-3-T}/(1.3535e+09/7.1397e-01)]{\loadedMatProduct};\label{pgfplots:aij3}
-           \addplot+[draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{baij-3-F}/\thisrow{baij-3-T}/(1.3535e+09/7.1397e-01)]{\loadedMatProduct};\label{pgfplots:baij3}
-           \addplot+[draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-3-F}/\thisrow{sbaij-3-T}/(1.3535e+09/7.1397e-01)]{\loadedMatProduct};\label{pgfplots:sbaij3}
-\addlegendimage{empty legend}
-           \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=+0.5 + \thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-10-F}/\thisrow{aij-10-T}/(1.5159e+10/6.1909e+00)]{\loadedMatProduct};\label{pgfplots:aij10}
-           \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=+0.5 + \thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{baij-10-F}/\thisrow{baij-10-T}/(1.5159e+10/6.1909e+00)]{\loadedMatProduct};\label{pgfplots:baij10}
-           \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=+0.5 + \thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-10-F}/\thisrow{sbaij-10-T}/(1.5159e+10/6.1909e+00)]{\loadedMatProduct};\label{pgfplots:sbaij10}
-          \addlegendentry{$b = 1$}
-          \addlegendentry{              }
-          \addlegendentry{               }
-          \addlegendentry{                }
-          \addlegendentry{$b = 3$}
-          \addlegendentry{\pk{MatAIJ}}
-          \addlegendentry{\pk{MatBAIJ}}
-          \addlegendentry{\pk{MatSBAIJ}}
-          \addlegendentry{$b = 10$~~}
-          \addlegendentry{              }
-          \addlegendentry{               }
-          \addlegendentry{                }
+      \contourlength{.6pt}
+\node[rotate=0,fill=white,inner sep=0pt,anchor=west] at (rel axis cs:1.02, 0.5) {$b=6$};
+          \addplot+[draw=black,fill, area legend,postaction={pattern=crosshatch dots}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-10-F}/\thisrow{aij-10-T}/(\storeresultIII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:aij10}
+          \addplot+[nodes near coords style={xshift=0.5cm,yshift=-0.1cm,above}, nodes near coords*={\rotatebox{45}{\tiny\color{black}{\pgfmathfloattofixed{\pgfplotspointmeta}\pgfmathparse{int(round(\pgfmathresult))}\ifnum\pgfmathresult=1\contour{white}{\pgfmathprintnumber\storeresultIII}~GFLOP/s\fi}}},draw=black,fill, area legend,postaction={pattern=crosshatch dots}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{baij-10-F}/\thisrow{baij-10-T}/(\storeresultIII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:baij10}
+          \addplot+[draw=black,fill, area legend,postaction={pattern=crosshatch dots}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-10-F}/\thisrow{sbaij-10-T}/(\storeresultIII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:sbaij10}
+           \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-10-F}/\thisrow{aijmkl-seq-10-T}/(\storeresultIII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:mklaijseq10}
+           \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{baij-10-F}/\thisrow{baijmkl-seq-10-T}/(\storeresultIII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:mklbaijseq10}
+           \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-10-F}/\thisrow{sbaijmkl-seq-10-T}/(\storeresultIII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:mklsbaijseq10}
     \end{semilogxaxis}
     \end{tikzpicture}
-   \caption{Performance of the matrix--matrix multiplication as implemented in PETSc for three sparse matrix types. As baseline values with $N=1$, for $b=1$, performance of \pk{MatAIJ} matrix--vector multiplication is used~\ref{pgfplots:aij1}, while for $b=3$ (resp.~$b=10$), it is the performance of \pk{MatBAIJ} matrix--vector multiplication~\ref{pgfplots:baij3} (resp.~\ref{pgfplots:baij10}).\label{fig:perfAX}}
+   \caption{Performance of the matrix--matrix multiplication as implemented in PETSc for three sparse matrix types. As baseline values with $N=1$, for $b=1$, performance of \pk{MatAIJ} matrix--vector multiplication is used~\ref{pgfplots:aij1}, while for $b=\{3,6\}$, it is the performance of \pk{MatBAIJ} matrix--vector multiplication~\ref{pgfplots:baij3}.\label{fig:perfAX}}
 \end{figure}
-Some conclusions may be drawn:
-\begin{itemize}
-    \item with a block size of 1, using any type but \pk{MatAIJ} is counterproductive, see~\ref{pgfplots:baij1} and~\ref{pgfplots:sbaij1}. However, with this format, as soon as the number of columns is greater or equal than 8, the efficiency reaches approximately 200\%, see~\ref{pgfplots:aij1};
-    \item for block sizes lower or equal than 5, loops for matrix--vector and matrix--matrix multiplications are unrolled by hand for block formats. This yields rather disappointing performances, except for \pk{MatAIJ}, see~\ref{pgfplots:aij3}, and its 250\% efficiency, even with a moderate number of columns. For block formats \ref{pgfplots:baij3} and~\ref{pgfplots:sbaij3}, given the small value of $b$, it could be beneficial to switch to optimized libraries for small matrices, e.g., LIBXSMM~\cite{heinecke2016libxsmm};
-    \item for greater block sizes, ?gemv or ?gemm are used instead for block formats. For \pk{MatAIJ}~\ref{pgfplots:aij10}, the efficiency quickly caps below 250\% for $N\in\{8,16\}$, but for block formats, this reaches almost 500\% for large number of columns, see~\ref{pgfplots:baij10} and~\ref{pgfplots:sbaij10} for $N=64$.
-\end{itemize}
-These results are of course specific to the sparsity pattern of the initial matrix $A$, and thus $\mathbb{A} = A\otimes T$, and matrix types. For example, if the matrices were to be offloaded to a GPU, one could instead benchmark \pk{MatAIJcuSPARSE}.
+            
+\begin{figure}[htbp]
+\pgfkeys{/pgf/fpu}
+  \pgfmathparse{1.4696e+08/7.8399e-03/1000000000.0}\edef\storeresultI{\pgfmathresult}
+  \pgfmathparse{1.3535e+09/6.6225e-02/1000000000.0}\edef\storeresultII{\pgfmathresult}
+  \pgfmathparse{5.4450e+09/2.4584e-01/1000000000.0}\edef\storeresultIII{\pgfmathresult}
+\pgfkeys{/pgf/fpu=false}
+  \centering
+    \begin{tikzpicture}
+      \begin{semilogxaxis}[
+        ymin=0,
+        ybar=1.5pt,
+        bar width=3.5pt,
+        enlarge x limits=0.101,height=4cm,
+        width=0.8\textwidth,
+        ylabel={},
+        legend columns=4, legend style={legend cell align=left,at={(0.5,1.03)},anchor=south},
+        xtick = {\empty},
+        xmajorgrids=true,
+        extra x ticks = {1,2,4,8,16,32},
+        extra x tick labels = {\empty},
+        extra tick style={
+            grid style={dotted,black}
+        },
+        xtick pos=left,name=plot4,
+        xticklabels={\empty},xmajorticks=false,
+        ytick = {1,3.5,6},
+        ymajorgrids=true,yticklabel={
+\pgfmathparse{int(10*\tick)}
+\ifnum\pgfmathresult=0
+\else
+\pgfmathparse{100*\tick}
+$\pgfmathprintnumber{\pgfmathresult}$\%
+\fi
+},
+        %xmajorgrids=true,
+          cycle list={blueaccent, darkgray, mediumgray,last},
+          point meta=exp(x),clip=false
+      ]
+% \node[font=\tiny,rotate=45,fill=white,inner sep=0pt,anchor=west] at (axis cs:0.725, 1.2) {\pgfmathprintnumber\storeresultI~GFLOP/s};
+% \node[font=\tiny,rotate=45,fill=white,inner sep=0pt,anchor=west] at (axis cs:0.95, 1.2) {\pgfmathprintnumber\storeresultII~GFLOP/s};
+% \node[font=\tiny,rotate=45,fill=white,inner sep=0pt,anchor=west] at (axis cs:1.2, 1.2) {\pgfmathprintnumber\storeresultIII~GFLOP/s};
+          \addplot+[nodes near coords style={xshift=0.55cm,yshift=-0.1cm,above}, nodes near coords*={\rotatebox{45}{\tiny\color{black}{\pgfmathfloattofixed{\pgfplotspointmeta}\pgfmathparse{int(round(\pgfmathresult))}\ifnum\pgfmathresult=1\pgfmathprintnumber\storeresultI~GFLOP/s\fi}}},draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-1-F}/\thisrow{aijmkl-1-T}/(\storeresultI*1000000000.0)]{\loadedMatProduct};\label{pgfplots:aijmkl1}
+          \addplot+[draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{baij-1-F}/\thisrow{baijmkl-1-T}/(\storeresultI*1000000000.0)]{\loadedMatProduct};\label{pgfplots:baijmkl1}
+          \addplot+[draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-1-F}/\thisrow{sbaijmkl-1-T}/(\storeresultI*1000000000.0)]{\loadedMatProduct};\label{pgfplots:sbaijmkl1}
+           \addplot+[draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-1-F}/\thisrow{cusparse-1-T}/(\storeresultI*1000000000.0)]{\loadedMatProduct};\label{pgfplots:cusparse1}
+           \addlegendentry{\pk{MatAIJMKL}}
+           \addlegendentry{\pk{MatBAIJMKL}}
+           \addlegendentry{MatSBAIJMKL}
+           \addlegendentry{\pk{MatAIJcuSPARSE}}
+\node[rotate=0,fill=white,inner sep=0pt,anchor=west] at (rel axis cs:1.02, 0.5) {$b=1$};
+    \end{semilogxaxis}
+      \begin{semilogxaxis}[
+        ymin=0,
+        ybar=1.5pt,
+        bar width=3.5pt,
+        enlarge x limits=0.101,height=4cm,
+        width=0.8\textwidth,
+        % legend columns=1, legend style={legend cell align=left,at={(1.02,0.5)},anchor=west},
+        ylabel={Efficiency},
+        xtick = {\empty},
+        xmajorgrids=true,
+        extra x ticks = {1,2,4,8,16,32},
+        extra x tick labels = {\empty},
+        extra tick style={
+            grid style={dotted,black}
+        },
+        xtick pos=left,name=plot5,at={($(plot4.south)-(0,0.2cm)$)},anchor=north,
+        xticklabels={\empty},xmajorticks=false,
+        ytick = {1,4.5,8},
+        ymajorgrids=true,yticklabel={
+\pgfmathparse{int(10*\tick)}
+\ifnum\pgfmathresult=0
+\else
+\pgfmathparse{100*\tick}
+$\pgfmathprintnumber{\pgfmathresult}$\%
+\fi
+},
+        %xmajorgrids=true,
+          cycle list={blueaccent, darkgray, mediumgray,last},
+          point meta=exp(x),clip=false
+      ]
+% \node[font=\tiny,rotate=45,fill=white,inner sep=0pt,anchor=west] at (axis cs:0.725, 1.2) {\pgfmathprintnumber\storeresultI~GFLOP/s};
+% \node[font=\tiny,rotate=45,fill=white,inner sep=0pt,anchor=west] at (axis cs:0.95, 1.2) {\pgfmathprintnumber\storeresultII~GFLOP/s};
+% \node[font=\tiny,rotate=45,fill=white,inner sep=0pt,anchor=west] at (axis cs:1.2, 1.2) {\pgfmathprintnumber\storeresultIII~GFLOP/s};
+          \addplot+[draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-3-F}/\thisrow{aijmkl-3-T}/(\storeresultII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:aijmkl3}
+          \addplot+[nodes near coords style={xshift=0.55cm,yshift=-0.1cm,above}, nodes near coords*={\rotatebox{45}{\tiny\color{black}{\pgfmathfloattofixed{\pgfplotspointmeta}\pgfmathparse{int(round(\pgfmathresult))}\ifnum\pgfmathresult=1\pgfmathprintnumber\storeresultII~GFLOP/s\fi}}},draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{baij-3-F}/\thisrow{baijmkl-3-T}/(\storeresultII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:baijmkl3}
+          \addplot+[draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-3-F}/\thisrow{sbaijmkl-3-T}/(\storeresultII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:sbaijmkl3}
+           \addplot+[draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-3-F}/\thisrow{cusparse-3-T}/(\storeresultII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:cusparse3}
+           % \addlegendentry{\pk{MatAIJ}}
+           % \addlegendentry{\pk{MatBAIJ}}
+           % \addlegendentry{\pk{MatSBAIJ}}
+           % \addlegendentry{\pk{MatAIJMKL}}
+           % \addlegendentry{\pk{MatBAIJMKL}}
+           % \addlegendentry{MatSBAIJMKL}
+\node[rotate=0,fill=white,inner sep=0pt,anchor=west] at (rel axis cs:1.02, 0.5) {$b=3$};
+    \end{semilogxaxis}
+      \begin{semilogxaxis}[
+        ymin=0,ymax=5.5,
+        ybar=1.5pt,
+        bar width=3.5pt,
+        enlarge x limits=0.101,height=4cm,
+        width=0.8\textwidth,
+        xlabel={\# of right-hand sides ($N$)},
+        ylabel={},
+        xtick = {\empty},
+        xmajorgrids=true,
+        extra x ticks = {1,2,4,8,16,32},
+        extra x tick labels = {1,2,8,16,32,64},
+        extra tick style={
+            grid style={dotted,black}
+        },
+        xtick pos=left,name=plot3,at={($(plot2.south)-(0,0.2cm)$)},anchor=north,
+        xticklabels={1,2,8,16,32,64},
+        ytick = {1,2,ln(6.5-5)+3,ln(10-5)+3},%,ln(30-5)+3},
+        ylabel style={yshift=6pt},
+        ymajorgrids=true,yticklabel={
+\pgfmathparse{int(10*\tick)}
+\ifnum\pgfmathresult=0
+\else
+\ifnum\pgfmathresult>20
+\pgfmathparse{ceil((exp(\tick-3)+5))*100}
+$\pgfmathprintnumber{\pgfmathresult}$\%
+\else
+\pgfmathparse{100*\tick}
+$\pgfmathprintnumber{\pgfmathresult}$\%
+\fi
+\fi
+},
+        %xmajorgrids=true,
+          cycle list={blueaccent, darkgray, mediumgray,last},
+          point meta=exp(x),clip=false,
+      ]
+\node[rotate=0,fill=white,inner sep=0pt,anchor=west] at (rel axis cs:1.02, 0.5) {$b=6$};
+% \node[font=\tiny,rotate=45,fill=white,inner sep=0pt,anchor=west] at (axis cs:0.725, 1.2) {\pgfmathprintnumber\storeresultI~GFLOP/s};
+% \node[font=\tiny,rotate=45,fill=white,inner sep=0pt,anchor=west] at (axis cs:0.95, 1.2) {\pgfmathprintnumber\storeresultII~GFLOP/s};
+% \node[font=\tiny,rotate=45,fill=white,inner sep=0pt,anchor=west] at (axis cs:1.2, 1.2) {\pgfmathprintnumber\storeresultIII~GFLOP/s};
+          \addplot+[draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-10-F}/\thisrow{aijmkl-10-T}/(\storeresultIII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:aijmkl10}
+          \addplot+[nodes near coords style={xshift=0.55cm,yshift=-0.1cm,above}, nodes near coords*={\rotatebox{45}{\tiny\color{black}{\pgfmathfloattofixed{\pgfplotspointmeta}\pgfmathparse{int(round(\pgfmathresult))}\ifnum\pgfmathresult=1\pgfmathprintnumber\storeresultIII~GFLOP/s\fi}}},draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{baij-10-F}/\thisrow{baijmkl-10-T}/(\storeresultIII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:baijmkl10}
+          \addplot+[draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-10-F}/\thisrow{sbaijmkl-10-T}/(\storeresultIII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:sbaijmkl10}
+          %\addplot+[draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-10-F}/\thisrow{cusparse-10-T}/(\storeresultIII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:cusparse10}
+          \addplot+[draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{N}>1.5?ln(\thisrow{aij-10-F}/\thisrow{cusparse-10-T}/(\storeresultIII*1000000000.0)-5.0)+3:\thisrow{aij-10-F}/\thisrow{cusparse-10-T}/(\storeresultIII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:cusparse10}
+          \begin{pgfonlayer}{foreground}
+\begin{scope}[decoration={snake,amplitude=1pt,pre length=0,post length=0}]
+          \path[shape=coordinate]
+(rel axis cs:-0.001,0.49) coordinate(b1) (rel axis cs: 1.001,0.49) coordinate(b2)
+(rel axis cs: 1.001,0.51) coordinate(b3) (rel axis cs:-0.001,0.51) coordinate(b4);
+  \path[fill=white] (b2) -- (b3) 
+                decorate {-- (b4)}  
+                -- (b1) 
+                decorate {-- (b2)};
+  \draw         (b3) 
+                decorate {-- (b4)};  
+  \draw         (b1) 
+                decorate {-- (b2)};
+\end{scope}
+          \end{pgfonlayer}{foreground}
+    \end{semilogxaxis}
+    \end{tikzpicture}
+   \caption{Performance of the matrix--matrix multiplication as implemented in PETSc for three sparse matrix types. As baseline values with $N=1$, for $b=1$, performance of \pk{MatAIJMKL} matrix--vector multiplication is used~\ref{pgfplots:aijmkl1}, while for $b=\{3,6\}$, it is the performance of \pk{MatBAIJMKL} matrix--vector multiplication~\ref{pgfplots:baijmkl3}.\label{fig:perfAXpar}}
+\end{figure}
 \section{PCHPDDM}\label{sec:PCHPDDM}
   \subsection{Related work}
 Domain decomposition methods are, alongside multigrid methods, one of the
@@ -1703,12 +1938,6 @@ TGCC@CEA under the allocations A0070607519 made by GENCI.
   management of parallelism in object-oriented numerical software libraries},
   Modern Software Tools in Scientific Computing,  (1997), pp.~163--202.
 
-\bibitem{bastian2010generic}
-{\sc P.~Bastian, F.~Heimann, and S.~Marnach}, {\em {Generic implementation of
-  finite element methods in the distributed and unified numerics environment
-  (DUNE)}}, Kybernetika, 46 (2010), pp.~294--315,
-  \url{https://www.dune-project.org}.
-
 \bibitem{bavier2012amesos2}
 {\sc E.~Bavier, M.~Hoemmen, S.~Rajamanickam, and H.~Thornquist}, {\em {Amesos2
   and Belos: Direct and Iterative Solvers for Large Sparse Linear Systems}},
@@ -1812,13 +2041,6 @@ TGCC@CEA under the allocations A0070607519 made by GENCI.
 \bibitem{hecht2012new}
 {\sc F.~Hecht}, {\em New development in {FreeFem++}}, Journal of Numerical
   Mathematics, 20 (2012), pp.~251--266, \url{http://freefem.org}.
-
-\bibitem{heinecke2016libxsmm}
-{\sc A.~Heinecke, G.~Henry, M.~Hutchinson, and H.~Pabst}, {\em {LIBXSMM:
-  accelerating small matrix multiplications by runtime code generation}}, in
-  Proceedings of the 2016 International Conference for High Performance
-  Computing, Networking, Storage and Analysis, SC16, IEEE, 2016,
-  \url{https://github.com/hfp/libxsmm}.
 
 \bibitem{Heinlein:2016:PIT}
 {\sc A.~Heinlein, A.~Klawonn, and O.~Rheinbach}, {\em A parallel implementation
