@@ -168,10 +168,8 @@ less frequently implemented in general purpose libraries because they require
 somehow more involved kernels such as matrix--matrix multiplication, instead of
 matrix--vector. Still, systems with multiple right-hand sides are ubiquitous,
 e.g., in tomography~\cite{tournier2016micro} or data
-analytics~\cite{KALANTZIS2018136}. Of course, it is possible to cast a system
-with multiple right-hand sides into a sequence of systems with the same
-coefficient matrix but changing right-hand sides $A x_i = b_i, i =
-1,2,\ldots,k$. However, block Krylov methods, at the cost of higher arithmetic
+analytics~\cite{KALANTZIS2018136}. % Of course, it is possible to cast a system with multiple right-hand sides into a sequence of systems with the same coefficient matrix but changing right-hand sides $A x_i = b_i, i = 1,2,\ldots,k$. However, 
+Block Krylov methods, while having higher arithmetic
 intensities, generate larger subspaces and typically converge in fewer iterates.
 There is none implemented in PETSc. It is nevertheless possible to solve
 systems with multiple right-hand sides using a specialized type of matrices,
@@ -314,11 +312,8 @@ is since then
 available\footnote{\url{https://www.sandia.gov/~mlparks/GCRODR.zip}}. It comes
 with a sequence of ten ``linear systems from a finite element fracture mechanics
 problem constructed by Philippe H.\ Geubelle and Spandan Maiti." The goal of
-this paragraph is to explain how the results have been reproduced in PETSc.
-Thanks to \pk{KSPHPDDM}, it is quite straightforward. First, the sequence of
-MATLAB systems had to be converted to PETSc \pk{Mat} and \pk{Vec}. Then, it is
-just a matter of calling \pk{KSPSolve} in sequence. The dataset and the source
-code are available at
+this paragraph is to explain how the results have been reproduced in PETSc. % Thanks to \pk{KSPHPDDM}, it is quite straightforward. First, the sequence of MATLAB systems had to be converted to PETSc \pk{Mat} and \pk{Vec}. Then, it is just a matter of calling \pk{KSPSolve} in sequence.
+The dataset and the source code are available at
 \url{https://gitlab.com/petsc/datafiles/-/tree/master/matrices/hpddm/GCRODR}
 and
 \url{https://www.mcs.anl.gov/petsc/petsc-master/src/ksp/ksp/tutorials/ex75.c.html}
@@ -330,9 +325,7 @@ the following tests are performed:
     \item in PETSc with \pk{KSPGMRES}, unpreconditioned unrestarted GMRES($\infty$);
     \item in PETSc with \pk{KSPHPDDM}, all of the above.
 \end{itemize}
-Except for the right-preconditioned GCRODR, these tests are the same as the
-ones from the original GCRODR paper~\cite{parks2006recycling}. Furthermore,
-\pk{PCICC} and ichol from MATLAB are not consistent. All PETSc tests are run on four MPI
+All PETSc tests are run on four MPI
 processes. They can be launched using the following command line. \\[-4pt]
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -pc_type none -ksp_rtol 1e-10             &fvtextcolor[myred][\]
@@ -349,7 +342,10 @@ processes. They can be launched using the following command line. \\[-4pt]
   -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
 \end{Verbatim}
 The various number of iterations needed to reach the convergence criterion as
-originally set to $10^{-10}$ are gathered in~\cref{fig:comparison}. Apart from
+originally set to $10^{-10}$ are gathered in~\cref{fig:comparison}. 
+Except for the right-preconditioned GCRODR, these tests are the same as the
+ones from the original GCRODR paper~\cite{parks2006recycling}. Furthermore,
+\pk{PCICC} and ichol from MATLAB are not consistent.  Apart from
 the tests \ref{pgfplots:r2} and \ref{pgfplots:r3} using $ICC(0)$ and \ref{pgfplots:r4} and \ref{pgfplots:r5}
 using the Jacobi method, one may notice that \ref{pgfplots:r0} and
 \ref{pgfplots:r1} (resp. \ref{pgfplots:r6} and \ref{pgfplots:r7}) are almost a
@@ -531,7 +527,7 @@ In particular, the performance of three PETSc matrix types are evaluated:
 Parallel matrices in PETSc heavily rely on sequential matrices. For example, \pk{MatMPIAIJ}, standard parallel sparse matrices, store on each rank two \pk{MatSeqAIJ}, one with local rows and columns, another with local rows and ``nonlocal'' columns.
 To keep this study succinct, only sequential sparse matrices will be evaluated next, which can help draw conclusions for the intraprocess performance of parallel sparse matrices. The Seq substring is now dropped, since in this case, \pk{MatSeqAIJ} is equivalent to \pk{MatAIJ} and so on.
 
-The Poisson equation on a cube is discretized with $\mathbb{P}_1$ finite elements in double precision. This yields a matrix $A$ of dimension one million. Though the numerical values of $A$ are of no interest here, the sparsity pattern is rather common and frequently encountered, e.g., when discretizing partial differential equations. Then, a random dense matrix $T$ of dimension $b$ is generated, for $b \in \{ 1,3,6 \}$, and the following matrix is evaluated $\mathbb{A} = A \otimes T$. The matrix $\mathbb{A}$ is then assembled into all three formats described above. For block matrices, a block size of $b$ is used. The performance of the \pk{MatProductNumeric} operation is evaluated for tall-and-skinny dense matrices with a varying number of columns $N \in \{1,2,8,16,32,64\}$. For $N=1$, the \pk{MatMult} operation for matrix--vector multiplication is used instead. All results are gathered in~\cref{fig:perfAX}. They can be reproduced using the following mini-app: \url{http://jolivet.perso.enseeiht.fr/MatProduct.cpp} and any input \pk{MatAIJ} stored in binary format, here using the default name binaryoutput.
+The Poisson equation on a cube is discretized with $\mathbb{P}_1$ finite elements in double precision. This yields a matrix $A$ of dimension one million. Though the numerical values of $A$ are of no interest here, the sparsity pattern is rather common and frequently encountered, e.g., when discretizing partial differential equations. Then, a random symmetric dense matrix $T$ of dimension $b$ is generated, for $b \in \{ 1,3,6 \}$, and the following matrix is evaluated $\mathbb{A} = A \otimes T$. The matrix $\mathbb{A}$ is then assembled into all three formats described above. For block matrices, a block size of $b$ is used. The performance of the \pk{MatProductNumeric} operation is evaluated for tall-and-skinny dense matrices with a varying number of columns $N \in \{1,2,8,16,32,64\}$. For $N=1$, the \pk{MatMult} operation for matrix--vector multiplication is used instead. All results are gathered in~\cref{fig:perfAX}. They can be reproduced using the following mini-app: \url{http://jolivet.perso.enseeiht.fr/MatProduct.cpp} and any input \pk{MatAIJ} stored in binary format, here using the default name binaryoutput.
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpicc] MatProduct.c -O3 -I&fvtextcolor[myyellow][${PETSC_DIR}]/&fvtextcolor[myyellow][${PETSC_ARCH}]/include                        &fvtextcolor[myred][\]
   -I&fvtextcolor[myyellow][${PETSC_DIR}]/include -L&fvtextcolor[myyellow][${PETSC_DIR}]/&fvtextcolor[myyellow][${PETSC_ARCH}]/lib -lpetsc -o MatProduct
@@ -1147,7 +1143,7 @@ Its strong formulation is given by:
 		\sigma (u) \cdot n					&= 0	\quad \text{on } \Gamma_N.
 	\end{split}
 \end{align}
-The physical domain $\Omega$ is a beam of dimensions $[0,6] \times [0,1] \times [0,1]$. It is decomposed in $13{,}824$ subdomains using the automatic graph partitioner ParMETIS~\cite{karypis1998fast}.
+The physical domain $\Omega$ is a beam of dimensions $[0,6] \times [0,1] \times [0,1]$.
 The Cauchy stress tensor $\sigma$ is given by Hooke’s law: it can be expressed in terms of Young’s modulus $E$ and Poisson’s ratio $\nu$.
 \[
 	\sigma_{ij}(u) = 
@@ -1164,6 +1160,7 @@ $\Gamma_D$ is the subset of the boundary of $\Omega$ corresponding to $x = 0$.
 $\Gamma_N$ is defined as the complementary of $\Gamma_D$ with respect to the boundary of $\Omega$.
 \Cref{eq:elasticity} is discretized using 
 $(\mathbb{P}_1, \mathbb{P}_1, \mathbb{P}_1)$ finite elements.
+The physical domain $\Omega$ is decomposed in $13{,}824$ subdomains using the automatic graph partitioner ParMETIS~\cite{karypis1998fast}.
 The number of unknowns is $\pgfmathprintnumber{593} \times 10^6$, with approximately $\pgfmathprintnumber{45}$ nonzero coefficients per row.
 There are heterogeneities due to jumps in $E$ and $\nu$. The following discontinuous piecewise constant values are considered: $(E_1, \nu_1) = (2\times 10^{11}, 0.25)$, $(E_2, \nu_2) = (10^{7}, 0.45)$, see~\cref{fig:elas}.
 \begin{figure}[htbp]
@@ -1248,7 +1245,7 @@ The options -ksp\_gmres\_modifiedgramschmidt
 -prefix_pop
 \end{Verbatim}
 \end{minipage} \\
-By default, the coarse problem in \pk{PCHPDDM} is solved using an exact $LU$ or Cholesky factorization, in this case using 24 processes and MKL CPARDISO. Thanks to the flexibility of PETSc, switching to an inexact solver using \pk{PCHYPRE} (resp.~GenEO multilevel extension), cf.~\cref{enum:inexacthypre} (resp.~\cref{enum:inexact}), is straightforward. \\[-4pt]
+By default, the coarse problem in \pk{PCHPDDM} is solved using an exact $LU$ or Cholesky factorization, in this case using 24 processes and MKL CPARDISO. Switching to an inexact solver using \pk{PCHYPRE} (resp.~GenEO multilevel extension), cf.~\cref{enum:inexacthypre} (resp.~\cref{enum:inexact}), is straightforward. \\[-4pt]
 \begin{minipage}[t]{0.4\textwidth}
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=\\\{\}, codes={\catcode`$=3\catcode`^=7}]
 \fvtextcolor{mygreen}{# cf. \cref{enum:inexacthypre}}
