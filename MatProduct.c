@@ -244,7 +244,7 @@ int main(int argc, char** argv) {
 
           ierr = MatDenseGetColumnVecRead(C, 0, &cC);CHKERRQ(ierr);
           ierr = MatDenseGetColumnVecWrite(D, 0, &cD);CHKERRQ(ierr);
-
+          ierr = MatMult(A, cC, cD);CHKERRQ(ierr);
           ierr = PetscPrintf(PETSC_COMM_WORLD,"Benchmarking MatMult: with A %s %Dx%D\n",Atype,AM,AN);
           ierr = PetscLogStagePush(stage);CHKERRQ(ierr);
           for (mm = 0; mm < trial; ++mm) {
