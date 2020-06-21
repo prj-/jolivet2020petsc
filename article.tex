@@ -11,7 +11,7 @@
 % Optional PDF information
 \ifpdf
 \hypersetup{
-  pdftitle={KSPHPDDM and PCHPDDM: Two Classes of Adaptive Krylov and Overlapping Schwarz Methods in PETSc},
+  pdftitle={KSPHPDDM and PCHPDDM: extending PETSc with robust Overlapping Schwarz Methods and advanced Krylov methods},
   pdfauthor={P. Jolivet and S. Zampini}
 }
 \fi
@@ -25,9 +25,9 @@
 %<funding-group specific-use="FundRef">
 %<award-group>
 %<funding-source>
-%<named-content content-type="funder-name"> 
-%</named-content> 
-%<named-content content-type="funder-identifier"> 
+%<named-content content-type="funder-name">
+%</named-content>
+%<named-content content-type="funder-identifier">
 %</named-content>
 %</funding-source>
 %<award-id> </award-id>
@@ -79,12 +79,12 @@
     require the solution of linear systems which may be of different sizes,
     shapes, and structures. The goal of this paper is to explain how two
     libraries, PETSc and HPDDM, have been interfaced together in order to offer
-    to end-users adaptive Krylov and overlapping Schwarz methods.  The
-    flexibility of the implementation %, which for example may deal with various matrix formats, 
-    is showcased and explained.  Diverse examples are
-    displayed, ranging from fracture mechanics to linear stability analysis, and
-    the sets of options are thoroughly documented, so that they may be readily
-    tried on other applications and reproduce results.
+    end-users robust overlapping Schwarz methods and advanced Krylov methods featurin
+    recycling and block solution techniques.
+    The flexibility of the implementation %, which for example may deal with various matrix formats,
+    is showcased and explained with minimalist, easy-to-run and reproducible examples
+    ranging from {\color{red}fracture mechanics to linear stability analysis}
+    to ease the integration of these algorithms into more advanced frameworks.
 \end{abstract}
 
 % REQUIRED
@@ -99,103 +99,118 @@
 
 \section{Introduction}
 Implementing and maintaining robust and scalable applications is highly relevant
-in the field of computational science and engineering. Some tools exist to help
-end-users achieve this goal. One the one hand, PETSc \cite{balay1997cient}, the
+in the field of computational science and engineering. The efficient production of
+such applications requires a rich ecosystem of state-of-the-art reusable libraries
+\cite{xsdk}. In this paper, we focus on the interoperability of two such libraries.
+
+One the one hand, PETSc \cite{balay1997cient}, the
 Portable and Extensible Toolkit for Scientific computation, is a
-well-established software from the community. It may be used to efficiently
-discretize partial differential equations, or solve algebraic linear or
-nonlinear systems of equations. It comes with many built-in features such as
-advanced preconditioning or tailored matrix formats. Also, it can % be used to compile and 
+well-established, actively developed software from the community. It may be used to efficiently
+discretize partial differential equations and solve algebraic linear or
+nonlinear systems of time-dependent equations. Among its strenghts, it offers many
+advanced features regarding preconditioning and tailored matrix formats, and it can
 interact with third-party libraries, such as
 \emph{hypre}~\cite{falgout2002hypre} for linear solvers, TetGen~\cite{si2013tet}
-for mesh generation, and so on. These appealing features convinced computational
-scientists to use PETSc as one of the discretization and/or algebraic backend in
-many different higher-level projects, such as finite element or finite volume
-packages. On the other hand, HPDDM is a much smaller project purely focused on
-domain decomposition preconditioners~\cite{jolivet2013scalable} % , a small subclass of preconditioners available in PETSc as well, 
-and advanced iterative
-methods~\cite{jolivet2016block}. Such methods deal efficiently with linear
-systems when multiple right-hand sides are available simultaneously, and are
-then referred to as block iterative methods, or when there is a recurrence of
-varying coefficient matrices and right-hand sides, and are then referred to as
-recycling iterative methods.
+for mesh generation, p4est~\cite{BursteddeWilcoxGhattas11} for adaptive mesh
+refinement, to cite a few. The extensibility and robustness of the framework
+convinced computational scientists to use PETSc as one of the discretization and/or algebraic backend in
+many different higher-level projects {\color{red} ADD CIT TO DEAL.II, FIREDRAKE, MOOSE, HIPPYLIB, MFEM}.
+
+On the other hand, the High-Performance unified framework for Domain Decomposition Methods (HPDDM)
+is a much smaller project focusing on robust and scalable domain decomposition
+preconditioners~\cite{jolivet2013scalable} and advanced iterative
+methods~\cite{jolivet2016block} which can efficiently deal with linear
+systems with multiple right-hand sides (also known and as block iterative methods)
+and when there is a recurrence of varying coefficient matrices and right-hand
+sides (recycling iterative methods). For a introduction to domain decomposition methods, see
+~\cite{smith2004domain,dolean2014ddm,olofbook,tarekmathewbook} {\color{red} FIX CITATIONS}.
+
 % Htool ?
-In this paper, the integration of both aspects of HPDDM, its advanced iterative
-methods and its domain decomposition preconditioners, into PETSc is explained.
-The design principles of the interface are showcased, with % alongside
-minimalist and easy-to-run examples. The paper is divided in two main parts:
-\cref{sec:KSPHPDDM} which introduces \pk{KSPHPDDM}, and \cref{sec:PCHPDDM} which
-introduces \pk{PCHPDDM}. Eventually, concluding remarks may be found
+Here we describe the integration of the entire HPDDM suite, its advanced iterative
+methods and its domain decomposition preconditioners, into PETSc.
+We showcase the design principles of the interface considering % alongside
+minimalist and easy-to-run examples, equipped with the necessary command line options to
+fullfill reproducibility requirements {\color{red} FIND GOOD CIT, ADD 1 more sentences?,
+https://www.acm.org/publications/policies/artifact-review-badging} and ease the
+integration of these algorithms into more advanced frameworks.
+
+The paper is divided in two main parts {\color{red} COMPLETE WITH MORE DETAILS WHEN PAPER IS COMPLETED}:
+\cref{sec:KSPHPDDM} introduces \pk{KSPHPDDM}, provides applications within an eigensolver
+framework and discuss the readiness of the PETSc library in delivering highly efficient block Krylov methods.
+\cref{sec:PCHPDDM} introduces \pk{PCHPDDM}. Eventually, concluding remarks may be found
 \cref{sec:conclusion}. All PETSc keywords and options are typeset in a \texttt{typewriter} front, these
 are public and documented at \url{https://www.mcs.anl.gov/petsc/petsc-master/docs}.
+
 \section{KSPHPDDM}\label{sec:KSPHPDDM}
   \subsection{Related work}
 Krylov subspace methods are widely used in numerical linear algebra for solving
-systems of equations. Some of their strengths are memory efficiency and the fact
-that they are mostly format agnostic. Indeed, they mainly rely on matrix--vector
-operations such as multiplications or transpose multiplications. For
-challenging high-dimensional systems, finding appropriate preconditioners is
-mandatory to make these methods robust. %, but this goes beyond the scope of this section.
-In PETSc, Krylov methods belong to the \pk{KSP} base class. Some of the
+linear systems of equations because of their memory efficiency~\cite{templateBook}.
+They mainly rely on matrix--vector
+operations such as multiplications or transpose multiplications and,
+for robust convergence when dealing with challenging high-dimensional systems,
+on the application of appropriate preconditioners.
+PETSc (as of version 3.13.2) already offers 44 different types of Krylov methods within the \pk{KSP} base class. Some of the
 most used types are \pk{KSPGMRES}, \pk{KSPCG}, or \pk{KSPBCGS}, which respectively implement
 the generalized minimal residual method~\cite{saad1986gmres}~(GMRES), conjugate
 gradient~\cite{hestenes1952methods}~(CG), or biconjugate gradient stabilized method~\cite{van1992bi}~(BCGS). % Some of these methods are also
 % available in other linear algebra backends such as~\emph{hypre} or DUNE~\cite{bastian2010generic}.
 
-Because these methods may need long-term recurrences to mitigate round-off
-errors during the generation of Krylov subspaces, it is common to introduce a
-restart parameter in order to control their memory consumption and the amount of
-global communication, e.g., when orthonormalizing a candidate basis vector. Such
+Because Krylov methods may need long-term recurrences to mitigate round-off
+errors during the generation of subspaces, it is common to introduce a
+restart parameter in order to control their memory consumption and the volume of
+global communications needed when orthonormalizing a candidate basis vector. Such
 restarts may hinder convergence of iterative methods, and even introduce
 convergence plateaus. Recycling techniques have been introduced to attenuate
 these effects. In PETSc, the Loose GMRES~\cite{baker2005technique}~(LGMRES) and the
 Deflated GMRES~\cite{erhel1996restarted,wakam2013158}~(DGMRES), implemented as
-\pk{KSPLGMRES} and \pk{KSPDGMRES}, are available. Neither handle variable
-preconditioning, and the latter does not support complex arithmetic. Also note
+\pk{KSPLGMRES} and \pk{KSPDGMRES}, are available. However, neither handle variable
+preconditioning, and the DGMRES does not support complex arithmetic. {\color{red} Also note
 that when solving a sequence of linear systems $A_i x_i = b_i, i = 1, 2,
 \ldots$, it is not trivial to extend the theory of these methods to perform
 recycling throughout both the restarts and the different systems. The
 generalized conjugate residual method with inner orthogonalization and deflated
 restarting~\cite{parks2006recycling}~(GCRODR) does not suffer from this
-limitation.
+limitation.}
 
-% Recycling put aside, 
+% Recycling put aside,
 Another important aspect of Krylov methods is their ability
-to deal with multiple right-hand sides simultaneously. Block Krylov methods~\cite{gutknecht2006block} are
+to deal with multiple right-hand sides simultaneously.
+Block Krylov methods~\cite{gutknecht2006block} are
 designed for solving linear systems $A X = B$, where
-$X$ and $B$ are tall-and-skinny matrices with $k \geq 1$ columns. These methods are
+$X$ and $B$ are tall-and-skinny matrices with $k \geq 1$ columns.
+Such methods, while having higher arithmetic
+intensities, generate larger subspaces and typically converge in fewer iterates.
+
+These methods are not currently offered in PETSc and they are
 less frequently implemented in general purpose libraries because they require
 somehow more involved kernels such as matrix--matrix multiplication, instead of
-matrix--vector. Still, systems with multiple right-hand sides are ubiquitous,
+matrix--vector, and may involve different inner-products realizations~\cite{Frommer}.
+Still, systems with multiple right-hand sides are ubiquitous,
 e.g., in tomography~\cite{tournier2016micro}, data
-analytics~\cite{KALANTZIS2018136}, eigensolvers~\cite{knyazev2001toward}, geophysics~\cite{calandra2012flexible}, quantum chromodynamics~\cite{sakurai2010application}, etc. % Of course, it is possible to cast a system with multiple right-hand sides into a sequence of systems with the same coefficient matrix but changing right-hand sides $A x_i = b_i, i = 1,2,\ldots,k$. However, 
-Block Krylov methods, while having higher arithmetic
-intensities, generate larger subspaces and typically converge in fewer iterates.
-There is none implemented in PETSc. It is nevertheless possible to solve
+analytics~\cite{KALANTZIS2018136}, eigensolvers~\cite{knyazev2001toward}, geophysics~\cite{calandra2012flexible}, quantum chromodynamics~\cite{sakurai2010application}, and optimization with time-dependent partial differential equations as constraints.
+% Of course, it is possible to cast a system with multiple right-hand sides into a sequence of systems with the same coefficient matrix but changing right-hand sides $A x_i = b_i, i = 1,2,\ldots,k$. However,
+{\color{red} REMOVE? It is nevertheless possible to solve
 systems with multiple right-hand sides using a specialized type of matrices,
-but with a very limited choice of preconditioners, cf.~\cref{sec:matkaij}.
-In the context of optimization, it is also
-frequent to solve a sequence of linear systems $A_i X_i = B_i, i = 1, 2,
-\ldots$
+but with a very limited choice of preconditioners, cf.~\cref{sec:matkaij}.}
 
 Trilinos~\cite{heroux2005overview} is another well-known software for scientific
-computing. Through its Belos package~\cite{bavier2012amesos2}, it provides most
-of the advanced iterative methods aforementioned. Although having PETSc and
+computing and it provides iterative methods through its Belos package~\cite{bavier2012amesos2},
+Although having PETSc and
 Trilinos interoperate is possible, there is currently no \pk{KSP} interface to Belos. % This limits its composability inside complete PETSc applications.
-Furthermore,
-as displayed in~\cref{sec:interface-ksp}, some Krylov methods implemented in
-HPDDM are not available in Belos. In the following section, the details of the
-interface between HPDDM Krylov methods and PETSc matrix and preconditioner
-classes will be explained. It is assumed that the right-hand sides, and
-consequently the solutions, are always dense vectors or matrices.
+Furthermore, some of the Krylov methods implemented in
+HPDDM and discussed in ~\cref{sec:interface-ksp}, are not available in Belos.
+
   \subsection{Interfacing HPDDM Krylov methods in PETSc\label{sec:interface-ksp}}\
+In this section we provide details of the
+interface between HPDDM Krylov methods and the various PETSc
+classes. It is assumed that the right-hand sides, and
+consequently the solutions, are always dense vectors or matrices.
+
 \pk{KSPHPDDM}, the interface between HPDDM Krylov methods and PETSc, is automatically
 registered since PETSc version 3.12 when configuring PETSc with the extra
-flag \pk{-{}-download-hpddm}. It is then possible to select the corresponding \pk{KSP}
-using the command line option \pk{-ksp\_type hpddm}, or the routine \pk{KSPSetType}(ksp,
-\pk{KSPHPDDM}).% and its Fortran equivalent.
-When \pk{KSPHPDDM} is being used, it is then possible to select between the following
-Krylov methods:
+flag \pk{-{}-download-hpddm}. HPDDM linear solvers can be selected using the command
+line option \pk{-ksp\_type hpddm}, or the routine \pk{KSPSetType}(ksp,
+\pk{KSPHPDDM}), and the following Krylov methods can be accessed:
 \begin{itemize}
     \item pseudo-block GMRES or flexible GMRES~\cite{saad1993flexible};
     \item pseudo-block CG or flexible CG~\cite{notay2000flexible};
@@ -205,69 +220,77 @@ Krylov methods:
     \item breakdown-free block CG~\cite{ji2017breakdown};
     \item block GCRODR or flexible GCRODR.
 \end{itemize}
-In pseudo-block variants, multiple similar operations like matrix--vector
-products are fused to achieve higher arithmetic intensity, or to decrease the
-number of global synchronizations, e.g., reductions for scalar products. But they are mathematically equivalent to
-their ``standard'' counterpart. These methods may be selected using the 
-options \pk{-ksp\_hpddm\_type} \pk{(gmres$|$cg$|$gcrodr$|$bgmres$|$bcg$|$bfbcg$|$bgcrodr$|$preonly)} and
-\pk{-ksp\_hpddm\_variant} \pk{(left$|$right$|$flexible)} to select whether preconditioning
-is applied on the left, on the right, or variable. It is also possible to set
-this option through the more common PETSc option \pk{-ksp\_pc\_side (left$|$right)}. 
+While being mathematically equivalent to
+their ``standard'' counterparts, the pseudo-block variants try to fuse together multiple similar
+operations like matrix--vector
+products to achieve higher arithmetic intensity ({\color{red} which method does this?}), or to decrease the
+number of global synchronizations needed for scalar products ({\color{red} which method does this?}).
+HPDDM Krylov methods may be selected {\color{red} TODO API FOR KSPHPDDMSetType? KSPHPDDMSetVariant?} using the
+options \pk{-ksp\_hpddm\_type} \pk{(gmres$|$cg$|$gcrodr$|$bgmres$|$bcg$|$bfbcg$|$bgcrodr$|$preonly)}.
+Preconditioning variants can be specified via
+\pk{-ksp\_hpddm\_variant} \pk{(left$|$right$|$flexible)} to select whether the preconditioner
+has to applied on the left, on the right, or if it cannot be represented as a linear operator.
+{\color{red} out of curiosity. how can you choose the side if felixble is specified?}
+It is also possible to set the preconditioning side through the more common PETSc option \pk{-ksp\_pc\_side (left$|$right)}.
 Note that the value of the latter option is useless for BCG or BFBCG, and HPDDM CG only handles left and
-variable preconditioning. According to the standard PETSc notation, ksp($A$, $P_B$)
-defines a \pk{KSP} used to solve a system $Ax=b$ using a preconditioner $P_B$ built
-using an operator $B$ which is usually $A$ but not necessarily. If the
-type of ksp is \pk{KSPHPDDM}, the solution phase, invoked by \pk{KSPSolve}(ksp, $b$, $x$), will be carried out by HPDDM. To do
-so, HPDDM will repeatedly call the following PETSc routines:
+variable preconditioning {\color{red} can you elaborate more?}.
+Finally, convergence monitoring with the \pk{KSPMonitor} interface is fully supported, as well as the specification
+of customized convergence testing via the \pk{KSPSetConvergenceTest} callback.
+
+According to the standard PETSc notation, ksp($A$, $P_{A'}$)
+defines a \pk{KSP} used to solve a system $Ax=b$ using a preconditioner $P_{A'}$ built
+using an operator $A'$ which is usually, but not necessarily, equal to $A$. While solving
+the linear system via \pk{KSPSolve}(ksp, $b$, $x$) or \pk{KSPMatSolve}(ksp, $B$, $X$),
+HPDDM will repeatedly call the following PETSc routines:
 \begin{itemize}
     \item \pk{MatMult}($A$, $x$, $y$) for $y = Ax$;
     \item \pk{MatMatMult}($A$, $X$, {\scriptsize \pk{MAT\_REUSE\_MATRIX}}, {\scriptsize
         \pk{PETSC\_DEFAULT}}, $Y$)\footnote{or \pk{MatProductNumeric}($Y$) with PETSc 3.14.0 and above} for $Y =
         AX$;
-    \item \pk{PCApply}($P_B$, $y$, $x$) for $x = P_By$.
+    \item \pk{PCApply}($P_{A'}$, $y$, $x$) for $x = P_{A'}y$.
 \end{itemize}
-Currently, PETSc does not have a general routine for applying $P_B$ to a
+As of version 3.13.2, PETSc does not have a general routine for applying $P_{A'}$ to a
 tall-and-skinny dense matrix $Y$. In HPDDM, a specialized routine has been implemented
-to compute $X = P_BY$ if the preconditioner is of one of the following types:
+to compute $X = P_{A'}Y$ if the preconditioner is of one of the following types:
 \begin{itemize}
-    \item exact $LU$ or Cholesky factorization, i.e., $P_B = B^{-1}$, \pk{PCLU} or
-        \pk{PCCHOLESKY};
-    \item incomplete $LU$ or Cholesky factorization, \pk{PCILU} or \pk{PCICC};
-    \item block Jacobi with % a single subdomain per process and
-        exact or incomplete subdomain solvers, \pk{PCBJACOBI};
-    \item overlapping Schwarz methods with % a single subdomain per process and
-        exact or incomplete subdomain solvers, \pk{PCASM}.
+    \item \pk{PCLU} or \pk{PCCHOLESKY}: exact $LU$ or Cholesky factorization, i.e., $P_{A'} = {A'}^{-1}$;
+    \item \pk{PCILU} or \pk{PCICC}: incomplete $LU$ or Cholesky factorization;
+    \item \pk{PCBJACOBI}: block Jacobi with exact or incomplete subdomain solvers as above;
+    \item \pk{PCASM}: overlapping Schwarz methods with exact or incomplete subdomain solvers as above.
 \end{itemize}
-Indeed, in these cases, it is possible to get access to a factored matrix $F$
-and call \pk{MatMatSolve}($F$, $\tilde{Y}$, $\tilde{X}$). % With the two first sets of preconditioners, $\tilde{Y} = Y$ and $\tilde{X} = X$. With block Jacobi, $\tilde{Y}$, resp. $\tilde{X}$, represents only the part of the matrix $Y$, resp. $X$, local to a given process. With overlapping Schwarz methods, there are furthermore overlapping ``ghost'' unknowns, interested readers are referred to monographs on practical aspects of domain decomposition methods~\cite{smith2004domain,dolean2014ddm}.
-For all other types of preconditioners, HPDDM will loop over the columns of $Y$
-and apply $P_B$ successively to get all columns of $X$.
+In the aforementioned cases, it is indeed possible to access the so-called factored matrix $F$
+%via \pk{PCFactorGetMatrix} and then call \pk{MatMatSolve}($F$, $\tilde{Y}$, $\tilde{X}$).
+via \pk{PCFactorGetMatrix} and then call \pk{MatMatSolve}($F$, $Y$, $X$) to take advantage
+of the blocking solving strategy from the various factorization packages interfaced with PETSc
+such as MUMPS~\cite{amestoy2001fully}, SuiteSparse, MKL\_PARDISO and SUPERLU {\color{red} ADD REFERENCES}.
+For the types of preconditioners not implementing \pk{PCFactorGetMatrix},
+HPDDM will loop over the columns of $Y$ and successively apply $P_{A'}$ to get all columns of $X$.
+Future work will consider extending the various implementations of the PETSc
+preconditioning infrastructure to increase the arithmetic intensity of the
+block preconditioner application phase.
 
-The rest of the operations are then performed directly inside HPDDM. For
-example, in all Krylov methods using the Arnoldi process, it is mandatory to orthonormalize
-candidate basis vectors. % It would be impractical to try to reuse PETSc routines like \pk{KSPGMRESModifiedGramSchmidtOrthogonalization} for two reasons: 1) it does not handle the orthonormalization of multiple vectors at once which is needed in pseudo-block methods 2) HPDDM may be used without PETSc as a stand-alone library. To give some more technical details to curious readers, in HPDDM,
-$QR$ factorizations of tall-and-skinny dense matrices, which are needed by
-block Krylov methods and for recycling Krylov methods are computed using
-the CholQR algorithm~\cite{stathopoulos2002block}, or the block modified or classical
-Gram--Schmidt method. This may be adjusted with the option \pk{-ksp\_hpddm\_qr (cholqr$|$mgs$|$cgs)}.
+The rest of the operations are then performed directly inside HPDDM {\color{red} what about VecAXPY, VecNorm etc?}.
+Specifically, within Krylov methods using the Arnoldi process, or when recycling is requested,
+we need $QR$ factorizations of tall-and-skinny dense matrices to orthonormalize
+candidate basis vectors. Such operations are performed using the CholQR algorithm~\cite{stathopoulos2002block}, or
+via the block variants of the (modified) Gram--Schmidt method.
 For Hessenberg matrices generated by the Arnoldi
 process, it is common to update their $QR$ decomposition using Givens
 rotations~\cite{saad2003iterative}. For block Hessenberg matrices, Householder reflectors are
 used instead~\cite{gutknecht2008updating}.
-
-Monitoring convergence with the \pk{KSPMonitor} and \pk{KSPSetConvergenceTest} callbacks is fully supported.
+These orthonormalization variants can selected at runtime with the option \pk{-ksp\_hpddm\_qr (cholqr$|$mgs$|$cgs)}. {\color{red} API?}
 
     \subsubsection{User-defined deflation space} Recycling Krylov methods try to
-extract information at the end of each cycle or when convergence is reached by
-solving small standard or generalized dense eigenproblems. Then, during a
-subsequent solve, this information is reused appropriately~\cite{saad2000deflated,stathopoulos2002block,soodhalter2014krylov}. Two new routines were
-added in PETSc to either get the information generated by such recycling
-methods, or set the information in case users know what is a good initial
-deflation subspace. These routines are respectively
-\pk{KSPHPDDMGetDeflationSpace} and \pk{KSPHPDDMSetDeflationSpace}. The subspaces
-are once again stored as distributed
-dense tall-and-skinny matrices.
+extract convergence information by solving a small standard or a generalized dense eigenproblem
+at the end of each cycle or when convergence is reached and then reuse it appropriately for a
+subsequent solve~\cite{saad2000deflated,stathopoulos2002block,soodhalter2014krylov}.
+The routine \pk{KSPHPDDMGetDeflationSpace} can be used to inquire about the details of such deflation subspaces, stored as distributed
+dense tall-and-skinny matrices. It is also possible to provide this information
+via \pk{KSPHPDDMSetDeflationSpace} in case end users already know a good initial
+deflation subspace.
+
     \subsubsection{MatKAIJ and systems with multiple right-hand sides\label{sec:matkaij}}
+{\color{red} TODO: move KSPMatSolve discussion out, and clean up the section}
 There is a wide range of available matrix types in PETSc. One of them is
 \pk{MatKAIJ}, for which it is assumed that an operator may be written as $I \otimes S
 + A \otimes T$, with $S$ and $T$ elements of $\mathbb{K}^{p\times q}$ and
@@ -318,20 +341,20 @@ All PETSc tests are run on four MPI
 processes. They can be launched using the following command line. \\[-4pt]
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -pc_type none -ksp_rtol 1e-10             &fvtextcolor[myred][\]
-  -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_gmres_restart 40 -ksp_hpddm_recycle 20 &fvtextcolor[myred][\] 
+  -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_gmres_restart 40 -ksp_hpddm_recycle 20 &fvtextcolor[myred][\]
   -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -sub_pc_type icc -ksp_rtol 1e-10          &fvtextcolor[myred][\]
-  -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_gmres_restart 40 -ksp_hpddm_recycle 20 &fvtextcolor[myred][\] 
+  -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_gmres_restart 40 -ksp_hpddm_recycle 20 &fvtextcolor[myred][\]
   -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -pc_type jacobi -ksp_rtol 1e-10           &fvtextcolor[myred][\]
-  -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_gmres_restart 40 -ksp_hpddm_recycle 20 &fvtextcolor[myred][\] 
+  -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_gmres_restart 40 -ksp_hpddm_recycle 20 &fvtextcolor[myred][\]
   -ksp_pc_side right -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -pc_type none -ksp_rtol 1e-10             &fvtextcolor[myred][\]
-  -ksp_type hpddm -ksp_gmres_restart 500                                             &fvtextcolor[myred][\] 
+  -ksp_type hpddm -ksp_gmres_restart 500                                             &fvtextcolor[myred][\]
   -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
 \end{Verbatim}
 The various number of iterations needed to reach the convergence criterion as
-originally set to $10^{-10}$ are gathered in~\cref{fig:comparison}. 
+originally set to $10^{-10}$ are gathered in~\cref{fig:comparison}.
 Except for the right-preconditioned GCRODR, these tests are the same as the
 ones from the original GCRODR paper~\cite{parks2006recycling}. Furthermore,
 \pk{PCICC} and ichol from MATLAB are not consistent.  Apart from
@@ -386,7 +409,7 @@ computations, is built on top of PETSc. Thus, it is possible to reuse and
 compose \pk{KSP} or preconditioners for solving eigenproblems efficiently, e.g.,
 through spectral transformations. Recently, it has been observed that in the
 field of computational fluid dynamics, the role of recycling can be quite
-significant when performing linear stability analysis~\cite{moulin2018al}. 
+significant when performing linear stability analysis~\cite{moulin2018al}.
 The following generalized eigenvalue problem is considered next:
 \begin{equation}\label{eq:lsa}
     J(q_b)x = \lambda \begin{bmatrix}M & 0 \\ 0 & 0 \end{bmatrix} x,
@@ -414,12 +437,12 @@ runs. Results can be reproduced using the following four commands, the first two
 being merely for generating the base flow $q_b$ with \pk{SNESSolve} using a
 continuation method on the Reynolds number. \\[-4pt]
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Nonlinear-solver.edp -Re 50 -v 0 
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Nonlinear-solver.edp -Re 100 -v 0 
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Eigensolver.edp -Re 100 -v 0 -st_ksp_rtol 1.0e-4         &fvtextcolor[myred][\] 
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Nonlinear-solver.edp -Re 50 -v 0
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Nonlinear-solver.edp -Re 100 -v 0
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Eigensolver.edp -Re 100 -v 0 -st_ksp_rtol 1.0e-4         &fvtextcolor[myred][\]
   -st_ksp_type fgmres -st_ksp_gmres_restart 200 -st_ksp_converged_reason
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Eigensolver.edp -Re 100 -v 0 -st_ksp_rtol 1.0e-4         &fvtextcolor[myred][\] 
-  -st_ksp_type hpddm -st_ksp_gmres_restart 200 -st_ksp_converged_reason              &fvtextcolor[myred][\] 
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Eigensolver.edp -Re 100 -v 0 -st_ksp_rtol 1.0e-4         &fvtextcolor[myred][\]
+  -st_ksp_type hpddm -st_ksp_gmres_restart 200 -st_ksp_converged_reason              &fvtextcolor[myred][\]
   -st_ksp_hpddm_variant flexible -st_ksp_hpddm_recycle 10 -st_ksp_hpddm_type gcrodr
 \end{Verbatim}
 The Krylov--Schur algorithm converges in six outer iterations. In each of these
@@ -427,7 +450,7 @@ iterations, multiple linear systems having the structure of~\cref{eq:ks} are
 solved. In~\cref{fig:comparison-slepc}, numbers of iterates per inner solves
 are reported. After the first inner solve, once recycling kicks in, one may
 clearly see the benefits of switching from \pk{KSPFGMRES} to \pk{KSPHPDDM}.
-Indeed, through the 46 inner solves, these numbers are roughly decreased by 25. In terms of runtime, \SI[round-mode          = places,round-precision=1]{1.5098e+03}{\sec} (resp.~\SI[round-mode          = places,round-precision=1]{1.0524e+03}{\sec}) is spent in \pk{EPSSolve} when using \pk{KSPFGMRES} (resp.~\pk{KSPHPDDM}). These timings, and all which follow except in~\cref{sec:primitives}, have been obtained on {Ir\`ene}, a system composed of \pgfmathprintnumber[assume math mode=true]{1656} nodes with two 24-core Intel Xeon Platinum 8168 clocked at \SI{2.7}{\giga\hertz}. 
+Indeed, through the 46 inner solves, these numbers are roughly decreased by 25. In terms of runtime, \SI[round-mode          = places,round-precision=1]{1.5098e+03}{\sec} (resp.~\SI[round-mode          = places,round-precision=1]{1.0524e+03}{\sec}) is spent in \pk{EPSSolve} when using \pk{KSPFGMRES} (resp.~\pk{KSPHPDDM}). These timings, and all which follow except in~\cref{sec:primitives}, have been obtained on {Ir\`ene}, a system composed of \pgfmathprintnumber[assume math mode=true]{1656} nodes with two 24-core Intel Xeon Platinum 8168 clocked at \SI{2.7}{\giga\hertz}.
 \pgfplotstableread{
 sys hpddm fgmres
 1   77    77
@@ -492,7 +515,7 @@ sys hpddm fgmres
         \caption{\# of inner iterations for systems~\cref{eq:ks} with~\ref{pgfplots:m0} or without~\ref{pgfplots:m1} recycling.\label{fig:comparison-slepc}}
     \end{figure}
 \pgfplotstableread{
-N    baij-1-T    baij-1-F   sbaij-1-T   sbaij-1-F  aij-1-T     aij-1-F    baij-3-T    baij-3-F   sbaij-3-T   sbaij-3-F  aij-3-T     aij-3-F    baij-10-T   baij-10-F  sbaij-10-T  sbaij-10-F aij-10-T    aij-10-F     cusparse-1-T    cusparse-1-F    cusparse-3-T    cusparse-3-F    cusparse-10-T   cusparse-10-F    aijmkl-seq-1-T      aijmkl-seq-3-T      aijmkl-seq-10-T     baijmkl-seq-1-T      baijmkl-seq-3-T      baijmkl-seq-10-T   sbaijmkl-seq-1-T      sbaijmkl-seq-3-T      sbaijmkl-seq-10-T         aijmkl-1-T      aijmkl-3-T      aijmkl-10-T     baijmkl-1-T      baijmkl-3-T      baijmkl-10-T   sbaijmkl-1-T      sbaijmkl-3-T      sbaijmkl-10-T     
+N    baij-1-T    baij-1-F   sbaij-1-T   sbaij-1-F  aij-1-T     aij-1-F    baij-3-T    baij-3-F   sbaij-3-T   sbaij-3-F  aij-3-T     aij-3-F    baij-10-T   baij-10-F  sbaij-10-T  sbaij-10-F aij-10-T    aij-10-F     cusparse-1-T    cusparse-1-F    cusparse-3-T    cusparse-3-F    cusparse-10-T   cusparse-10-F    aijmkl-seq-1-T      aijmkl-seq-3-T      aijmkl-seq-10-T     baijmkl-seq-1-T      baijmkl-seq-3-T      baijmkl-seq-10-T   sbaijmkl-seq-1-T      sbaijmkl-seq-3-T      sbaijmkl-seq-10-T         aijmkl-1-T      aijmkl-3-T      aijmkl-10-T     baijmkl-1-T      baijmkl-3-T      baijmkl-10-T   sbaijmkl-1-T      sbaijmkl-3-T      sbaijmkl-10-T
 1      2.0126e-01   1.4696e+08 8.0098e-02   1.4696e+08   9.3388e-02   1.4696e+08     8.9584e-01   1.3535e+09    6.2428e-01   1.3638e+09     1.2072e+00   1.3535e+09   4.0734e+00   5.4450e+09    2.2476e+00   5.4708e+09    5.0428e+00   5.4450e+09   2.1248e-03   1.5211e+08   1.3669e-02   1.3690e+09   4.7833e-02   5.4759e+09   6.6857e-02  7.4649e-01   3.1128e+00   4.7672e-01   6.2903e-01  2.2271e+00   4.7675e-01   6.2990e-01    2.2273e+00    7.8399e-03    8.6487e-02    3.5536e-01   5.2814e-02 6.6225e-02   2.4584e-01   4.5115e-02   6.6404e-02   2.4489e-01
 2      3.2635e-01   2.9392e+08 2.4204e-01   3.2482e+08   1.1522e-01   3.0422e+08     1.2835e+00   2.7071e+09    1.0697e+00   2.9234e+09     9.9480e-01   2.7380e+09   1.4504e+01   1.0890e+10    1.5265e+01   1.1694e+10    3.7799e+00   1.0952e+10   5.2164e-03   3.0422e+08   3.4056e-02   2.7380e+09   7.7659e-02   1.0952e+10   1.1703e-01  9.3872e-01   3.5976e+00   4.7905e-01   7.3497e-01  3.3331e+00   4.7886e-01   7.3415e-01    3.3297e+00    1.2450e-02    1.0124e-01    3.9873e-01   4.7633e-02 7.4107e-02   2.8513e-01   4.7733e-02   7.4693e-02   2.8507e-01
 8      7.9573e-01   1.1757e+09 1.0070e+00   1.2993e+09   3.3729e-01   1.2169e+09     3.3663e+00   1.0828e+10    3.9830e+00   1.1694e+10     2.4656e+00   1.0952e+10   2.2209e+01   4.3560e+10    2.2545e+01   4.6775e+10    9.2040e+00   4.3807e+10   1.3652e-02   1.2169e+09   8.2139e-02   1.0952e+10   1.8984e-01   4.3807e+10   4.2722e-01  2.8760e+00   1.0913e+01   1.3256e+00   1.7457e+00  7.9644e+00   1.3210e+00   1.7410e+00    7.9679e+00    4.2997e-02    2.6899e-01    1.6814e+00   1.3183e-01 1.7832e-01   8.8593e-01   1.3082e-01   1.7947e-01   8.8420e-01
@@ -666,7 +689,7 @@ Some conclusions may be drawn:
 % These results are of course specific to the sparsity pattern of the initial matrix $A$, and thus $\mathbb{A} = A\otimes T$, and matrix types. For example, if the matrices were to be offloaded to a GPU, one could instead benchmark \pk{MatAIJcuSPARSE}.
 The mini-app may also be used to benchmark intranode performance of matrix--matrix multiplications, either with multiple OpenMP threads, or using CUDA.
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][export] OMP_NUM_THREADS=20 &&&& &fvtextcolor[myyellow][export] MKL_NUM_THREADS=20 
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][export] OMP_NUM_THREADS=20 &&&& &fvtextcolor[myyellow][export] MKL_NUM_THREADS=20
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 1 ./MatProduct -f binaryoutput -log_view                                 &fvtextcolor[myred][\]
   -bs 1,3,6 -N 1,2,8,16,32,64 -type aijmkl,baijmkl,sbaijmkl,aijcusparse
 \end{Verbatim}
@@ -808,13 +831,13 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
           \path[shape=coordinate]
 (rel axis cs:-0.001,0.54) coordinate(b1) (rel axis cs: 1.001,0.54) coordinate(b2)
 (rel axis cs: 1.001,0.56) coordinate(b3) (rel axis cs:-0.001,0.56) coordinate(b4);
-  \path[fill=white] (b2) -- (b3) 
-                decorate {-- (b4)}  
-                -- (b1) 
+  \path[fill=white] (b2) -- (b3)
+                decorate {-- (b4)}
+                -- (b1)
                 decorate {-- (b2)};
-  \draw         (b3) 
-                decorate {-- (b4)};  
-  \draw         (b1) 
+  \draw         (b3)
+                decorate {-- (b4)};
+  \draw         (b1)
                 decorate {-- (b2)};
 \end{scope}
           \end{pgfonlayer}{foreground}
@@ -870,7 +893,7 @@ flag \pk{-{}-download-hpddm -{}-download-slepc}. It is then
 possible to select the corresponding \pk{PC}
 using the command line option \pk{-pc\_type hpddm}, or the routine \pk{PCSetType}(pc,
 \pk{PCHPDDM}).% and its Fortran equivalent.
-In this section, it is assumed that one wants to solve 
+In this section, it is assumed that one wants to solve
 \begin{equation}
     Ax = b,
 \end{equation}
@@ -1075,7 +1098,7 @@ Users can choose between $M'^{-1}_{\text{additive}}$ and:
     \text{(default)}\\
     M'^{-1}_{\text{balanced}} &= Q + \left(I - AQ\right)M^{-1}\left(I - AQ\right),
 \end{align*}
-with $Q = P \left(P^T A P\right)^{-1} P^T$. These preconditioners may be selected using the 
+with $Q = P \left(P^T A P\right)^{-1} P^T$. These preconditioners may be selected using the
 options \pk{-pc\_hpddm\_coarse\_correction} \pk{(deflated$|$additive$|$balanced)} or the
 routine \pk{PCHPDDMSetCoarseCorrectionType}(pc, type) and its Fortran equivalent.
 
@@ -1112,14 +1135,14 @@ Here are some examples with $N = 16$ subdomains on the finest level:
     \item \pk{-pc\_hpddm\_levels\_1\_eps\_threshold 0.4 -pc\_hpddm\_coarse\_p 8} would
         define a two-level method with the coarse operator being distributed
         among 8 processes, assuming that there is globally enough $\lambda_i$ in~\cref{eq:gevp} lower than 0.4;
-    \item \pk{-pc\_hpddm\_levels\_1\_eps\_nev 10 -pc\_hpddm\_levels\_2\_p 8} \linebreak 
+    \item \pk{-pc\_hpddm\_levels\_1\_eps\_nev 10 -pc\_hpddm\_levels\_2\_p 8} \linebreak
         \pk{-pc\_hpddm\_levels\_2\_eps\_nev 10 -pc\_hpddm\_coarse\_p 2} would define
         a three-level method with the second level (resp.~ coarse operator)
         being distributed among 8 (resp.~2) processes;
     \item \pk{-pc\_hpddm\_levels\_1\_eps\_nev 10 -pc\_hpddm\_levels\_2\_p 8} is not
         valid because there are only two levels, so the options \pk{levels\_2\_} are
         not registered and coarse\_ has to be used instead;
-    \item \pk{-pc\_hpddm\_levels\_1\_eps\_nev 10 -pc\_hpddm\_levels\_2\_eps\_nev 10} \linebreak \pk{-pc\_hpddm\_coarse\_p 2} 
+    \item \pk{-pc\_hpddm\_levels\_1\_eps\_nev 10 -pc\_hpddm\_levels\_2\_eps\_nev 10} \linebreak \pk{-pc\_hpddm\_coarse\_p 2}
         is not valid because there is no option \pk{levels\_2\_p}, so the default
         value of 1 is used for the second level, and it is thus not possible to
         define a third level with a single second-level subdomain.
@@ -1155,7 +1178,7 @@ Its strong formulation is given by:
 The physical domain $\Omega$ is a beam of dimensions $[0,6] \times [0,1] \times [0,1]$.
 The Cauchy stress tensor $\sigma$ is given by Hooke’s law: it can be expressed in terms of Young’s modulus $E$ and Poisson’s ratio $\nu$.
 \[
-	\sigma_{ij}(u) = 
+	\sigma_{ij}(u) =
 	\begin{cases}
 		2\mu \varepsilon_{ij}(u)													\quad	& i \ne j, \\
 		2\mu \varepsilon_{ii}(u) + \lambda \text{div}(u)	\quad	& i = j,
@@ -1167,7 +1190,7 @@ where
 \]
 $\Gamma_D$ is the subset of the boundary of $\Omega$ corresponding to $x = 0$.
 $\Gamma_N$ is defined as the complementary of $\Gamma_D$ with respect to the boundary of $\Omega$.
-\Cref{eq:elasticity} is discretized using 
+\Cref{eq:elasticity} is discretized using
 $(\mathbb{P}_1, \mathbb{P}_1, \mathbb{P}_1)$ finite elements.
 The physical domain $\Omega$ is decomposed in $13{,}824$ subdomains using the automatic graph partitioner ParMETIS~\cite{karypis1998fast}.
 The number of unknowns is $\pgfmathprintnumber{593} \times 10^6$, with approximately $\pgfmathprintnumber{45}$ nonzero coefficients per row.
@@ -1277,9 +1300,9 @@ By default, the coarse problem in \pk{PCHPDDM} is solved using an exact $LU$ or 
 \fvtextcolor{mygreen}{# cf. \cref{enum:inexact}}
 -prefix_push pc_hpddm_levels_2_
  -p           $M$
- -ksp_type    gmres            
- -ksp_rtol    1.0e-2           
- -ksp_pc_side right            
+ -ksp_type    gmres
+ -ksp_rtol    1.0e-2
+ -ksp_pc_side right
  -pc_type     asm
  -eps_nev     80
  -sub_pc_type cholesky
@@ -1449,14 +1472,14 @@ Second, when properly parametrized, \cref{enum:exact} and \cref{enum:inexact} yi
  32 1.242918661343e-04 4.565136636812e-03
  33 6.466088102124e-05 2.757997749188e-03
  34 3.347704352999e-05 1.722488935062e-03
- 35               nan  1.040719253466e-03 
- 36               nan  6.471646548950e-04 
- 37               nan  3.944692230299e-04 
- 38               nan  2.413209464780e-04 
- 39               nan  1.481390561258e-04 
- 40               nan  9.041135719421e-05 
- 41               nan  5.606739576810e-05 
- 42               nan  3.445256788047e-05 
+ 35               nan  1.040719253466e-03
+ 36               nan  6.471646548950e-04
+ 37               nan  3.944692230299e-04
+ 38               nan  2.413209464780e-04
+ 39               nan  1.481390561258e-04
+ 40               nan  9.041135719421e-05
+ 41               nan  5.606739576810e-05
+ 42               nan  3.445256788047e-05
 }\comparisontable
 \pgfplotstableread{
 it p-16  p-256  p-1024
@@ -1768,7 +1791,7 @@ The option file shows how \pk{PCHPDDM} may be composed into \pk{PCBDDC}. \\[-4pt
  -levels             1
  -adaptive_threshold 2.0
  -coarsening_ratio   8
- 
+
  -neumann_pc_factor_mat_solver_type   mumps
  -dirichlet_pc_factor_mat_solver_type mumps
 &fvtextcolor[mygreen][# continue on the left column]
@@ -1884,7 +1907,7 @@ refactorization for applications that had to deal with multiple right-hand sides
 As a striking example, LOBPCG~\cite{knyazev2001toward} or
 CISS~\cite{sakurai2003projection} implementations in SLEPc are
 currently %\footnote{in version 3.13.2}
-not using blocking when applying 
+not using blocking when applying
 spectral transformations, but this is being rewritten to use the new routine
 \pk{KSPMatSolve}\footnote{\url{https://gitlab.com/slepc/slepc/-/merge_requests/63}} and should be available in version 3.14.0.
 
@@ -1947,6 +1970,17 @@ SLEPc repositories. This work was granted access to the GENCI-sponsored HPC reso
 {\sc S.~Balay, W.~Gropp, L.~Curfman~McInnes, and B.~Smith}, {\em Efficient
   management of parallelism in object-oriented numerical software libraries},
   Modern Software Tools in Scientific Computing,  (1997), pp.~163--202.
+
+\bibitem{templateBook}
+{\sc R.~Barrett, M.~Berry, T.~F. Chan, J.~Demmel, J.~Donato, J.~Dongarra,
+ V.~Eijkhout, R.~Pozo, C.~Romine, and H.~Van der Vorst}
+ {\em Templates for the solution of linear systems: building blocks for iterative methods},
+  Society for Industrial and Applied Mathematics, (1994).
+
+\bibitem{xsdk}
+{\sc R.~Bartlett, I.~Demeshko, T.~Gamblin, G.~Hammond, M.~A. Heroux, J.~Johnson, A.~Klinvex, X.~Li, L.~Curfman~McInnes, J.~D. Moulton, et~al.},
+  {\em xSDK Foundations: Toward an Extreme-scale Scientific Software Development Kit},
+  Supercomputing Frontiers and Innovations, 4 (2017), pp.~69--82.
 
 \bibitem{bastian1998additive}
 {\sc P.~Bastian, G.~Wittum, and W.~Hackbusch}, {\em Additive and multiplicative
@@ -2011,6 +2045,11 @@ SLEPc repositories. This work was granted access to the GENCI-sponsored HPC reso
 {\sc R.~Falgout and U.~Yang}, {\em \emph{hypre}: a library of high performance
   preconditioners}, Computational Science---ICCS 2002,  (2002), pp.~632--641,
   \url{https://www.llnl.gov/casc/hypre}.
+
+\bibitem{Frommer}
+{\sc A.~Frommer, K.~Lund, D.~B. Szyld},
+ {\em Block Krylov subspace methods for funcions of matrices},
+ Electronic Transactions on Numerical Analysis, 47 (2017), pp.~100--126.
 
 \bibitem{gander2006optimized}
 {\sc M.~J. Gander}, {\em Optimized {S}chwarz {M}ethods}, SIAM Journal on
