@@ -319,12 +319,12 @@ ICNTL(27)\footnote{\url{http://mumps.enseeiht.fr/doc/userguide_5.3.1.pdf}, secti
   \subsection{Applications and numerical results}
     \subsubsection{Reproducibility of the results from Parks et
     al.~\cite{parks2006recycling}}
-Alongside the paper introducing GCRODR, a MATLAB implementation was provided and
-is since then
+Alongside the paper introducing GCRODR~\cite{parks2006recycling},
+a MATLAB implementation was provided and is since then
 available\footnote{\url{https://www.sandia.gov/~mlparks/GCRODR.zip}}. It comes
 with a sequence of ten ``linear systems from a finite element fracture mechanics
 problem constructed by Philippe H.\ Geubelle and Spandan Maiti." The goal of
-this paragraph is to explain how the results have been reproduced in PETSc. % Thanks to \pk{KSPHPDDM}, it is quite straightforward. First, the sequence of MATLAB systems had to be converted to PETSc \pk{Mat} and \pk{Vec}. Then, it is just a matter of calling \pk{KSPSolve} in sequence.
+this paragraph is to explain how the results have been reproduced in PETSc.
 The dataset and the source code are available at
 \url{https://gitlab.com/petsc/datafiles/-/tree/master/matrices/hpddm/GCRODR}
 and
@@ -334,11 +334,15 @@ the following tests are performed:
 \begin{itemize}
     \item in MATLAB, unpreconditioned GCRODR(40, 20), ICC(0) left-preconditioned
         GCRODR(40, 20), and Jacobi right-preconditioned GCRODR(40, 20);
-    \item in PETSc with \pk{KSPGMRES}, unpreconditioned unrestarted GMRES($\infty$);
+    \item in PETSc with unpreconditioned and unrestarted GMRES($\infty$) \pk{KSPGMRES};
     \item in PETSc with \pk{KSPHPDDM}, all of the above.
 \end{itemize}
-All PETSc tests are run on four MPI
-processes. They can be launched using the following command line. \\[-4pt]
+The notation GCRODR($n$, $m$) indicates a restart after $n$ iterations and a recycling subspace of dimension $m$.
+In all the cases, convergence is declared when the initial unpreconditioned residual is reduced by 10 orders of magnitude.
+Except for the right-preconditioned GCRODR, these tests are the same as the
+ones from the original GCRODR paper~\cite{parks2006recycling}.
+All PETSc tests are performed using four MPI
+processes and they can be launched using the following command line: \\[-4pt]
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -pc_type none -ksp_rtol 1e-10             &fvtextcolor[myred][\]
   -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_gmres_restart 40 -ksp_hpddm_recycle 20 &fvtextcolor[myred][\]
@@ -353,16 +357,17 @@ processes. They can be launched using the following command line. \\[-4pt]
   -ksp_type hpddm -ksp_gmres_restart 500                                             &fvtextcolor[myred][\]
   -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
 \end{Verbatim}
-The various number of iterations needed to reach the convergence criterion as
-originally set to $10^{-10}$ are gathered in~\cref{fig:comparison}.
-Except for the right-preconditioned GCRODR, these tests are the same as the
-ones from the original GCRODR paper~\cite{parks2006recycling}. Furthermore,
-\pk{PCICC} and ichol from MATLAB are not consistent.  Apart from
-the tests \ref{pgfplots:r2} and \ref{pgfplots:r3} using $ICC(0)$ and \ref{pgfplots:r4} and \ref{pgfplots:r5}
-using the Jacobi method, one may notice that \ref{pgfplots:r0} and
-\ref{pgfplots:r1} (resp. \ref{pgfplots:r6} and \ref{pgfplots:r7}) are almost a
-perfect match and reproduce partially Figure 4.2 from Parks et
-al.~\cite{parks2006recycling}.
+The iteration numbers needed to reach convergence are gathered in~\cref{fig:comparison};
+the cases \ref{pgfplots:r0} and
+\ref{pgfplots:r1} (resp. \ref{pgfplots:r6} and \ref{pgfplots:r7}) reproduce Figure 4.2 in~\cite{parks2006recycling}.
+We note here that the results obtained with
+\pk{PCICC} from PETSc (\ref{pgfplots:r3}) and ichol from MATLAB (\ref{pgfplots:r2}, which uses SuiteSparse) are not consistent.
+%Apart from
+%the tests \ref{pgfplots:r2} and \ref{pgfplots:r3} using $ICC(0)$ and \ref{pgfplots:r4} and \ref{pgfplots:r5}
+%using the Jacobi method, one may notice that \ref{pgfplots:r0} and
+%\ref{pgfplots:r1} (resp. \ref{pgfplots:r6} and \ref{pgfplots:r7}) are almost a
+%perfect match and reproduce partially Figure 4.2 from Parks et
+%al.~\cite{parks2006recycling}.
 \pgfplotstableread{
 sys none-matlab icc-matlab jacobi-matlab none-hpddm icc-hpddm jacobi-hpddm icc-gmres none-gmres icc-petsc none-petsc
 401 498         293        457           497        131       460          127       438        127       438
@@ -399,42 +404,42 @@ sys none-matlab icc-matlab jacobi-matlab none-hpddm icc-hpddm jacobi-hpddm icc-g
         configurations as originally tested by Parks et
         al.~\cite{parks2006recycling}. Note that \pk{PCICC} and
         \textnormal{ichol} from MATLAB are not consistent, hence the discrepancy
-        between \ref{pgfplots:r2} and \ref{pgfplots:r3}. All other \pk{KPSHPDDM}
-        numbers of iterations match with the respective MATLAB or PETSc
-        reference implementation.\label{fig:comparison}}
+        between \ref{pgfplots:r2} and \ref{pgfplots:r3}. In the other cases,
+        the numbers of iterations needed by KSPHPDDM match with the respective
+        MATLAB or PETSc reference implementation.\label{fig:comparison}}
     \end{figure}
     \subsubsection{Linear stability analysis}
-SLEPc~\cite{hernandez2005ssf}, the Scalable Library for Eigenvalue Problem
-computations, is built on top of PETSc. Thus, it is possible to reuse and
-compose \pk{KSP} or preconditioners for solving eigenproblems efficiently, e.g.,
-through spectral transformations. Recently, it has been observed that in the
-field of computational fluid dynamics, the role of recycling can be quite
-significant when performing linear stability analysis~\cite{moulin2018al}.
-The following generalized eigenvalue problem is considered next:
+In this section we apply recycling Krylov methods in the context linear
+stability analysis and consider the solution the following generalized eigenvalue problem:
 \begin{equation}\label{eq:lsa}
     J(q_b)x = \lambda \begin{bmatrix}M & 0 \\ 0 & 0 \end{bmatrix} x,
 \end{equation}
 where $J$ is the Jacobian of the incompressible steady-state Navier--Stokes equation
-evaluated using a given base flow $q_b = \begin{bmatrix}u_b & p_b\end{bmatrix}^T$ and $M$ the discretization of the mass matrix
-on the space of velocities. There are many ways to compute the eigenvalues
-of~\cref{eq:lsa} near a complex-valued shift $\sigma$, but emphasis will be put
-in this paragraph on Krylov--Schur methods~\cite{Stewart2002}. These rely on the successive
-solution of linear systems such as:
+evaluated using a given base flow $q_b = \begin{bmatrix}u_b & p_b\end{bmatrix}^T$ and
+$M$ the discretization of the mass matrix on the space of velocities. Interested
+readers are referred to~\cite{moulin2018al} for more details and for larger
+runs.
+
+The mini-app employed for the numerical results is built on top of FreeFEM~\cite{hecht2012new} and it is
+available at \url{https://github.com/prj-/moulin2019al}. As eigenvalue solver, we consider the Scalable Library for Eigenvalue Problem
+computations (SLEPc)~\cite{hernandez2005ssf}, which is built on top of PETSc,
+and thus reuse its linear solver infrastructure.
+
+There are different methods to compute the eigenvalues
+of~\cref{eq:lsa} near a complex-valued shift $\sigma$; in this paragraph, emphasis will be put
+on Krylov--Schur methods~\cite{Stewart2002}, which rely on spectral tranformation steps
+and on the solution of successive linear systems such as:
 \begin{equation}\label{eq:ks}
-    \left(J(q_b) - \sigma \begin{bmatrix}M&0\\0&0\end{bmatrix}\right)x_i = b_i, i = 1,2,\ldots
+    \left(J(q_b) - \sigma \begin{bmatrix}M&0\\0&0\end{bmatrix}\right)x_i = b_i,
 \end{equation}
-In SLEPc, these systems are parameterized using the \pk{-st\_} prefix, e.g.,
-\pk{-st\_pc\_type~lu}. If they are solved iteratively, it is possible to
-use a \pk{KSP} of type \pk{KSPHPDDM} to recycle information between
-successive linear systems yielded by the convergence of the Krylov--Schur
-algorithm. Using the FreeFEM~\cite{hecht2012new} mini-app from \url{https://github.com/prj-/moulin2019al}
-which precondition~\cref{eq:ks} using a modified augmented Lagrangian
-approach~\cite{Benzi2011a}, the effect of such recycling is shown next for
+which, in SLEPc, are parameterized using the \pk{-st\_} prefix.
+In this work, the above linear system is preconditioned using a modified augmented Lagrangian
+approach~\cite{Benzi2011a,moulin2018al}
+
+The effectiveness of subspace recycling is shown for
 finding the 5 eigenpairs closest to the shift $\sigma = 10^{-6} + 0.6\mathfrak{i}$ for a
-flow past a cylinder at Reynolds 100, interested readers are again referred to
-the previously cited paper~\cite{moulin2018al} for more details and for larger
-runs. Results can be reproduced using the following four commands, the first two
-being merely for generating the base flow $q_b$ with \pk{SNESSolve} using a
+flow past a cylinder at Reynolds 100. Results can be reproduced using the following four commands;
+we note here that the first two commands are merely used to generate the base flow $q_b$ with \pk{SNESSolve} using a
 continuation method on the Reynolds number. \\[-4pt]
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Nonlinear-solver.edp -Re 50 -v 0
@@ -445,12 +450,11 @@ continuation method on the Reynolds number. \\[-4pt]
   -st_ksp_type hpddm -st_ksp_gmres_restart 200 -st_ksp_converged_reason              &fvtextcolor[myred][\]
   -st_ksp_hpddm_variant flexible -st_ksp_hpddm_recycle 10 -st_ksp_hpddm_type gcrodr
 \end{Verbatim}
-The Krylov--Schur algorithm converges in six outer iterations. In each of these
-iterations, multiple linear systems having the structure of~\cref{eq:ks} are
-solved. In~\cref{fig:comparison-slepc}, numbers of iterates per inner solves
-are reported. After the first inner solve, once recycling kicks in, one may
-clearly see the benefits of switching from \pk{KSPFGMRES} to \pk{KSPHPDDM}.
-Indeed, through the 46 inner solves, these numbers are roughly decreased by 25. In terms of runtime, \SI[round-mode          = places,round-precision=1]{1.5098e+03}{\sec} (resp.~\SI[round-mode          = places,round-precision=1]{1.0524e+03}{\sec}) is spent in \pk{EPSSolve} when using \pk{KSPFGMRES} (resp.~\pk{KSPHPDDM}). These timings, and all which follow except in~\cref{sec:primitives}, have been obtained on {Ir\`ene}, a system composed of \pgfmathprintnumber[assume math mode=true]{1656} nodes with two 24-core Intel Xeon Platinum 8168 clocked at \SI{2.7}{\giga\hertz}.
+
+The Krylov--Schur algorithm converges in six outer iterations.
+Recycling of Krylov subspaces with \pk{KSPHPDDM} provides algorithmic speedup by lowering the number of iterations per inner solve,
+as reported in~\cref{fig:comparison-slepc}, from 46 with \pk{KSPFGMRES} to 25.
+A similar speedup can be observed in terms of runtime, with the time spent for the solution of the eigenvalue problem being reduced from \SI[round-mode = places,round-precision=1]{1509}{\sec} to \SI[round-mode = places,round-precision=1]{1052}{\sec}. {\color{red} FIXME LATER: These timings, and all which follow except in~\cref{sec:primitives}, have been obtained on {Ir\`ene}, a system composed of \pgfmathprintnumber[assume math mode=true]{1656} nodes with two 24-core Intel Xeon Platinum 8168 clocked at \SI{2.7}{\giga\hertz}}.
 \pgfplotstableread{
 sys hpddm fgmres
 1   77    77
@@ -524,21 +528,38 @@ N    baij-1-T    baij-1-F   sbaij-1-T   sbaij-1-F  aij-1-T     aij-1-F    baij-3
 64     9.9341e+00   9.4053e+09 1.3822e+01   1.0394e+10   2.6927e+00   9.7350e+09     3.5490e+01   8.6626e+10    4.6966e+01   9.3549e+10     1.9724e+01   8.7615e+10   6.7668e+01   3.4848e+11  6.3229e+01   3.7420e+11  7.4386e+01   3.5046e+11   8.3249e-02   9.7350e+09   5.0956e-01   8.7615e+10   1.2334e+00   3.5046e+11   3.4264e+00  2.3052e+01   8.7358e+01   1.0573e+01   1.3960e+01  6.3695e+01   1.0581e+01   1.3961e+01    6.3949e+01    3.2990e-01    2.1734e+00    1.3526e+01   1.0453e+00 1.4281e+00   7.0763e+00   1.0497e+00   1.4326e+00   7.1714e+00
 }\loadedMatProduct
     \subsubsection{Performance of primitives for block Krylov methods}\label{sec:primitives}
-As detailed in~\cref{sec:interface-ksp}, it is currently not possible with most
-PETSc preconditioners to apply them to a block of vectors. Even though there
-are efforts to enable such an operation for an increasing number of \pk{PC}, in
-this section, the focus is instead put on the matrix--matrix multiplication
-needed in block Krylov methods or when restarting recycling Krylov methods.
-In particular, the performance of three PETSc matrix types are evaluated:
+We close this section discussing the readiness of PETSc (as of version 3.13.2)
+in delivering efficient implementations of the core matrix--matrix multiplication
+needed by block Krylov methods and by recycling Krylov methods when restart is performed.
+
+In particular, we consider three PETSc matrix types:
 \begin{itemize}
     \item \pk{MatSeqAIJ}, standard sequential sparse matrices, based on compressed sparse row format;
     \item \pk{MatSeqBAIJ}, block sparse matrices, based on block compressed sparse row format;
-    \item \pk{MatSeqSBAIJ}, symmetric block sparse matrices.
+    \item \pk{MatSeqSBAIJ}, symmetric block sparse matrices stored in upper triangular form.
 \end{itemize}
-Parallel matrices in PETSc heavily rely on sequential matrices. For example, \pk{MatMPIAIJ}, standard parallel sparse matrices, store on each rank two \pk{MatSeqAIJ}, one with local rows and columns, another with local rows and ``nonlocal'' columns.
-To keep this study succinct, only nondistributed sparse matrices will be evaluated next, which can help draw conclusions for the intraprocess performance of parallel sparse matrices. The Seq substring is now dropped, since in this case, \pk{MatSeqAIJ} is equivalent to \pk{MatAIJ} and so on. The performance of the multiplication primitives of the three aforementioned types will also be compared to MKL inspector--executor sparse BLAS routines~\cite{mkl-web-page}, using a single OpenMP thread. There is an ongoing effort to better integrate these routines in PETSc respective types \pk{MatAIJMKL} and \pk{MatBAIJMKL}, but at the time of writing, direct calls to the MKL were used.
+Their distributed memory counterparts rely on the sequential implementations, with each process
+storing two such matrices, one with local rows and columns, and another with local rows and ``nonlocal'' columns.
+To keep this study succinct, we only evaluate the performances of the sequential implementations, which can help
+in drawing conclusions for the intraprocess performance of the parallel formats.
+For this reason, from now on we drop the \pk{Seq} substring.
+The performances of the multiplication primitives of the three aforementioned types will also be compared to
+those obtained with the MKL inspector--executor sparse BLAS routines~\cite{mkl-web-page}, using a single OpenMP thread.
+We note that there is an ongoing effort to better integrate these routines in PETSc, but at the time of writing, direct calls to the MKL were used.
 
-The Poisson equation on a cube is discretized with $\mathbb{P}_1$ finite elements in double precision with 32-bit integers. This yields a matrix $A$ of dimension one million. Though the numerical values of $A$ are of no interest here, the sparsity pattern is rather common and frequently encountered, e.g., when discretizing partial differential equations. Then, a random symmetric dense matrix $T$ of dimension $b$ is generated, for $b \in \{ 1,3,6 \}$, and the following matrix is evaluated $\mathbb{A} = A \otimes T$. The matrix $\mathbb{A}$ is then assembled into all three formats described above. For block matrices, a block size of $b$ is used. The performance of the \pk{MatProductNumeric} operation is evaluated for tall-and-skinny dense matrices with a varying number of columns $N \in \{1,2,8,16,32,64\}$. For $N=1$, the \pk{MatMult} operation for matrix--vector multiplication is used instead. All results are gathered in~\cref{fig:perfAX}. They can be reproduced using the following mini-app: \url{http://jolivet.perso.enseeiht.fr/MatProduct.c} and any input \pk{MatAIJ} stored in binary format, here using the default name \pk{binaryoutput}.
+To perform the benchmarking, we first discretize the Poisson equation on a cube with $\mathbb{P}_1$ finite elements
+and obtain a matrix $A$ of dimension one million. Though the numerical
+values of $A$ are of no interest here, the sparsity pattern is rather common and frequently encountered when
+discretizing partial differential equations. We then generate a random symmetric dense matrix $T$ of dimension $b$,
+for $b \in \{ 1,3,6 \}$, and we construct the matrix $\mathbb{A} = A \otimes T$ into all three formats described above, using
+a block size of $b$ for the block storage formats.
+The performance of the \pk{MatProductNumeric} operation is evaluated for tall-and-skinny dense matrices with a varying number
+of columns $N \in \{2,8,16,32,64\}$. For the single column case $N=1$, the \pk{MatMult} operation is used.
+All results have been obtained using double precision arithmetic and 32-bit integers; we report the scaled efficiency (measured in GFLOP per second)
+with respect to the baseline \pk{MatAIJ} implementation with $N=1$ in~\cref{fig:perfAX}, where performances have been averaged over five consecutive
+product operations.
+They can be reproduced by using the mini-app \url{http://jolivet.perso.enseeiht.fr/MatProduct.c} and any input \pk{MatAIJ} stored in binary format,
+here using the default name \pk{binaryoutput} {\color{red} Do we want to provide the binary of the matrix used?}.
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpicc] MatProduct.c -O3 -I&fvtextcolor[myyellow][${PETSC_DIR}]/&fvtextcolor[myyellow][${PETSC_ARCH}]/include                        &fvtextcolor[myred][\]
   -I&fvtextcolor[myyellow][${PETSC_DIR}]/include -L&fvtextcolor[myyellow][${PETSC_DIR}]/&fvtextcolor[myyellow][${PETSC_ARCH}]/lib -lpetsc -o MatProduct
@@ -678,22 +699,25 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
            \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-10-F}/\thisrow{sbaijmkl-seq-10-T}/(\storeresultIII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:mklsbaijseq10}
     \end{semilogxaxis}
     \end{tikzpicture}
-   \caption{Performance of the matrix--matrix multiplication as implemented in PETSc for three sparse matrix types. As baseline values with $N=1$, performance of \pk{MatAIJ} matrix--vector multiplication is used~\ref{pgfplots:aij1}. Results are averages of 5 consecutives multiplications.\label{fig:perfAX}}
+   \caption{Performance of the matrix--matrix multiplication as implemented in PETSc for three sparse matrix types.\label{fig:perfAX}}
 \end{figure}
 Some conclusions may be drawn:
 \begin{itemize}
-    \item with a block size of 1, top plot $b=1$ in~\cref{fig:perfAX}, using any type but \pk{MatAIJ} is counterproductive, see~\ref{pgfplots:baij1} and~\ref{pgfplots:sbaij1}, even with the MKL, see~\ref{pgfplots:mklbaijseq1} and~\ref{pgfplots:mklsbaijseq1}. However, with this format, as soon as the number of columns is greater or equal than 8, the efficiency reaches approximately 200\%, see~\ref{pgfplots:aij1}; PETSc implementation seems slightly better than MKL except for the single-column case;
+    \item with a block size of 1, top plot $b=1$ in~\cref{fig:perfAX}, using any type but \pk{MatAIJ}~\ref{pgfplots:aij1} is counterproductive when $N>1$, see~\ref{pgfplots:baij1} and~\ref{pgfplots:sbaij1}, even when using MKL, see~\ref{pgfplots:mklbaijseq1} and~\ref{pgfplots:mklsbaijseq1}. With 8 or more columns, the performance of \pk{MatAIJ} plateaus and the efficiency reaches approximately 200\%, while the perfomances of the MKL primitives stagnate at around 175\% see~\ref{pgfplots:aij1};
+for the single column case, \pk{MatSBAIJ} and \pk{MatAIJMKL} deliver slightly better performances;
     \item for block sizes lower or equal than 5, loops for matrix--vector and matrix--matrix multiplications are unrolled by hand for block formats. This yields rather disappointing performance, except for \pk{MatAIJ}, see~\ref{pgfplots:aij3} in middle plot $b=3$, and its 350\% efficiency, even with a moderate number of columns. For block formats \ref{pgfplots:baij3} and~\ref{pgfplots:sbaij3}, given the small value of $b$, it could be beneficial to switch to optimized libraries for small matrices, e.g., LIBXSMM~\cite{heinecke2016libxsmm}; in fact, MKL implementation for block formats is here clearly outperforming PETSc, see~\ref{pgfplots:mklbaijseq3} and~\ref{pgfplots:mklsbaijseq3};
-    \item for greater block sizes, \texttt{?gemv} or \texttt{?gemm} are used instead for block formats in PETSc. For \pk{MatAIJ}~\ref{pgfplots:aij10} in bottom plot $b=10$, the efficiency quickly caps near 400\% for $N\in\{8,16,32,64\}$, but for block formats, this reaches 500\% for large number of columns, see~\ref{pgfplots:baij10} and~\ref{pgfplots:sbaij10} for $N=64$. With these numbers of columns, PETSc and MKL perform similarly.
+    \item for block sizes larger than 5, block entry multiplication with PETSc block formats is performed using \texttt{?gemv} or \texttt{?gemm} operations. For \pk{MatAIJ}~\ref{pgfplots:aij10} in the bottom plot corresponding to $b=6$, the efficiency quickly caps near 400\% for $N\in\{8,16,32,64\}$, while reaching 500\% for large number of columns for the block formats, see~\ref{pgfplots:baij10} and~\ref{pgfplots:sbaij10} for $N=64$. With these numbers of columns, PETSc and MKL perform similarly.
 \end{itemize}
 % These results are of course specific to the sparsity pattern of the initial matrix $A$, and thus $\mathbb{A} = A\otimes T$, and matrix types. For example, if the matrices were to be offloaded to a GPU, one could instead benchmark \pk{MatAIJcuSPARSE}.
-The mini-app may also be used to benchmark intranode performance of matrix--matrix multiplications, either with multiple OpenMP threads, or using CUDA.
+
+We then reuse the mini-app to benchmark intranode performance of matrix--matrix multiplications, either with multiple OpenMP threads, or by offloading the operation to a GPU and use the cuSPARSE implementation~\cite{cusparse-web-page}.
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][export] OMP_NUM_THREADS=20 &&&& &fvtextcolor[myyellow][export] MKL_NUM_THREADS=20
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 1 ./MatProduct -f binaryoutput -log_view                                 &fvtextcolor[myred][\]
   -bs 1,3,6 -N 1,2,8,16,32,64 -type aijmkl,baijmkl,sbaijmkl,aijcusparse
 \end{Verbatim}
-Results are reported in~\cref{fig:perfAXpar}. They have been obtained on a single node of {Jean Zay}, a system composed of \pgfmathprintnumber[assume math mode=true]{261} nodes with two 20-core Intel Xeon Gold 6248 clocked at \SI{2.5}{\giga\hertz} and four NVIDIA Tesla V100 SXM2. Neither transfers between host and device nor time spent in \texttt{mkl\_sparse\_optimize} are taken into account. Once again, it is clear that the larger the number of right-hand sides $N$, the better the efficiency, no matter the block size.
+Results reported in~\cref{fig:perfAXpar} have been scaled with respect to the baseline implementation \pk{MatAIJMKL} with $N=1$. They have been obtained on a single node of {Jean Zay}, a system composed of \pgfmathprintnumber[assume math mode=true]{261} nodes with two 20-core Intel Xeon Gold 6248 clocked at \SI{2.5}{\giga\hertz} and four NVIDIA Tesla V100 SXM2. Neither transfers between host and device nor time spent in \texttt{mkl\_sparse\_optimize} have been taken into account. {\color{red} FEW MORE SENTENCES, percentage of peak, wait for results with different number of threads}
+
 \begin{figure}[tbp]
 \pgfkeys{/pgf/fpu}
   \pgfmathparse{1.4696e+08/7.8399e-03/1000000000.0}\edef\storeresultI{\pgfmathresult}
@@ -843,7 +867,7 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
           \end{pgfonlayer}{foreground}
     \end{semilogxaxis}
     \end{tikzpicture}
-   \caption{Performance of the matrix--matrix multiplication as implemented in PETSc using intranode parallelism. As baseline values with $N=1$, performance of \pk{MatAIJMKL} matrix--vector multiplication is used~\ref{pgfplots:aijmkl1}. Results are averages of 5 consecutives multiplications.\label{fig:perfAXpar}}
+   \caption{Performance of the matrix--matrix multiplication as implemented in PETSc using intranode parallelism. \label{fig:perfAXpar}}
 \end{figure}
 \section{PCHPDDM}\label{sec:PCHPDDM}
   \subsection{Related work}
@@ -2174,6 +2198,12 @@ SLEPc repositories. This work was granted access to the GENCI-sponsored HPC reso
   Preconditioner for Large-Scale Hydrodynamic Stability Analysis}}, Computer
   Methods in Applied Mechanics and Engineering, 351 (2019), pp.~718--743,
   \url{https://github.com/prj-/moulin2019al}.
+
+\bibitem{cusparse-web-page}
+{\sc NVIDIA}, {\em {cuSPARSE} web page}.
+\newblock
+  \url{https://docs.nvidia.com/cuda/cusparse/index.html},
+  2020.
 
 \bibitem{notay2000flexible}
 {\sc Y.~Notay}, {\em Flexible conjugate gradients}, SIAM Journal on Scientific
