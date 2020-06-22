@@ -122,7 +122,7 @@ preconditioners~\cite{jolivet2013scalable} and advanced iterative
 methods~\cite{jolivet2016block} which can efficiently deal with linear
 systems with multiple right-hand sides (also known and as block iterative methods)
 and when there is a recurrence of varying coefficient matrices and right-hand
-sides (recycling iterative methods). For a introduction to domain decomposition methods, see
+sides (recycling iterative methods). For an introduction to domain decomposition methods, see
 ~\cite{smith2004domain,dolean2014ddm,olofbook,tarekmathewbook} {\color{red} FIX CITATIONS}.
 
 % Htool ?
@@ -290,7 +290,7 @@ via \pk{KSPHPDDMSetDeflationSpace} in case end users already know a good initial
 deflation subspace.
 
     \subsubsection{MatKAIJ and systems with multiple right-hand sides\label{sec:matkaij}}
-{\color{red} TODO: move KSPMatSolve discussion out, and clean up the section}
+{\color{red} TODO: move KSPMatSolve discussion out, and clean up the section, add results for irk?}
 There is a wide range of available matrix types in PETSc. One of them is
 \pk{MatKAIJ}, for which it is assumed that an operator may be written as $I \otimes S
 + A \otimes T$, with $S$ and $T$ elements of $\mathbb{K}^{p\times q}$ and
@@ -874,77 +874,84 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
 Domain decomposition methods are, alongside multigrid methods, one of the
 dominant paradigms for defining efficient and robust preconditioners in
 modern large-scale applications dealing with partial differential equations.
+For an introduction to domain decomposition methods, see
+~\cite{smith2004domain,dolean2014ddm,olofbook,tarekmathewbook} {\color{red} FIX CITATIONS}.
 % In PETSc, preconditioners inherit from the \pk{PC} base class.
-Historically, the block Jacobi and overlapping Schwarz methods were implemented
-as \pk{PCBJACOBI} and \pk{PCASM} respectively. ASM stands for additive Schwarz
-method, as originally introduced by Schwarz~\cite{schwarz1870alternating}, but
-the PETSc implementation is more versatile in the sense that one can easily
-switch between this method and other variants such as the restricted additive
-Schwarz method~\cite{cai1999restricted}. More details about overlapping domain decomposition
-preconditioners will be given in~\cref{sec:interface-pc}, but first the other
-related preconditioners will be quickly presented.
 
+Basic one-level methods such as the block Jacobi and the (overlapping) additive Schwarz method are implemented
+in PETSc as \pk{PCBJACOBI} and \pk{PCASM} respectively, with some additional customization~\cite{cai1999restricted}
+available for \pk{PCASM}. However, none of these methods provide automatic support for a coarse level solver,
+which is mandatory to obtain algorithmic scalability with a large number of processes.
+%ASM stands for additive Schwarz
+%method, as originally introduced by Schwarz~\cite{schwarz1870alternating}, but
+%the PETSc implementation is more versatile in the sense that one can easily
+%switch between this method and other variants such as the restricted additive
+%Schwarz method~\cite{cai1999restricted}. More details about overlapping domain decomposition
+%preconditioners will be given in~\cref{sec:interface-pc}, but first the other
+%related preconditioners will be quickly presented.
 % In PETSc, there is also an implementation of two-level overlapping Schwarz
 % methods using a generalized Dryja, Smith, Widlund
 % preconditioner~\cite{dohrmann2008domain}. Its type is \pk{PCEXOTIC}.
-When it comes to nonoverlapping preconditioners, \pk{PCNN} implements a basic balancing
-Neumann--Neumann method~\cite{mandel1993balancing}. Much more advanced
-techniques are available in \pk{PCBDDC}~\cite{zampini2016pcbddc}: adaptive selection
-of primal constraints~\cite{pechstein2017unified}, change of basis for problems in
-$H(\text{curl})$~\cite{dohrmann2016bddc}$\ldots$ For multigrid,
-\pk{PCMG} exposes a machinery for geometric or algebraic preconditioners. In
-particular, it is used for the implementation of the smoothed-aggregation
+Furthermore, PETSc provides domain decomposition methods of the non-overlapping type;
+\pk{PCNN} implements a basic balancing
+Neumann--Neumann method~\cite{mandel1993balancing}, while more advanced
+preconditioning techniques are available with \pk{PCBDDC}~\cite{zampini2016pcbddc}, including guaranteed robust convergence
+by means of adaptive selection
+of primal constraints~\cite{pechstein2017unified} and support for $H(\text{curl})$ and $H(\text{div})$
+conforming finite elements~\cite{zampinihcurl1,zampinihcurl2,zampinihdiv,zampinidarcy}, as well as for IsoGeometric Analysys \cite{zampiniiga1,zampiniiga2,zampiniiga3}.
+For multigrid,
+\pk{PCMG} provides a unified framework for geometric or algebraic preconditioners, which is used for the implementation of the smoothed-aggregation
 \pk{PCGAMG}~\cite{adams2004ultra}. There are also interfaces to other well-known
-multigrid packages such as \pk{PCHYPRE} or \pk{PCML}~\cite{gee2006ml} from Trilinos. Of
+multigrid packages such as \pk{PCHYPRE}~\cite{falgout2002hypre} or \pk{PCML}~\cite{gee2006ml} from Trilinos. Of
 course, there are many other available domain decomposition preconditioners,
 either accessible through high-level libraries, e.g., FROSch~\cite{Heinlein:2016:PIT} in
 Trilinos, or as stand-alone packages, e.g., BDDCML~\cite{vsistek2013parallel} or
 FEMPAR-BDDC~\cite{badia2014highly}.
 
-HPDDM implements the same one-level overlapping Schwarz methods as PETSc, albeit
-emphasis is also put on optimized Schwarz methods~\cite{gander2006optimized}.
-The main theoretical framework for defining robust two-level methods is called GenEO,
-for generalized eigenvalue problem on the overlap~\cite{spillane2011robust,spillane2013abstract}.
-GenEO was also implemented in other libraries~\cite{butler2020high}, but to the best of our knowledge,
-the interface between HPDDM and PETSc proposes the first high-level access to
-GenEO so that it can, for example, be used as a block-decomposed
-solver~\cite{brown2012composable}.
+HPDDM implements the same one-level overlapping Schwarz methods as PETSc as well as
+optimized Schwarz methods~\cite{gander2006optimized} {\color{red} Are you planning to expose them too?}.
+It also provides support for defining robust two-level methods using the GENeralized Eigenvalue problem on the Overlap (GenEO) framework~\cite{spillane2011robust,spillane2013abstract}; the results presented in this work presents the first high-level access to
+GenEO from PETSc and its composable solver infrastructrure~\cite{brown2012composable}.
+We note that GenEO has been recently implemented in other libraries as well~\cite{butler2020high}
 
   \subsection{Interfacing HPDDM overlapping Schwarz methods in PETSc\label{sec:interface-pc}}\
-\pk{PCHPDDM}, the interface between HPDDM overlapping Schwarz methods and PETSc, is automatically
+The interface between HPDDM overlapping Schwarz methods and PETSc, \pk{PCHPDDM}, is automatically
 registered since PETSc version 3.12 when one configures PETSc with the extra
 flag \pk{-{}-download-hpddm -{}-download-slepc}. It is then
 possible to select the corresponding \pk{PC}
 using the command line option \pk{-pc\_type hpddm}, or the routine \pk{PCSetType}(pc,
-\pk{PCHPDDM}).% and its Fortran equivalent.
-In this section, it is assumed that one wants to solve
+\pk{PCHPDDM}).
+ % and its Fortran equivalent.
+In this section, we are interested in solving
 \begin{equation}
     Ax = b,
 \end{equation}
 for a given coefficient matrix $A$ and right-hand side $b$ of dimension $n$
 assembled on $N$ processes, using a ksp($A$, $P_A$), i.e., the matrix used to
-define the preconditioner is $A$ itself. Without anything more from the user,
+define the preconditioner is $A$ itself {\color{red} WHY IS THAT? You do not support a different preconditioning matrix?}. Without anything more from the user,
 \pk{PCHPDDM} is strictly equivalent to \pk{PCASM}. That is, if $A$ is distributed among
-$N$ processes the preconditioner $M^{-1}$ is:
+$N$ processes, the action of the preconditioner $M^{-1}$ is:
 \begin{equation}\label{eq:one}
     M^{-1} = \sum_{i = 1}^N \tilde{R}_i^T (R_i A R_i^T)^{-1} R_i,
 \end{equation}
 where $\{R_i\}_{i=1}^N$ are restriction operators that act on a global vector and
-return a vector local to each process, possibly with some overlap.
+return a local vector on each process, possibly with some overlap.
 $\{\tilde{R}_i\}_{i=1}^N$ are the same operators except that coefficients on the
-overlap are set to 0. The action of the inverse of all $\{R_i A R_i^T\}_{i=1}^N$
-can be parameterized through a local \pk{KSP}. If it is assumed that $A$ is the
-discretization of a linear operator $\mathcal{L}$, e.g., $\mathcal{L}=-\Delta$, on a domain $\Omega$, it is
+overlap are set to 0~\cite{cai1999restricted}. The action of each $\{R_i A R_i^T\}^{-1}_{i}$
+can be parameterized through a local \pk{KSP}. When $A$ is the
+discretization of a linear partial differential operator operator $\mathcal{L}$ on a domain $\Omega$, it is
 extremely common to exhibit parallelism by distributing $\Omega$ on $N$
 processes, possibly with some overlap, and to construct the $\{R_i\}_{i=1}^N$ so
-that they map global unknowns to unknowns local to each process. In addition to
+that they map global unknowns to unknowns local to each process.
+
+In addition to
 the local operators $\{R_i A R_i^T\}_{i=1}^N$, GenEO needs users to supply
 the local unassembled matrices~$\{\mathring{A}_i\}_{i=1}^N$, also known as
 Neumann matrices. These are yielded by the
 discretization of $\mathcal{L}$ on each subdomain, with added natural boundary
 conditions on the subdomain boundaries that are not boundaries of the initial
 domain $\Omega$. In the case of the 1D Poisson
-equation with homogeneous Dirichlet boundary conditions discretized using $\mathbb{P}_1$ finite elements, an explicit representation of these various operators is given~\cref{fig:poisson} for a
+equation with homogeneous Dirichlet boundary conditions discretized using $\mathbb{P}_1$ finite elements, an explicit representation of these  operators is given~\cref{fig:poisson} for a
 two-domain decomposition.
 \begin{figure}[t]
     \begin{minipage}[t]{0.495\textwidth}
@@ -1039,7 +1046,8 @@ two-domain decomposition.
     \end{minipage}
 \caption{Notations and basics of overlapping Schwarz methods.\label{fig:poisson}}
 \end{figure}
-Then, it is possible to enrich the original one-level preconditioner
+
+With extra Neumann information at hand, it is then possible to enrich the original one-level preconditioner
 from~\cref{eq:one} using a spectral coarse grid built in the following way:
 \begin{enumerate}
     \item have SLEPc solve the local generalized eigenvalue problem concurrently:
@@ -1052,52 +1060,45 @@ from~\cref{eq:one} using a spectral coarse grid built in the following way:
             M'^{-1}_{\text{additive}} = P \left(P^T A P\right)^{-1} P^T + \sum_{i = 1}^N \tilde{R}_i^T (R_i A R_i^T)^{-1} R_i.
         \end{equation}
 \end{enumerate}
-Note that $\{\tilde{R}_i R_i^T\}_{i=1}^N$ define a partition of unity, i.e.,
+Note that $\{\tilde{R}_i R_i^T\}_{i=1}^N$ defines a partition of unity, i.e.,
 \begin{equation*}
     \sum_{i = 1}^N R_i^T \tilde{R}_i R_i^T R_i = I.
 \end{equation*}
-When used without PETSc and thus SLEPc, step \#1 is solved in HPDDM with
-ARPACK~\cite{lehoucq1998arpack}. Step \#3 is common to most domain
-decomposition or multigrid preconditioners. However, in HPDDM, the special
-structure of the deflation matrix~$P$ which is sparse with dense blocks is
-exploited. Interested readers are referred to the paper describing the technical
-details of the implementation~\cite{jolivet2013scalable}. One important point to
-notice is that the size of the coarse operator $P^TAP$ is much lower
-than $n$, the size of $A$. Furthermore, coarsening is much more aggressive than
-algebraic or geometric multigrids, see~\cref{sec:linear-elasticity} for
-evidence. It is thus common to have the coarse operator distributed on
-fewer processes than for $A$, see for example the concept of telescoping later
-introduced in PETSc~\cite{may2016extreme}. In HPDDM, the coarse operator is
-computed and redistributed simultaneously. This could be technical to implement
-in PETSc as the result of the routine \pk{MatPtAP} is distributed on the same communicator as the one of the input matrix $A$.
+{\color{red} Should we mention the connections with the condition number here? and thus discuss the guaranteed convergence property of the method?}
+
+%When used without PETSc and thus SLEPc, step \#1 is solved in HPDDM with
+%ARPACK~\cite{lehoucq1998arpack}.
+While Step \#3 is common to most domain
+decomposition or multigrid preconditioners, HPDDM takes advantage of the special
+block sparse structure of the deflation matrix~$P$.
+Moreover,
+the size of the coarse operator $P^TAP$ is much lower
+than $n$, the size of $A$, and coarsening is much more aggressive than
+when using algebraic or geometric multigrids methods.
+%, see~\cref{sec:linear-elasticity} for
+%evidence.
+It is thus natural to remap the coarse operator on
+a subset of the processes used to decompose the original matrix $A$; in HPDDM, the coarse operator is
+computed and redistributed simultaneously.
+Interested readers are referred to the paper describing the technical
+details of the implementation~\cite{jolivet2013scalable}.
+We finally note here that similar techniques have been proven beneficial for other types
+of solvers in PETSc~\cite{may2016extreme}.
 
 % Of course, users do not have to implement the three previous steps themselves.
-The auxiliary operators $\{\mathring{A}_i\}_{i=1}^N$ have simply to be provided
-as well as the correspondence from local to global numbering,
-see~\cref{fig:poisson}, using the routine \pk{PCHPDDMSetAuxiliaryMat}.  If there
-is a \pk{DM} attached to the \pk{PC} of type \pk{DMPLEX}~\cite{knepley2009mesh}
-or \pk{DMP4EST}~\cite{BursteddeWilcoxGhattas11}, then these auxiliary
-overlapping operators and the correspondence are automatically assembled by
-PETSc for users, see~\cref{fig:p4est}. Other \pk{DMType} may be supported by
-implementing the proper \pk{DMCreateNeumannOverlap} callback, e.g., \pk{DMDA}
-support could be easily added upon request. With the local
-matrix pencils available, new options will be automatically registered such as
-\pk{-pc\_hpddm\_levels\_1\_eps\_nev} or \pk{-pc\_hpddm\_levels\_1\_eps\_threshold}, which
-may be used to set how many eigenpairs SLEPc should compute in step \#2.  The
-default \pk{-eps\_nev} value is 20, i.e., the dimension of the coarse space is
-$20\times N$ under the assumption that all concurrent SLEPc solves converge.
-It is usually best to keep the same number of eigenvectors on each process for multiple reasons:
-\begin{itemize}
-    \item with standard eigensolvers such as ARPACK or \pk{EPSKRYLOVSCHUR}, it is not possible to compute all eigenpairs in a given interval of $\mathbb{R}^+$. Instead, an upper bound of the number of eigenpairs has to be provided, and then it is possible in \pk{PCHPDDM} to remove eigenvectors associated to eigenvalues above the given \pk{-eps\_threshold}; extra eigenvectors are thus computed, but immediately thrown away;
-    \item if the number of eigenvectors is the same, coarse operators take advantage of block structures and are assembled as \pk{MatMPISBAIJ} or \pk{MatMPIBAIJ} matrices, with usually large block sizes, by default 20; this can have serious memory and performance implications, see~\cref{fig:perfAX};
-    \item during solution phases, it is possible to use the functions \texttt{MPI\_Gather} and \texttt{MPI\_Scatter} to go from one to another level and vice versa, instead of the variable size alternatives \texttt{MPI\_Gatherv} and \texttt{MPI\_Scatterv}, which are more costly.
-\end{itemize}
-Another important option is \pk{-pc\_hpddm\_coarse\_p}, which sets the size of the
-communicator on which the coarse operator should be distributed. The default
-value is 1, i.e., the matrix $P^TAP$ is centralized on a single process.
-The action of both inverses from~\cref{eq:two} can be parameterized through the
-\pk{-pc\_hpddm\_coarse\_ksp\_type} and \pk{-pc\_hpddm\_levels\_1\_ksp\_type} options
-respectively.
+In order to use GenEO from PETSc, the auxiliary operators $\{\mathring{A}_i\}_{i=1}^N$
+and the correspondending local to global map of degrees of freedom (see~\cref{fig:poisson})
+can be provided using the routine \pk{PCHPDDMSetAuxiliaryMat}.
+In special cases where the matrix has been constructed using the PETSc discretization
+instrastucture, the relevant information is automatically computed
+by PETSc. In \cref{fig:p4est} we provide an example of non-overlapping (left) and overlapping (right)
+decomposition using a non-conforming grid with \pk{DMPLEX}~\cite{knepley2009mesh}. The
+mesh has been constructed internally by \pk{DMPLEX} using a random pattern of non-conforming 2:1 refinements
+and a space-filling curve distribution by p4est~\cite{BursteddeWilcoxGhattas11}.
+The required elements needed to properly assemble the Neumann operators in a conforming way are pictured with a lighter color.
+Other \pk{DMType}s, including user-defined, may be supported by
+implementing the proper \pk{DMCreateNeumannOverlap} callback; support for \pk{DMDA}
+could be easily added upon request.
 \begin{figure}[htbp]
   \centering
     \subfloat[Initial nonoverlapping decomposition.]{
@@ -1109,14 +1110,33 @@ respectively.
     \caption{Automatic generation of overlapping subdomains when using a~\pk{DMP4EST}. For clarity, only four subdomains, one of which is disconnected, are colored.\label{fig:p4est}}
 \end{figure}
 
-    \subsubsection{Coarse corrections and eigenvalue problems}
+With the local
+matrix pencils available, new options will be automatically registered such as
+\pk{-pc\_hpddm\_levels\_1\_eps\_nev} or \pk{-pc\_hpddm\_levels\_1\_eps\_threshold}, which
+may be used to customize the eigenpairs SLEPc will compute in step \#2.  The
+default \pk{-eps\_nev} value is 20, i.e., the dimension of the coarse space is
+$20\times N$ under the assumption that all concurrent SLEPc solves converge.
+
+For performance reasons, it is usually better to compute the same number of eigenvectors
+on each process, since in this case the coarse operator will be assembled using the \pk{MatMPISBAIJ} (or \pk{MatMPIBAIJ}) matrix format,
+with usually large block sizes; this can have serious memory and performance implications, see~\cref{fig:perfAX}. During solution phases,
+we can use \texttt{MPI\_Gather} and \texttt{MPI\_Scatter} operations to move between levels,
+instead of the variable size alternatives \texttt{MPI\_Gatherv} and \texttt{MPI\_Scatterv} that could exhibit worse performances.
+In addition, standard eigensolvers such as ARPACK~\cite{lehoucq1998arpack} or \pk{EPSKRYLOVSCHUR} from SLEPc,
+cannot compute all eigenpairs in a given interval of $\mathbb{R}^+$. Instead, an upper bound of the number of eigenpairs has to be provided.
+
+The option \pk{-pc\_hpddm\_coarse\_p} can be used to provide the size of the
+subcommunicator that will be used to remap the coarse operator. With the default
+value of 1, the coarse matrix $P^TAP$ is centralized on a single process.
+The action of the inverses in~\cref{eq:two} can be parameterized through the
+\pk{-pc\_hpddm\_coarse\_ksp\_type} and \pk{-pc\_hpddm\_levels\_1\_ksp\_type} options
+respectively.
+
+    \subsubsection{Coarse corrections customization}
 Some other parameters may be adjusted to define how the one-level preconditioner
-and the coarse grid operator interact with each other. In fact, the additive
-correction from~\cref{eq:two} is the simplest to write down, but most often not
-very efficient numerically~\cite{tang2009comparison}, and thus not used as
-default in \pk{PCHPDDM}. This observation is not specific to domain
-decomposition methods and also applies to multigrid~\cite{bastian1998additive}.
-Users can choose between $M'^{-1}_{\text{additive}}$ and:
+and the coarse grid operator interact. Besided simple the additive
+correction shown in~\cref{eq:two}, users can choose more numerically efficient
+corrections as:~\cite{tang2009comparison,bastian1998additive}
 \begin{align*}
     M'^{-1}_{\text{deflated}} &= Q + M^{-1}\left(I - AQ\right)\quad
     \text{(default)}\\
@@ -1124,72 +1144,86 @@ Users can choose between $M'^{-1}_{\text{additive}}$ and:
 \end{align*}
 with $Q = P \left(P^T A P\right)^{-1} P^T$. These preconditioners may be selected using the
 options \pk{-pc\_hpddm\_coarse\_correction} \pk{(deflated$|$additive$|$balanced)} or the
-routine \pk{PCHPDDMSetCoarseCorrectionType}(pc, type) and its Fortran equivalent.
+routine \pk{PCHPDDMSetCoarseCorrectionType}.
 
-The local generalized eigenvalue problems~\cref{eq:gevp} solved by SLEPc can also be adjusted.
-For example, in addition to the local unassembled Neumann matrices~$\{\mathring{A}_i\}_{i=1}^N$,
-if one has access to local matrices with optimized
-boundary conditions $\{B_i\}_{i=1}^N$, e.g., Robin transmission conditions, it
-is possible to pass these using the routine \pk{PCHPDDMSetRHSMat}(pc, $B_i$).
-The following generalized eigenvalue problems, called GenEO-2 in the
+    \subsubsection{Extension of the GenEO framework}
+The local generalized eigenvalue problems~\cref{eq:gevp} can also be adjusted.
+In addition to the local unassembled Neumann matrices~$\{\mathring{A}_i\}_{i=1}^N$,
+users can prescribe additional local operators defined on the overlapped subdomain and
+with optimized, Robin
+boundary conditions $\{B_i\}_{i=1}^N$ via
+the routine \pk{PCHPDDMSetRHSMat}(pc, $B_i$).
+In such a case, the following generalized eigenvalue problems, called GenEO-2 in the
 literature~\cite{haferssas2017soras}, are then solved in each subdomain:
 \begin{equation*}
     \mathring{A}_i \Lambda_i = \lambda_i B_i \Lambda_i.
 \end{equation*}
+{\color{red} One sentence or two on why this is needed? what are the cases where this is used in practice?}
+
     \subsubsection{Multilevel extension}\label{sec:ml}
 In the previous sections, it was shown how to supply the required information to
 \pk{PCHPDDM} in order to build robust two-level overlapping domain decomposition preconditioners.
-A multilevel extension of the GenEO framework is also
-possible~\cite{aldaas2019multi}. It can be used without any additional
-information provided by users. Since the dimension of the
-coarse operator of the second level grows with the number of subdomains of the
-fine level, switching to a multilevel scheme may alleviate the increasing cost
-of solving coarse systems. \pk{PCHPDDM} follows the same numbering of
-\pk{PCBDDC}%\footnote{which itself follows the opposite numbering of \pk{PCMG}}
-: the finest level is always numbered 1, the level index increases, up until
-the coarsest level whose options are always prefixed by \pk{coarse\_}. In order to
+Since the dimension of the
+coarse operator linearly depends on the number of subdomains of the
+fine level decomposition, switching to a multilevel scheme may alleviate the increasing cost
+of solving the coarse linear system. A multilevel extension of the GenEO framework has been recently
+proposed~\cite{aldaas2019multi}, with the advantage that the multilevel hierarchy can be
+automatically constructed without any additional information from the user.
+
+\pk{PCHPDDM} follows the same numbering of \pk{PCBDDC}:
+the finest level is always numbered with 1, and the level index increases as traversing the hierarchy, up until
+the coarsest level, whose solver options are prefixed by \pk{coarse\_}. In order to
 register an additional level $l' = l+1$, the following conditions must be met at
 level $l$:
 \begin{itemize}
     \item there must be more than one subdomain;
-    \item at least one local eigenvector must be computed.
+    \item at least one local eigenvector must be computed per coarse subdomain.
 \end{itemize}
-Here are some examples with $N = 16$ subdomains on the finest level:
-\begin{itemize}
-    \item \pk{-pc\_hpddm\_levels\_1\_eps\_threshold 0.4 -pc\_hpddm\_coarse\_p 8} would
-        define a two-level method with the coarse operator being distributed
-        among 8 processes, assuming that there is globally enough $\lambda_i$ in~\cref{eq:gevp} lower than 0.4;
-    \item \pk{-pc\_hpddm\_levels\_1\_eps\_nev 10 -pc\_hpddm\_levels\_2\_p 8} \linebreak
-        \pk{-pc\_hpddm\_levels\_2\_eps\_nev 10 -pc\_hpddm\_coarse\_p 2} would define
-        a three-level method with the second level (resp.~ coarse operator)
-        being distributed among 8 (resp.~2) processes;
-    \item \pk{-pc\_hpddm\_levels\_1\_eps\_nev 10 -pc\_hpddm\_levels\_2\_p 8} is not
-        valid because there are only two levels, so the options \pk{levels\_2\_} are
-        not registered and coarse\_ has to be used instead;
-    \item \pk{-pc\_hpddm\_levels\_1\_eps\_nev 10 -pc\_hpddm\_levels\_2\_eps\_nev 10} \linebreak \pk{-pc\_hpddm\_coarse\_p 2}
-        is not valid because there is no option \pk{levels\_2\_p}, so the default
-        value of 1 is used for the second level, and it is thus not possible to
-        define a third level with a single second-level subdomain.
-\end{itemize}
-    \subsubsection{MatIS}
+For example, using $N = 16$ subdomains on the finest level, the options
+
+\pk{-pc\_hpddm\_levels\_1\_eps\_threshold 0.4 -pc\_hpddm\_coarse\_p 8}
+
+\noindent will define a two-level method with the coarse operator being distributed
+among 8 processes, assuming that there is globally enough $\lambda_i$ in~\cref{eq:gevp} smaller than the prescribed threshold 0.4.
+Similarly, the options
+
+\pk{-pc\_hpddm\_levels\_1\_eps\_nev 10 -pc\_hpddm\_levels\_2\_p 8}
+
+\pk{-pc\_hpddm\_levels\_2\_eps\_nev 10 -pc\_hpddm\_coarse\_p 2}
+
+\noindent will define
+a three-level method with the second level distributed among 8 processes, while the coarsest level
+will be built from 10 eigenvalues from the second level and remapped onto 2 processes.
+Additional examples for the solver customization are provided in~\cref{sec:pchpddm-examples}
+%    \item \pk{-pc\_hpddm\_levels\_1\_eps\_nev 10 -pc\_hpddm\_levels\_2\_p 8} is not
+%        valid because there are only two levels, so the options \pk{levels\_2\_} are
+%        not registered and coarse\_ has to be used instead;
+%    \item \pk{-pc\_hpddm\_levels\_1\_eps\_nev 10 -pc\_hpddm\_levels\_2\_eps\_nev 10} \linebreak \pk{-pc\_hpddm\_coarse\_p 2}
+%        is not valid because there is no option \pk{levels\_2\_p}, so the default
+%        value of 1 is used for the second level, and it is thus not possible to
+%        define a third level with a single second-level subdomain.
+%\end{itemize}
+
+    \subsubsection{PCHPDDM for non-overlapping domain decomposition}
 Because of the intrinsic nature of balancing domain
 decomposition methods, \pk{PCNN} and \pk{PCBDDC} must be supplied local unassembled
 matrices. These matrices are equivalent to the $\{\mathring{A}_i\}_{i=1}^N$
 defined \cref{sec:interface-pc}, assuming the domain decomposition is without
 overlap, see for example $\Omega_1$ and $\Omega_2$ from~\cref{fig:poisson} in a
-finite element context. Using a local to global mapping and \pk{MatConvert}, it
-is possible to reconstruct the local assembled matrices, equivalent to the
+finite element context. Since the assembled form of these operators can be reconstructed
+it is possible to construct the Dirichlet operators, e.g.
 $\{R_i A R_i^T\}_{i=1}^N$ from~\cref{sec:interface-pc}. All tools needed by the
 GenEO framework are thus readily available. Note however that one-level
 overlapping Schwarz methods are known for converging slowly when there is in
-fact no overlap. It is common in the field of BDD to see the coarse problem as
-an unassembled operator as well. In fact, this is mandatory to define efficient
-multilevel variants, as implemented in \pk{PCBDDC}. In~\cref{sec:bddc}, it will
-be shown how a coarse problem obtained in \pk{PCBDDC} may be solved using
-\pk{PCHPDDM}.
-  \subsection{Applications and numerical results}
+fact no overlap. {\color{red} add one sentence with reference to Nicole's work on GenEO for BDD?}
+%It is common in the field of BDD to see the coarse problem as
+%an unassembled operator as well. In fact, this is mandatory to define efficient
+%multilevel variants, as implemented in \pk{PCBDDC}. In~\cref{sec:bddc}, it will
+%be shown how a coarse problem obtained in \pk{PCBDDC} may be solved using
+%\pk{PCHPDDM}.
+  \subsection{Applications and numerical results}\label{sec:pchpddm-examples}
     \subsubsection{System of elasticity}\label{sec:linear-elasticity}
-Considering only small displacements, this linear problem with highly heterogeneous elastic moduli is solved in 3D.
+We first report on solving the three-dimensional system of linear elasticy with highly heterogeneous elastic modulus.
 Its strong formulation is given by:
 \begin{align}
 	\label{eq:elasticity}
@@ -1215,10 +1249,14 @@ where
 $\Gamma_D$ is the subset of the boundary of $\Omega$ corresponding to $x = 0$.
 $\Gamma_N$ is defined as the complementary of $\Gamma_D$ with respect to the boundary of $\Omega$.
 \Cref{eq:elasticity} is discretized using
-$(\mathbb{P}_1, \mathbb{P}_1, \mathbb{P}_1)$ finite elements.
+$(\mathbb{P}_1, \mathbb{P}_1, \mathbb{P}_1)$ finite elements resulting in $\pgfmathprintnumber{593} \times 10^6$ number of uknowns
+with approximately $\pgfmathprintnumber{45}$ nonzero coefficients per row.
 The physical domain $\Omega$ is decomposed in $13{,}824$ subdomains using the automatic graph partitioner ParMETIS~\cite{karypis1998fast}.
-The number of unknowns is $\pgfmathprintnumber{593} \times 10^6$, with approximately $\pgfmathprintnumber{45}$ nonzero coefficients per row.
-There are heterogeneities due to jumps in $E$ and $\nu$. The following discontinuous piecewise constant values are considered: $(E_1, \nu_1) = (2\times 10^{11}, 0.25)$, $(E_2, \nu_2) = (10^{7}, 0.45)$, see~\cref{fig:elas}.
+There are heterogeneities due to jumps in $E$ and $\nu$. The following discontinuous piecewise constant values are considered: $(E_1, \nu_1) = (2\times 10^{11}, 0.25)$ in blue regions, while $(E_2, \nu_2) = (10^{7}, 0.45)$ in red regions, see~\cref{fig:elas}. {\color{red} Pierre, check the blue/red here and in the figure caption}
+The code used to produce these results was borrowed from
+the original paper about the multilevel extension of
+GenEO~\cite{aldaas2019multi} and it is available
+at~\url{https://github.com/prj-/aldaas2019multi}.
 \begin{figure}[htbp]
   \centering
   \begin{tikzpicture}[remember picture]
@@ -1248,16 +1286,17 @@ There are heterogeneities due to jumps in $E$ and $\nu$. The following discontin
   \end{tikzpicture}
     \caption{Deformed geometrical configuration of a 3D clamped beam subject to gravity. The striped plane in the background shows a cut of the resting configuration with the jumps in the coefficient $E_1={\color{paraviewblue}10^7}$ and $E_2={\color{paraviewred}2\times 10^{11}}$, aligned with those of $\nu$.\label{fig:elas}}
 \end{figure}
+
 The following solvers are compared:
 \begin{enumerate}
     \item \pk{PCGAMG};\label{enum:gamg}
     \item \pk{PCHPDDM} with an exact coarse solver;\label{enum:exact}
-    \item \pk{PCHPDDM} with an inexact coarse solver using \pk{PCHYPRE};\label{enum:inexacthypre}
-    \item \pk{PCHPDDM} with inexact coarse solvers using GenEO multilevel extension, cf.~\cref{sec:ml}.\label{enum:inexact}
+    \item \pk{PCHPDDM} with an inexact coarse solver using \pk{PCHYPRE};\label{enum:inexacthypre} {\color{red} I think we should not include this case}
+    \item \pk{PCHPDDM} with inexact coarse solvers using GenEO multilevel extension.\label{enum:inexact} %, cf.~\cref{sec:ml}.\label{enum:inexact}
 \end{enumerate}
-The options \pk{-ksp\_gmres\_modifiedgramschmidt
+As a linear solver, we use flexible GMRES, customized with the options \pk{-ksp\_gmres\_modifiedgramschmidt
 -ksp\_gmres\_restart 50
--ksp\_type fgmres} are used in conjunction with all \pk{PC}. The options specific to each solver described above are given next. \\[-4pt]
+-ksp\_type fgmres}. The options specific to each solver described above are given below. \\[-4pt]
 \begin{minipage}[t]{0.34\textwidth}
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=\\\{\}]
 \fvtextcolor{mygreen}{# cf. \cref{enum:gamg}}
@@ -1301,7 +1340,7 @@ The options \pk{-ksp\_gmres\_modifiedgramschmidt
 -prefix_pop
 \end{Verbatim}
 \end{minipage} \\
-By default, the coarse problem in \pk{PCHPDDM} is solved using an exact $LU$ or Cholesky factorization, in this case using 24 processes and MKL CPARDISO. Switching to an inexact solver using \pk{PCHYPRE} (resp.~GenEO multilevel extension), cf.~\cref{enum:inexacthypre} (resp.~\cref{enum:inexact}), is straightforward. \\[-4pt]
+By default, the coarse problem in \pk{PCHPDDM} is solved using an exact $LU$ or Cholesky factorization, in this case using 24 processes and \pk{MKL\_CPARDISO}. Switching to an inexact solver using \pk{PCHYPRE} (resp.~GenEO multilevel extension), cf.~\cref{enum:inexacthypre} (resp.~\cref{enum:inexact}), is straightforward. \\[-4pt]
 \begin{minipage}[t]{0.4\textwidth}
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=\\\{\}, codes={\catcode`$=3\catcode`^=7}]
 \fvtextcolor{mygreen}{# cf. \cref{enum:inexacthypre}}
@@ -1336,7 +1375,7 @@ By default, the coarse problem in \pk{PCHPDDM} is solved using an exact $LU$ or 
 \end{Verbatim}
 \vspace*{-0.5cm}
 \end{minipage} \\
-$M$ is the number of subdomains used to define the second-level domain decomposition, which is an aggregation of first-level subdomain.
+For the multivel extension of GenEO, $M$ is the number of subdomains used to define the second-level domain decomposition, which is an aggregation of first-level subdomain.
 When it comes to convergence, first note that BoomerAMG from \emph{hypre} has a really hard time reaching the stopping criterion of $10^{-2}$ when solving GenEO coarse problems. This is emphasized in~\cref{fig:hypre-conv}, where the lack of convergence at the coarse level with \pk{PCHYPRE} greatly deteriorates the outer solver convergence, this configuration is thus discarded next and motivates the need for GenEO multilevel extension.
 \pgfplotstableread{
 it res inner
@@ -1458,7 +1497,7 @@ it res inner
     as a coarse solver. The maximum number of iterations of both the inner coarse solver and the outer solver is set to 100.\label{fig:hypre-conv}}
 \end{figure}
 
-Second, when properly parametrized, \cref{enum:exact} and \cref{enum:inexact} yield the same number of outer iterates. In~\cref{fig:gamg-geneo}, the convergence history of \pk{PCGAMG} and \pk{PCHPDDM} are reported. In~\cref{fig:inexact}, the number of inner coarse iterations are reported for various values of $M$. In the case of a two-level method,~\cref{enum:exact}, this number is equal to one and is thus not reported in the figure.
+Considering the parametrization used for the \pk{PCHPDDM} solvers, \cref{enum:exact} and \cref{enum:inexact} yield the same number of outer iterates. In~\cref{fig:gamg-geneo}, the convergence history of \pk{PCGAMG} and \pk{PCHPDDM} are reported. In~\cref{fig:inexact}, the number of inner coarse iterations are reported for various values of $M$. In the case of a two-level method,~\cref{enum:exact}, this number is equal to one and is thus not reported in the figure.
 \pgfplotstableread{
     it gamg hpddm
   0 3.859411178402e+00 3.859411178402e+00
@@ -1599,16 +1638,13 @@ it p-16  p-256  p-1024
     \caption{Convergence histories of \pk{PCGAMG} and \pk{PCHPDDM} for solving the 3D system of linear elasticity. For \pk{PCHPDDM}, a comparison of the number of inner coarse iterations is displayed when using an inexact method, cf.~\cref{enum:inexact}.}
 \end{figure}
 Note that in this test case, \pk{PCGAMG} is faster than all \pk{PCHPDDM}
-alternatives. Its setup (resp.~solution) phase takes 70 (resp.~19) seconds while
-for the best parameters of \pk{PCHPDDM}, which is
-configuration~\ref{pgfplots:p-256} with 256 second-level subdomains, its
-respectively 64 and 36 seconds. Out of these 64 seconds, 31 are spent in SLEPc
+alternatives. For \pk{PCGAMG}, the setup phase takes 70 seconds, while the solution phase requires 19 seconds;
+on the other hand, the fastest \pk{PCHPDDM} configuration, which corresponds to
+configuration~\ref{pgfplots:p-256} with 256 second-level subdomains, requires 64 seconds to setup and 31 for the solution of the linear system.
+Out of the 64 seconds needed for \pk{PCHPDDM} setup, 31 are spent in SLEPc
 \pk{EPSSolve} for solving GenEO at each level but the coarsest. With respect to
 coarsening, \pk{PCGAMG} has an operator complexity of 1.501, while for \pk{PCHPDDM},
-it is 1.015. The code used to produce these results was borrowed from
-the original paper about the multilevel extension of
-GenEO~\cite{aldaas2019multi} and is available
-at~\url{https://github.com/prj-/aldaas2019multi}.
+it is 1.015.
     \subsubsection{Liouville--Bratu--Gelfand equation} The strong formulation of this nonlinear problem is given by:
 \begin{equation}
     -\nabla \cdot (\kappa \nabla u) - 6.2 \exp^u = 0,\label{eq:bratu}
@@ -1782,7 +1818,7 @@ $1$
     of function norms for nonlinear solves.}
 \end{figure}
     \subsubsection{Using PCHPDDM as a coarse grid solver for PCBDDC\label{sec:bddc}}
-A last toy problem is explained to show how one may switch between a multilevel
+A last toy problem is here proposed to show how one may switch between a multilevel
 BDDC solver to a two-level BDDC solver using \pk{PCHPDDM} for solving the
 coarse problem. The problem is generated using MFEM~\cite{anderson2019mfem}
 definite Maxwell example available at \url{https://github.com/mfem/mfem/blob/master/examples/petsc/ex3p.cpp}.
@@ -1795,9 +1831,9 @@ The strong formulation of the continuous problem is given by:
         \sin{4\pi z}&\sin{4\pi x} \end{bmatrix}^T \text{on } \partial \Omega.
 	\end{split}
 \end{align}
-It is discretized using order 1 N\'ed\'elec finite elements. There is a command
-line option -{}-nonoverlapping to activate \pk{PCBDDC}. The following command line
-is thus used. \\[-4pt]
+It is discretized using first order N\'ed\'elec finite elements and the \pk{PCBDDC} solver
+is automatically customized to obtain a stable method with these elements \cite{zampinihcurl2}.
+The following command line options are used. \\[-4pt]
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 512 ./ex3p -m ../../data/fichera.mesh -f 4 --petscopts rc_ex3p_bddc      &fvtextcolor[myred][\]
   --nonoverlapping
@@ -1818,12 +1854,12 @@ The option file shows how \pk{PCHPDDM} may be composed into \pk{PCBDDC}. \\[-4pt
 
  -neumann_pc_factor_mat_solver_type   mumps
  -dirichlet_pc_factor_mat_solver_type mumps
-&fvtextcolor[mygreen][# continue on the left column]
+&fvtextcolor[mygreen][# continue on the right column]
 \end{Verbatim}
 \end{minipage}
 \begin{minipage}[t]{0.425\textwidth}
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
-&fvtextcolor[mygreen][# continued from the right column]
+&fvtextcolor[mygreen][# continued from the left column]
  -prefix_push coarse_
   -ksp_converged_reason
   -ksp_type      gmres
@@ -1842,8 +1878,8 @@ The option file shows how \pk{PCHPDDM} may be composed into \pk{PCBDDC}. \\[-4pt
 \end{Verbatim}
 \end{minipage}
 Deluxe scaling is used to build an adaptive second level with \pk{PCBDDC}. On this
-second level, new subdomains are built by aggregating the constraints
-of 8 fine-level subdomains. The BDDC coarse problem composed of $\frac{512}{8} =
+second level, new subdomains are built by aggregating the coarse element matrices of
+8 fine-level subdomains. The BDDC coarse problem composed of $\frac{512}{8} =
 64$ subdomains is then solved using \pk{PCHPDDM}, which itself builds another adaptive
 level using $10$ local eigenvectors per subdomains. The coarsest level is
 aggregated on a single process and solved using an exact Cholesky factorization.
@@ -2015,6 +2051,17 @@ SLEPc repositories. This work was granted access to the GENCI-sponsored HPC reso
   and Belos: Direct and Iterative Solvers for Large Sparse Linear Systems}},
   Scientific Programming, 20 (2012), pp.~241--255.
 
+\bibitem{zampiniiga1}
+{\sc L.~Beirao da Veiga, L.~F. Pavarino, S.~Scacchi, O.~B. Widlund and  S.~Zampini},
+  {\em Isogeometric {BDDC} preconditioners with deluxe scaling},
+  SIAM Journal on Scientific Computing,
+  36 (2014), pp.~A1118--A1139.
+
+\bibitem{zampiniiga2}
+{\sc L.~Beirao da Veiga, L.~F. Pavarino, S.~Scacchi, O.~B. Widlund and  S.~Zampini},
+  {\em Adaptive selection of primal constraints for isogeometric {BDDC} deluxe preconditioners},
+  SIAM Journal on Scientific Computing, 39 (2017), pp.~A281--A302.
+
 \bibitem{Benzi2011a}
 {\sc M.~Benzi, M.~A. Olshanskii, and Z.~Wang}, {\em {Modified augmented
   Lagrangian preconditioners for the incompressible Navier--Stokes equations}},
@@ -2055,10 +2102,10 @@ SLEPc repositories. This work was granted access to the GENCI-sponsored HPC reso
   Deflated Restarting}}, SIAM Journal on Matrix Analysis and Applications, 32
   (2011), pp.~1212--1235.
 
-\bibitem{dohrmann2016bddc}
-{\sc C.~R. Dohrmann and O.~B. Widlund}, {\em {A BDDC Algorithm with Deluxe
-  Scaling for Three-Dimensional $H(\textnormal{curl})$ Problems}},
-  Communications on Pure and Applied Mathematics, 69 (2016), pp.~745--770.
+%\bibitem{dohrmann2016bddc}
+%{\sc C.~R. Dohrmann and O.~B. Widlund}, {\em {A BDDC Algorithm with Deluxe
+%  Scaling for Three-Dimensional $H(\textnormal{curl})$ Problems}},
+%  Communications on Pure and Applied Mathematics, 69 (2016), pp.~745--770.
 
 \bibitem{erhel1996restarted}
 {\sc J.~Erhel, K.~Burrage, and B.~Pohl}, {\em {Restarted GMRES preconditioned
@@ -2188,6 +2235,11 @@ SLEPc repositories. This work was granted access to the GENCI-sponsored HPC reso
 {\sc J.~Mandel}, {\em Balancing domain decomposition}, Communications in
   Numerical Methods in Engineering, 9 (1993), pp.~233--241.
 
+\bibitem{tarekmathewbook}
+{\sc T.~Mathew},
+  {\em Domain decomposition methods for the numerical solution of partial differential equations},
+  Springer Science \& Business Media, 2008.
+
 \bibitem{may2016extreme}
 {\sc D.~A. May, P.~Sanan, K.~Rupp, M.~G. Knepley, and B.~F. Smith}, {\em
   {Extreme-scale multigrid components within PETSc}}, in Proceedings of the
@@ -2209,6 +2261,11 @@ SLEPc repositories. This work was granted access to the GENCI-sponsored HPC reso
 {\sc Y.~Notay}, {\em Flexible conjugate gradients}, SIAM Journal on Scientific
   Computing, 22 (2000), pp.~1444--1460.
 
+\bibitem{zampinihdiv}
+{\sc D.~S. Oh, O.~B. Widlund, S.~Zampini and C.~Dohrmann},
+  {\em {BDDC} algorithms with deluxe scaling and adaptive selection of primal constraints for {R}aviart-{T}homas vector fields},
+  Mathematics of Computation, 87 (2018), pp.~659--692.
+
 \bibitem{o1980block}
 {\sc D.~P. O'Leary}, {\em {The Block Conjugate Gradient Algorithm and Related
   Methods}}, Linear Algebra and its Applications, 29 (1980), pp.~293--322.
@@ -2217,6 +2274,11 @@ SLEPc repositories. This work was granted access to the GENCI-sponsored HPC reso
 {\sc M.~L. Parks, E.~de~Sturler, G.~Mackey, D.~D. Johnson, and S.~Maiti}, {\em
   {Recycling Krylov Subspaces for Sequences of Linear Systems}}, SIAM Journal
   on Scientific Computing, 28 (2006), pp.~1651--1674.
+
+\bibitem{zampiniiga3}
+{\sc L.~F. Pavarino, S.~Scacchi, O.~B. Widlund and  S.~Zampini},
+  {\em Isogeometric {BDDC} deluxe preconditioners for linear elasticity},
+  Mathematical Models and Methods in Applied Sciences, 28 (2018), pp.~1337--1370.
 
 \bibitem{pechstein2017unified}
 {\sc C.~Pechstein and C.~R. Dohrmann}, {\em {A unified framework for adaptive
@@ -2297,6 +2359,11 @@ SLEPc repositories. This work was granted access to the GENCI-sponsored HPC reso
   two-level preconditioners derived from deflation, domain decomposition and
   multigrid methods}, Journal of Scientific Computing, 39 (2009), pp.~340--370.
 
+\bibitem{olofbook}
+{\sc A.~Toselli and O.~B. Widlund},
+  {\em Domain decomposition methods: algorithms and theory},
+  Springer Science \& Business Media, 2006.
+
 \bibitem{tournier2016micro}
 {\sc P.-H. Tournier, I.~Aliferis, M.~Bonazzoli, M.~de~Buhan, M.~Darbas,
   V.~Dolean, F.~Hecht, P.~Jolivet, I.~El~Kanfoud, C.~Migliaccio, F.~Nataf,
@@ -2315,9 +2382,25 @@ SLEPc repositories. This work was granted access to the GENCI-sponsored HPC reso
   (2013), pp.~158--167.
 
 \bibitem{zampini2016pcbddc}
-{\sc S.~Zampini}, {\em {PCBDDC: a class of robust dual--primal methods in
+{\sc S.~Zampini}, {\em {{PCBDDC}: a class of robust dual--primal methods in
   PETSc}}, SIAM Journal on Scientific Computing, 38 (2016), pp.~S282--S306,
   \url{https://www.mcs.anl.gov/petsc/petsc-master/docs/manualpages/PC/PCBDDC.html}.
+
+\bibitem{zampinihcurl1}
+{\sc S.~Zampini},
+  {\em Adaptive {BDDC} deluxe methods for {H}(curl)},
+  Domain Decomposition Methods in Science and Engineering XXIII, 2017, pp.~285--292.
+
+\bibitem{zampinidarcy}
+{\sc S.~Zampini and X.~Tu},
+  {\em Multilevel Balancing Domain Decomposition by Constraints Deluxe Algorithms with Adaptive Coarse Spaces for Flow in Porous Media},
+  SIAM Journal on Scientific Computing, 39 (2107), pp.~A1389--A1415.
+
+\bibitem{zampinihcurl2}
+{\sc S.~Zampini, P.~Vassilevski, V.~Dobrev and T.~Kolev},
+  {\em Balancing Domain Decomposition by Constraints Algorithms for Curl-Conforming Spaces of Arbitrary Order},
+  Domain Decomposition Methods in Science and Engineering XXIV, (2019).
+
 
 \end{thebibliography}
 \end{document}
