@@ -1,0 +1,107 @@
+//  run with MPI:  ff-mpirun -np 4 script.edp
+// NBPROC 4
+
+load "PETSc"
+macro dimension()3// EOM
+include "macro_ddm.idp"
+
+real c = 6.2;
+int N  = 80;
+
+// domain: unit square
+border aa(t=0,1) { x=t;   y=0;   };
+border bb(t=0,1) { x=1;   y=t;   };
+border cc(t=0,1) { x=1-t; y=1;   };
+border dd(t=0,1) { x=0;   y=1-t; };
+
+mesh3 M = cube(90, 90, 90);// buildmesh(aa(N)+bb(N)+cc(N)+dd(N));
+
+load "Element_P3"
+func Pk = P1;
+Mat A;
+buildMat(M, getARGV("-split", 1), A, Pk, mpiCommWorld)
+fespace Vh(M, Pk);
+Vh u;
+func BC = cos(1*pi*x)*cos(1*pi*y)*(1+0.85*z);
+varf vInit(w, v) = on(1,2,3,4, w = BC);
+func bool channel(real a, real b, real dx1, real dy1, real dx2, real dy2, real width) {
+    real slope = (dy2 - dy1) / (dx2 - dx1);
+    if(a >= dx1 && a <= dx2) {
+        if(b >= (slope * (x - dx2) + dy2) && b <= (slope * (x - dx2) + dy2 + width))
+            return true;
+    }
+    return false;
+}
+func real skyscraper(real a, real b) {
+    int da = int(9 * a);
+    int db = int(9 * b);
+    real kappa;
+    if((da + 1) % 2 && (db + 1) % 2)
+        kappa = 5e-1 * real(da + db + 1);
+    else {
+        if(channel(a, b, 0.1, 0.2, 0.5, 0.6, 0.15))
+            kappa = b * 3e-1;
+        else if(channel(a, b, 0.5, 0.15, 0.9, 0.05, 0.2))
+            kappa = a * 3e-1;
+        else if(channel(a, b, 0.3, 0.6, 0.9, 0.5, 0.2))
+            kappa = (a + b) * 3e-1;
+        else
+            kappa = 1;
+    }
+    return kappa;
+}
+varf vJ(w, v) = int3d(M,qforder=6)(skyscraper(x,y)*dx(w)*dx(v) + skyscraper(x,y)*dz(w)*dz(v) + skyscraper(x,y)*dy(w)*dy(v) - c*exp(u)*w*v) + on(1,2,3,4, w = 0);
+varf vRes(w, v) = int3d(M,qforder=6)(skyscraper(x,y)*dx(u)*dx(v) + skyscraper(x,y)*dz(u)*dz(v) + skyscraper(x,y)*dy(u)*dy(v) - c*exp(u)*v) + on(1,2,3,4, w = u);
+func real[int] funcRes(real[int]& inPETSc) {
+    changeNumbering(A, u[], inPETSc, inverse = true, exchange = true);
+    real[int] out(Vh.ndof);
+    out = vRes(0, Vh, tgv = -2);
+    real[int] outPETSc;
+    changeNumbering(A, out, outPETSc);
+    return outPETSc;
+}
+func int funcJ(real[int]& inPETSc) {
+    changeNumbering(A, u[], inPETSc, inverse = true, exchange = true);
+    A = vJ(Vh, Vh, tgv = -2, sym = 1);
+    return 0;
+}
+set(A);
+if(hasType("PC", "hpddm")) {
+    bool stage = usedARGV("-stage") != -1;
+    for(int i = 2; i < 3; ++i) {
+        string params;
+        if(i == 0) {
+            params = "";
+            if(stage)
+                PetscLogStagePush("Everything");
+        }
+        else if(i == 1) {
+            params = "-pc_hpddm_coarse_ksp_reuse_preconditioner";
+            Mat B = A;
+            A = B;
+            if(stage)
+                PetscLogStagePush("Fine level");
+        }
+        else if(i == 2) {
+            params = "-pc_hpddm_levels_1_ksp_reuse_preconditioner";
+            Mat B = A;
+            A = B;
+            if(stage)
+                PetscLogStagePush("Nothing");
+        }
+        set(A, sparams = "-pc_type hpddm -ksp_pc_side right -pc_hpddm_levels_1_sub_pc_type cholesky -pc_hpddm_levels_1_eps_nev 10 -pc_hpddm_define_subdomains -pc_hpddm_has_neumann -ksp_converged_reason -pc_hpddm_levels_1_pc_type asm " + " -pc_hpddm_levels_1_st_pc_factor_mat_solver_type mumps -pc_hpddm_levels_1_sub_pc_factor_mat_solver_type mumps " + " -pc_hpddm_coarse_pc_factor_mat_solver_type mkl_cpardiso -pc_hpddm_coarse_p 128 -ksp_monitor " + params);
+        real[int] bPETSc;
+        u[] = vInit(0, Vh, tgv = -2);
+        changeNumbering(A, u[], bPETSc);
+        real[int] xPETSc = bPETSc;
+        SNESSolve(A, funcJ, funcRes, bPETSc, xPETSc, sparams = "-snes_monitor -snes_type newtonls -snes_converged_reason -ksp_converged_reason -snes_view -snes_linesearch_type basic");
+        changeNumbering(A, u[], xPETSc, inverse = true, exchange = true);
+        macro def(u)u//
+        plotMPI(M, u, Pk, def, real, cmm = "Global solution")
+        set(A, sparams = "-pc_type none");
+        if(stage)
+            PetscLogStagePop();
+    }
+    int[int] fforder = [1, 0];
+    savevtk("bratu-3d.vtu", M, u, skyscraper(x,y), bin = 1, order = fforder);
+}
