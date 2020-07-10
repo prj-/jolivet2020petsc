@@ -1,0 +1,92 @@
+/*
+   Author(s): Pierre Jolivet <pierre.jolivet@enseeiht.fr>
+              Jose Roman <jroman@dsic.upv.es>
+              Stefano Zampini <stefano.zampini@kaust.edu.sa>
+        Date: 2020-07-10
+
+   Copyright (C) 2020-     Centre National de la Recherche Scientifique
+                 2020-     Universitat Politècnica de València
+                 2020-     King Abdullah University of Science and Technology
+
+   This script is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+   If you use this script, you are kindly asked to cite the following article:
+
+   "KSPHPDDM and PCHPDDM: Extending PETSc with Robust Overlapping Schwarz Preconditioners and Advanced Krylov Methods",
+   P. Jolivet, J. E. Roman, and S. Zampini (2020).
+ */
+
+load "PETSc"
+macro dimension()3//
+include "macro_ddm.idp"
+
+func Pk = P1;
+mesh3 Th;
+fespace Vh(Th, Pk);
+Mat A;
+{
+  Th = cube(getARGV("-N", 10), getARGV("-N", 10), getARGV("-N", 10), [x, y, z]);
+  createMat(Th, A, Pk);
+}
+
+func bool channel(real a, real b, real dx1, real dy1, real dx2, real dy2, real width) {
+  real slope = (dy2 - dy1) / (dx2 - dx1);
+  if(a >= dx1 && a <= dx2) {
+    if(b >= (slope * (x - dx2) + dy2) && b <= (slope * (x - dx2) + dy2 + width))
+      return true;
+  }
+  return false;
+}
+func real skyscraper(real a, real b) {
+  int da = int(9 * a);
+  int db = int(9 * b);
+  real kappa;
+  if((da + 1) % 2 && (db + 1) % 2)
+    kappa = 5e-1 * real(da + db + 1);
+  else {
+    if(channel(a, b, 0.1, 0.2, 0.5, 0.6, 0.15))
+      kappa = b * 3e-1;
+    else if(channel(a, b, 0.5, 0.15, 0.9, 0.05, 0.2))
+      kappa = a * 3e-1;
+    else if(channel(a, b, 0.3, 0.6, 0.9, 0.5, 0.2))
+      kappa = (a + b) * 3e-1;
+    else
+      kappa = 1;
+  }
+  return kappa;
+}
+func BC = cos(pi*x)*cos(pi*y)*(1.0 + 0.85*z);
+Vh u;
+real c = 6.2;
+varf vJ(w, v) = int3d(Th, qforder = 6)(skyscraper(x,y)*(dx(w)*dx(v) + dz(w)*dz(v) + dy(w)*dy(v)) - c*exp(u)*w*v) + on(1, 2, 3, 4, w = 0.0);
+varf vR(w, v) = int3d(Th, qforder = 6)(skyscraper(x,y)*(dx(u)*dx(v) + dz(u)*dz(v) + dy(u)*dy(v)) - c*exp(u)*v) + on(1, 2, 3, 4, w = u);
+varf vB(u, v) = on(1, 2, 3, 4, u = BC);
+func real[int] funcRes(real[int]& p) {
+    changeNumbering(A, u[], p, inverse = true, exchange = true);
+    real[int] out(Vh.ndof);
+    out = vR(0, Vh, tgv = -2);
+    changeNumbering(A, out, p);
+    return p;
+}
+func int funcJ(real[int]& p) {
+    changeNumbering(A, u[], p, inverse = true, exchange = true);
+    A = vJ(Vh, Vh, tgv = -2, sym = 1);
+    return 0;
+}
+set(A, sparams = "-pc_type hpddm -ksp_pc_side right -pc_hpddm_levels_1_sub_pc_type cholesky -pc_hpddm_levels_1_eps_nev 10 -pc_hpddm_define_subdomains -pc_hpddm_has_neumann -ksp_converged_reason -pc_hpddm_levels_1_pc_type asm " + " -pc_hpddm_levels_1_st_pc_factor_mat_solver_type mumps -pc_hpddm_levels_1_sub_pc_factor_mat_solver_type mumps " + " -pc_hpddm_coarse_pc_factor_mat_solver_type mkl_cpardiso -pc_hpddm_coarse_p " + min(128, mpisize/2) + " -ksp_monitor");
+real[int] b;
+u[] = vB(0, Vh, tgv = -2);
+changeNumbering(A, u[], b);
+{
+  real[int] x = b;
+  SNESSolve(A, funcJ, funcRes, b, x, sparams = "-snes_monitor -snes_type newtonls -snes_converged_reason -ksp_converged_reason -snes_view -snes_linesearch_type basic");
+  changeNumbering(A, u[], x, inverse = true, exchange = true);
+  macro def(u)u//
+  plotMPI(Th, u, Pk, def, real, cmm = "Solution")
+}
+if(usedARGV("-output") != -1) {
+  int[int] fforder = [1, 0];
+  savevtk("bratu.vtu", Th, u, skyscraper(x,y), order = fforder);
+}

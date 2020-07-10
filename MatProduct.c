@@ -1,16 +1,36 @@
+/*
+   Author(s): Pierre Jolivet <pierre.jolivet@enseeiht.fr>
+              Jose Roman <jroman@dsic.upv.es>
+              Stefano Zampini <stefano.zampini@kaust.edu.sa>
+        Date: 2020-07-10
+
+   Copyright (C) 2020-     Centre National de la Recherche Scientifique
+                 2020-     Universitat Politècnica de València
+                 2020-     King Abdullah University of Science and Technology
+
+   This script is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+   If you use this script, you are kindly asked to cite the following article:
+
+   "KSPHPDDM and PCHPDDM: Extending PETSc with Robust Overlapping Schwarz Preconditioners and Advanced Krylov Methods",
+   P. Jolivet, J. E. Roman, and S. Zampini (2020).
+ */
+
 #include <petsc.h>
 
 #if defined(PETSC_HAVE_MKL)
 #include <mkl.h>
-#define PetscStackCallMKLSparse(func,args) do {                                                           \
-    sparse_status_t __ierr;                                                                               \
-    PetscStackPush(#func);                                                                                \
-    __ierr = func args;                                                                                   \
-    PetscStackPop;                                                                                        \
+#define PetscStackCallMKLSparse(func,args) do {              \
+    sparse_status_t __ierr;                                  \
+    PetscStackPush(#func);                                   \
+    __ierr = func args;                                      \
+    PetscStackPop;                                           \
     if (__ierr != SPARSE_STATUS_SUCCESS) SETERRQ2(PETSC_COMM_SELF,PETSC_ERR_LIB,"Error in %s(): error code %d",#func,(int)__ierr); \
   } while (0)
 #else
-#define PetscStackCallMKLSparse(func,args) do {                                                           \
+#define PetscStackCallMKLSparse(func,args) do {              \
     SETERRQ(PETSC_COMM_SELF,PETSC_ERR_SUP,"No MKL support"); \
   } while (0)
 #endif
