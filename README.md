@@ -2,16 +2,16 @@
 
 > Extending PETSc with Robust Overlapping Schwarz Preconditioners and Advanced Krylov Methods.
 
-<p align="center"><img src="https://github.com/prj-/jolivet2020sisc/raw/master/header.png" height="300"></p>
+<p align="center"><img src="https://github.com/prj-/jolivet2020petsc/raw/master/header.png" height="300"></p>
 
 The code available in this repository can reproduce the results from the following [paper]().
 ```
-@article{jolivet2020sisc,
+@article{jolivet2020petsc,
     Author = {Jolivet, Pierre and Jose, Roman E. and Zampini, Stefano},
     Title = {{KSPHPDDM and PCHPDDM: Extending PETSc with Robust Overlapping Schwarz Preconditioners and Advanced Krylov Methods}},
     Year = {2020},
     Journal = {submitted for publication},
-    Url = {https://github.com/prj-/jolivet2020sisc}
+    Url = {https://github.com/prj-/jolivet2020petsc}
 }
 ```
 
@@ -37,4 +37,4 @@ For `lobpcg.edp`, default options for the three inner preconditioners compared i
 ## Acknowledgements
 * HPC resources of [TGCC@CEA](http://www-hpc.cea.fr/index-en.htm), resp. [IDRIS@CNRS](), under the allocation A0070607519, resp. AP010611780, made by [GENCI](http://www.genci.fr/en)
 
-<p align="center"><img src="https://github.com/prj-/jolivet2020sisc/raw/master/footer.png" height="300"></p>
+<p align="center"><img src="https://github.com/prj-/jolivet2020petsc/raw/master/footer.png" height="300"></p>
