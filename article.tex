@@ -274,9 +274,10 @@ efficiently with multiple vectors:
     \item \pk{PCKSP}: embedded Krylov method inside $P_{A'}$;
     \item \pk{PCMAT}: multiplication by $A'$, i.e., $P_{A'} = {A'}$;
     \item \pk{PCSHELL}: user-defined preconditioner, e.g., matrix-free;
+    \item \pk{PCSPAI}: sparse approximate inverse~\cite{grote1997parallel};
     \item \pk{PCHARA}~\cite{10.1145/3232850};
     \item \pk{PCHPDDM}: see~\cref{sec:PCHPDDM};\label{it:hpddm}
-    \item \pk{PCASM}: overlapping Schwarz methods;\label{it:asm}
+    \item \pk{PCASM} and \pk{PCGASM}: overlapping Schwarz methods;\label{it:asm}
     \item \pk{PCBJACOBI}: block Jacobi;\label{it:bjacobi}
     \item \pk{PCLU} or \pk{PCCHOLESKY}: exact $LU$ or Cholesky factorization,
         i.e., $P_{A'} = {A'}^{-1}$;\label{it:lu}
@@ -1018,7 +1019,7 @@ The following generalized eigenvalue problem is solved in a three-dimensional cu
 \begin{equation*}
     -\nabla \cdot (\kappa \nabla u) = \lambda u.\label{eq:lobpcg}
 \end{equation*}
-This continuous equation is discretized with $\mathbb{P}_3$ finite elements using FreeFEM. The script is available at \url{http://jolivet.perso.enseeiht.fr/lobpcg.edp}. Following timings and convergence histories have been obtained on $2{,}304$ processes of Ir\`ene, for solving a problem of dimension \pgfmathprintnumber{74618461}. By default, SLEPc applies at most 5 iterations of GMRES on each column of a so-called set of active columns. Since the option \pk{-eps\_lobpcg\_blocksize 40} is used for computing 20 eigenpairs, the size of the set varies between 40 to 1. This size corresponds to the number of right-hand sides in systems that will be solved throughout LOBPCG iterations. Instead of using \pk{KSPGMRES}, which does not handle blocking, \pk{KSPHPDDM} is used, with the pseudo-block GMRES. That means that, assuming the size of the set of active columns is 40, one LOBPCG iterations implies doing at most 5 GMRES iterations with 40 vectors simultaneously, using \pk{MatProductNumeric} and \pk{PCMatApply}, instead of doing at most $40\times 5$ successive GMRES iterations, using \pk{MatMult} and \pk{PCApply}. Results are gathered in~\cref{fig:lobpcg}. In the first line, the numbers of outer LOBPCG iterations are reported with the three different inner preconditioners mentioned above. \pk{PCASM} is known to yield a preconditioned operator whose condition number grows as the number of subdomains, here processes, increases. Thus, the number of outer iterations is higher than with \pk{PCHPDDM} or \pk{PCGAMG} since the inner solves are not converging to meaningful solutions in just 5 iterations. For both multilevel preconditioners, however, it seems that they perform an equivalent job since the difference in number of outer iterations is only 1. The second and third lines represent the number of times \pk{PCApply} and \pk{PCMatApply} are called. Since \pk{PCGAMG} does not handle blocking, at each pseudo-block GMRES iteration, \pk{PCApply} is called on all active columns. \pk{PCASM} and \pk{PCHPDDM} handle blocking, so only rely on \pk{PCMatApply}. In the fourth line, the time spent setting up the preconditioners is given. \pk{PCASM} is extremely cheap but not very robust numerically, while both multilevel preconditioners have a similar setup time. Eventually, in the last line, the time spent in the full eigensolve is given. Clearly, having both a \pk{KSP} and a \pk{PC} which can deal with multiple vectors efficiently is mandatory to achieve reasonable performance with such an outer solver that heavily relies on blocking.
+This continuous equation is discretized with $\mathbb{P}_3$ finite elements using FreeFEM. The script is available at \url{https://github.com/prj-/jolivet2020sisc}. Following timings and convergence histories have been obtained on $2{,}304$ processes of Ir\`ene, for solving a problem of dimension \pgfmathprintnumber{74618461}. By default, SLEPc applies at most 5 iterations of GMRES on each column of a so-called set of active columns. Since the option \pk{-eps\_lobpcg\_blocksize 40} is used for computing 20 eigenpairs, the size of the set varies between 40 to 1. This size corresponds to the number of right-hand sides in systems that will be solved throughout LOBPCG iterations. Instead of using \pk{KSPGMRES}, which does not handle blocking, \pk{KSPHPDDM} is used, with the pseudo-block GMRES. That means that, assuming the size of the set of active columns is 40, one LOBPCG iterations implies doing at most 5 GMRES iterations with 40 vectors simultaneously, using \pk{MatProductNumeric} and \pk{PCMatApply}, instead of doing at most $40\times 5$ successive GMRES iterations, using \pk{MatMult} and \pk{PCApply}. Results are gathered in~\cref{fig:lobpcg}. In the first line, the numbers of outer LOBPCG iterations are reported with the three different inner preconditioners mentioned above. \pk{PCASM} is known to yield a preconditioned operator whose condition number grows as the number of subdomains, here processes, increases. Thus, the number of outer iterations is higher than with \pk{PCHPDDM} or \pk{PCGAMG} since the inner solves are not converging to meaningful solutions in just 5 iterations. For both multilevel preconditioners, however, it seems that they perform an equivalent job since the difference in number of outer iterations is only 1. The second and third lines represent the number of times \pk{PCApply} and \pk{PCMatApply} are called. Since \pk{PCGAMG} does not handle blocking, at each pseudo-block GMRES iteration, \pk{PCApply} is called on all active columns. \pk{PCASM} and \pk{PCHPDDM} handle blocking, so only rely on \pk{PCMatApply}. In the fourth line, the time spent setting up the preconditioners is given. \pk{PCASM} is extremely cheap but not very robust numerically, while both multilevel preconditioners have a similar setup time. Eventually, in the last line, the time spent in the full eigensolve is given. Clearly, having both a \pk{KSP} and a \pk{PC} which can deal with multiple vectors efficiently is mandatory to achieve reasonable performance with such an outer solver that heavily relies on blocking.
 \pgfplotstableread{
 PC       outer PCApply PCMatApply PCSetUp       EPSSolve
 PCASM    54    ---     378        2.8536e+00    265.6564
@@ -1822,7 +1823,7 @@ explained \pk{PCHPDDMSetAuxiliaryMat} function, this is done automatically with 
 \end{itemize}
 Since the system is not too stiff here, both strategies lead to the same
 convergence history, which is displayed in~\cref{fig:bratu-conv}. The complete set of
-options is given in~\cref{fig:bratu-options}. Results can be reproduced using the following FreeFEM script: \url{http://jolivet.perso.enseeiht.fr/bratu-hpddm.edp}
+options is given in~\cref{fig:bratu-options}. Results can be reproduced using the FreeFEM script at \url{https://github.com/prj-/jolivet2020sisc}
 \pgfplotstableread{
 it first                second               third                  fourth
  0 1.199398376742e+01   3.397386070782e-04   1.863266214507e-05     8.796157053238e-07
@@ -2128,10 +2129,9 @@ repository. This work was granted access to the GENCI-sponsored HPC resources of
 \bibitem{Bartlett:2017:XFT}
 {\sc R.~Bartlett, I.~Demeshko, T.~Gamblin, G.~Hammond, M.~A. Heroux,
   J.~Johnson, A.~Klinvex, X.~Li, L.~C. McInnes, J.~D. Moulton, D.~Osei-Kuffuor,
-  J.~Sarich, B.~Smith, J.~Willenbring, and U.~M. Yang}, {\em {xSDK}
-  foundations: Toward an extreme-scale scientific software development kit},
-  Supercomputing Frontiers and Innovations, 4 (2017),
-  \url{https://doi.org/10.14529/jsfi170104}.
+  J.~Sarich, B.~Smith, J.~Willenbring, and U.~M. Yang}, {\em {xSDK Foundations:
+  Toward an Extreme-scale Scientific Software Development Kit}}, Supercomputing
+  Frontiers and Innovations, 4 (2017).
 
 \bibitem{bastian1998additive}
 {\sc P.~Bastian, G.~Wittum, and W.~Hackbusch}, {\em Additive and multiplicative
@@ -2225,6 +2225,11 @@ repository. This work was granted access to the GENCI-sponsored HPC resources of
 {\sc M.~W. Gee, C.~M. Siefert, J.~J. Hu, R.~S. Tuminaro, and M.~G. Sala}, {\em
   {ML} 5.0 smoothed aggregation user's guide}, Tech. Report SAND2006-2649,
   Sandia National Laboratories, 2006, \url{https://trilinos.github.io/ml.html}.
+
+\bibitem{grote1997parallel}
+{\sc M.~J. Grote and T.~Huckle}, {\em Parallel preconditioning with sparse
+  approximate inverses}, SIAM Journal on Scientific Computing, 18 (1997),
+  pp.~838--853.
 
 \bibitem{gutknecht2006block}
 {\sc M.~H. Gutknecht}, {\em Block {K}rylov space methods for linear systems
