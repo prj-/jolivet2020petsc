@@ -7,8 +7,8 @@
 The code available in this repository can reproduce the results from the following [paper]().
 ```
 @article{jolivet2020petsc,
-    Author = {Jolivet, Pierre and Jose, Roman E. and Zampini, Stefano},
-    Title = {{KSPHPDDM and PCHPDDM: Extending PETSc with Robust Overlapping Schwarz Preconditioners and Advanced Krylov Methods}},
+    Author = {Jolivet, Pierre and Roman, Jose E. and Zampini, Stefano},
+    Title = {{KSPHPDDM} and {PCHPDDM}: Extending {PETSc} with Robust Overlapping {Schwarz} Preconditioners and Advanced {Krylov} Methods},
     Year = {2020},
     Journal = {submitted for publication},
     Url = {https://github.com/prj-/jolivet2020petsc}
