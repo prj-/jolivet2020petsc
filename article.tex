@@ -104,11 +104,11 @@ in the field of computational science and engineering. The efficient production 
 such applications requires a rich ecosystem of state-of-the-art reusable libraries
 \cite{Bartlett:2017:XFT}. In this paper, we focus on the interoperability of two such libraries.
 
-One the one hand, PETSc \cite{balay1997cient}, the
+On the one hand, PETSc \cite{balay1997cient}, the
 Portable and Extensible Toolkit for Scientific computation, is a
 well-established, actively developed software from the community. It may be used to efficiently
 discretize partial differential equations and solve algebraic linear or
-nonlinear systems of time-dependent equations. Among its strenghts, it offers many
+nonlinear systems of time-dependent equations. Among its strengths, it offers many
 advanced features regarding preconditioning and tailored matrix formats, and it can
 interact with third-party libraries, such as
 \emph{hypre}~\cite{falgout2002hypre} for linear solvers, TetGen~\cite{si2013tet}
@@ -143,7 +143,7 @@ The paper is divided in two main parts {\color{red} COMPLETE WITH MORE DETAILS W
 \cref{sec:KSPHPDDM} introduces \pk{KSPHPDDM}, provides applications within an eigensolver
 framework and discuss the readiness of the PETSc library in delivering highly efficient block Krylov methods.
 \cref{sec:PCHPDDM} introduces \pk{PCHPDDM}. Eventually, concluding remarks may be found
-\cref{sec:conclusion}. All PETSc keywords and options are typeset in a \texttt{typewriter} front, these
+\cref{sec:conclusion}. All PETSc keywords and options are typeset in a \texttt{typewriter} font, these
 are public and documented at \url{https://www.mcs.anl.gov/petsc/petsc-master/docs}.
 
 \section{KSPHPDDM}\label{sec:KSPHPDDM}
@@ -290,12 +290,12 @@ factorizations~\cref{it:lu,it:ilu} as subdomain solvers.
 In these cases, it is possible to access the so-called local or distributed factored matrix $F$
 %via \pk{PCFactorGetMatrix} and then call \pk{MatMatSolve}($F$, $\tilde{Y}$, $\tilde{X}$).
 via \pk{PCFactorGetMatrix}, and then call \pk{MatMatSolve}($F$, $Y$, $X$) to take advantage
-of blocked forward eliminitations and backward substitutions from the various factorization packages
+of blocked forward eliminations and backward substitutions from the various factorization packages
 interfaced with PETSc. In the case of a sparse coefficient matrix $A'$,
 this strategy is possible with: MUMPS~\cite{amestoy2001fully},
 SuiteSparse~\cite{davis2004algorithm}, MKL
 PARDISO or CPARDISO~\cite{mkl-web-page}, and SuperLU~\cite{li2005overview} or
-SuperLU\_DIST~\cite{li2003superlu_dist}. For the the case of a dense coefficient
+SuperLU\_DIST~\cite{li2003superlu_dist}. For the case of a dense coefficient
 matrix $A'$: ScaLAPACK and Elemental~\cite{poulson2013elemental}. 
 Future work will consider extending the various implementations of PETSc
 preconditioning infrastructure to increase the arithmetic intensity of the
@@ -1129,7 +1129,7 @@ the Overlap (GenEO) framework, for finite
 elements~\cite{spillane2011robust,spillane2013abstract} and boundary
 elements~\cite{marchand2019two}. Results in this work present the first
 high-level access to GenEO from PETSc and its composable solver
-infrastructrure~\cite{brown2012composable}. We note that GenEO has been
+infrastructure~\cite{brown2012composable}. We note that GenEO has been
 recently implemented in other libraries as well~\cite{butler2020high}.
 
   \subsection{Interfacing HPDDM overlapping Schwarz methods in PETSc\label{sec:interface-pc}}\
@@ -1292,7 +1292,7 @@ block sparse structure of the deflation matrix~$P$.
 Moreover,
 the size of the coarse operator $P^TAP$ is much lower
 than $n$, the size of $A$, and coarsening is much more aggressive than
-when using algebraic or geometric multigrids methods.
+when using algebraic or geometric multigrid methods.
 %, see~\cref{sec:linear-elasticity} for
 %evidence.
 It is thus natural to remap the coarse operator on
@@ -1305,10 +1305,10 @@ of solvers in PETSc~\cite{may2016extreme}.
 
 % Of course, users do not have to implement the three previous steps themselves.
 In order to use GenEO from PETSc, the auxiliary operators $\{\mathring{A}_i\}_{i=1}^N$
-and the correspondending local to global map of degrees of freedom (see~\cref{fig:poisson})
+and the corresponding local to global map of degrees of freedom (see~\cref{fig:poisson})
 can be provided using the routine \pk{PCHPDDMSetAuxiliaryMat}.
 In special cases where the matrix has been constructed using the PETSc discretization
-instrastucture, the relevant information is automatically computed
+infrastructure, the relevant information is automatically computed
 by PETSc. \Cref{fig:nonoverlapping} (resp.~\cref{fig:overlapping}) is an
 example of a non-overlapping (resp. overlapping) decomposition using a
 non-conforming grid with \pk{DMPLEX}~\cite{knepley2009mesh}. The
@@ -1457,7 +1457,7 @@ dense generalized eigenvalue problems.
 %\pk{PCHPDDM}.
   \subsection{Applications and numerical results}\label{sec:pchpddm-examples}
     \subsubsection{System of elasticity}\label{sec:linear-elasticity}
-We first report on solving the three-dimensional system of linear elasticy with highly heterogeneous elastic modulus.
+We first report on solving the three-dimensional system of linear elasticity with highly heterogeneous elastic modulus.
 Its strong formulation is given by:
 \begin{align}
 	\label{eq:elasticity}
@@ -1483,7 +1483,7 @@ where
 $\Gamma_D$ is the subset of the boundary of $\Omega$ corresponding to $x = 0$.
 $\Gamma_N$ is defined as the complementary of $\Gamma_D$ with respect to the boundary of $\Omega$.
 \Cref{eq:elasticity} is discretized using
-$(\mathbb{P}_1, \mathbb{P}_1, \mathbb{P}_1)$ finite elements resulting in $\pgfmathprintnumber{593} \times 10^6$ number of uknowns
+$(\mathbb{P}_1, \mathbb{P}_1, \mathbb{P}_1)$ finite elements resulting in $\pgfmathprintnumber{593} \times 10^6$ number of unknowns
 with approximately $\pgfmathprintnumber{45}$ nonzero coefficients per row.
 The physical domain $\Omega$ is decomposed in $13{,}824$ subdomains using the automatic graph partitioner ParMETIS~\cite{karypis1998fast}.
 There are heterogeneities due to jumps in $E$ and $\nu$. The following discontinuous piecewise constant values are considered: $(E_1, \nu_1) = ({\color{paraviewred}2\times 10^{11}}, 0.25)$ in blue regions, while $(E_2, \nu_2) = ({\color{paraviewblue}10^7}, 0.45)$ in red regions, see~\cref{fig:elas}.
