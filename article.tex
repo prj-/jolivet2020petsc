@@ -1383,17 +1383,23 @@ in HPDDM, and not column by column. See the effect of this strategy in~\cref{sec
     \subsubsection{Extension of the GenEO framework}
 The local generalized eigenvalue problems~\cref{eq:gevp} can also be adjusted.
 In addition to the local unassembled Neumann matrices~$\{\mathring{A}_i\}_{i=1}^N$,
-users can prescribe additional local operators defined on the overlapping subdomain and
-with optimized Robin
-boundary conditions $\{B_i\}_{i=1}^N$ via
-the routine \pk{PCHPDDMSetRHSMat}(pc, $B_i$).
-In such a case, the following generalized eigenvalue problems, called GenEO-2 in the
+users can prescribe additional local operators $\{B_i\}_{i=1}^N$, defined on
+the overlapping decomposition, via the routine \pk{PCHPDDMSetRHSMat}(pc, $B_i$).
+In the case of local matrices with optimized Robin transmission conditions, the
+following generalized eigenvalue problems, called GenEO-2 in the
 literature~\cite{haferssas2017soras}, are then solved in each subdomain:
 \begin{equation*}
     \mathring{A}_i y_i = \lambda_i B_i y_i.
 \end{equation*}
-This may be useful when dealing with nearly indefinite systems, e.g., nearly incompressible elasticity or the system of Stokes.
-Indeed, for such equations, one needs to compute a lot of eigenvectors from the classical GenEO eigenproblem~\cref{eq:gevp} to generate a robust preconditioner. GenEO-2 alleviates this phenomenon.
+This may be useful when dealing with nearly indefinite systems, e.g., nearly
+incompressible elasticity or the system of Stokes. Indeed, for such equations,
+one needs to compute a lot of eigenvectors from the classical GenEO
+eigenproblem~\cref{eq:gevp} to generate a robust preconditioner. GenEO-2
+alleviates this phenomenon. In the case where the local operators
+$\{B_i\}_{i=1}^N$ are the discrete mass matrices on the subdomains interfaces,
+the so-called Dirichlet-to-Neumann coarse operator is constructed. This has
+proven to be efficient for solving the heterogeneous Helmholtz
+equation~\cite{conen2014coarse}.
 
     \subsubsection{Multilevel extension}\label{sec:ml}
 In the previous sections, it was shown how to supply the required information to
@@ -2192,6 +2198,12 @@ repository. This work was granted access to the GENCI-sponsored HPC resources of
   Generalized Conjugate Residual Method With Inner Orthogonalization and
   Deflated Restarting}}, SIAM Journal on Matrix Analysis and Applications, 32
   (2011), pp.~1212--1235.
+
+\bibitem{conen2014coarse}
+{\sc L.~Conen, V.~Dolean, R.~Krause, and F.~Nataf}, {\em {A coarse space for
+  heterogeneous Helmholtz problems based on the Dirichlet-to-Neumann
+  operator}}, Journal of Computational and Applied Mathematics, 271 (2014),
+  pp.~83--99.
 
 \bibitem{da2014isogeometric}
 {\sc L.~B. Da~Veiga, L.~F. Pavarino, S.~Scacchi, O.~B. Widlund, and
