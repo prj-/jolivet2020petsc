@@ -1019,7 +1019,7 @@ The following generalized eigenvalue problem is solved in a three-dimensional cu
 \begin{equation*}
     -\nabla \cdot (\kappa \nabla u) = \lambda u.\label{eq:lobpcg}
 \end{equation*}
-This continuous equation is discretized with $\mathbb{P}_3$ finite elements using FreeFEM. The script is available at \url{https://github.com/prj-/jolivet2020sisc}. Following timings and convergence histories have been obtained on $2{,}304$ processes of Ir\`ene, for solving a problem of dimension \pgfmathprintnumber{74618461}. By default, SLEPc applies at most 5 iterations of GMRES on each column of a so-called set of active columns. Since the option \pk{-eps\_lobpcg\_blocksize 40} is used for computing 20 eigenpairs, the size of the set varies between 40 to 1. This size corresponds to the number of right-hand sides in systems that will be solved throughout LOBPCG iterations. Instead of using \pk{KSPGMRES}, which does not handle blocking, \pk{KSPHPDDM} is used, with the pseudo-block GMRES. That means that, assuming the size of the set of active columns is 40, one LOBPCG iterations implies doing at most 5 GMRES iterations with 40 vectors simultaneously, using \pk{MatProductNumeric} and \pk{PCMatApply}, instead of doing at most $40\times 5$ successive GMRES iterations, using \pk{MatMult} and \pk{PCApply}. Results are gathered in~\cref{fig:lobpcg}. In the first line, the numbers of outer LOBPCG iterations are reported with the three different inner preconditioners mentioned above. \pk{PCASM} is known to yield a preconditioned operator whose condition number grows as the number of subdomains, here processes, increases. Thus, the number of outer iterations is higher than with \pk{PCHPDDM} or \pk{PCGAMG} since the inner solves are not converging to meaningful solutions in just 5 iterations. For both multilevel preconditioners, however, it seems that they perform an equivalent job since the difference in number of outer iterations is only 1. The second and third lines represent the number of times \pk{PCApply} and \pk{PCMatApply} are called. Since \pk{PCGAMG} does not handle blocking, at each pseudo-block GMRES iteration, \pk{PCApply} is called on all active columns. \pk{PCASM} and \pk{PCHPDDM} handle blocking, so only rely on \pk{PCMatApply}. In the fourth line, the time spent setting up the preconditioners is given. \pk{PCASM} is extremely cheap but not very robust numerically, while both multilevel preconditioners have a similar setup time. Eventually, in the last line, the time spent in the full eigensolve is given. Clearly, having both a \pk{KSP} and a \pk{PC} which can deal with multiple vectors efficiently is mandatory to achieve reasonable performance with such an outer solver that heavily relies on blocking.
+This continuous equation is discretized with $\mathbb{P}_3$ finite elements using FreeFEM. The script is available at \url{https://github.com/prj-/jolivet2020petsc}. The following timings and convergence histories have been obtained on $2{,}304$ processes of Ir\`ene, for solving a problem of dimension \pgfmathprintnumber{74618461}. By default, SLEPc applies at most 5 iterations of GMRES on each column of a so-called set of active columns. Since the option \pk{-eps\_lobpcg\_blocksize 40} is used for computing 20 eigenpairs, the size of the set varies between 40 to 1. This size corresponds to the number of right-hand sides in systems that will be solved throughout LOBPCG iterations. Instead of using \pk{KSPGMRES}, which does not handle blocking, \pk{KSPHPDDM} is used, with the pseudo-block GMRES. That means that, assuming the size of the set of active columns is 40, one LOBPCG iterations implies doing at most 5 GMRES iterations with 40 vectors simultaneously, using \pk{MatProductNumeric} and \pk{PCMatApply}, instead of doing at most $40\times 5$ successive GMRES iterations, using \pk{MatMult} and \pk{PCApply}. Results are gathered in~\cref{fig:lobpcg}. In the first line, the numbers of outer LOBPCG iterations are reported with the three different inner preconditioners mentioned above. \pk{PCASM} is known to yield a preconditioned operator whose condition number grows as the number of subdomains, here processes, increases. Thus, the number of outer iterations is higher than with \pk{PCHPDDM} or \pk{PCGAMG} since the inner solves are not converging to meaningful solutions in just 5 iterations. For both multilevel preconditioners, however, it seems that they perform an equivalent job since the difference in number of outer iterations is only 1. The second and third lines represent the number of times \pk{PCApply} and \pk{PCMatApply} are called. Since \pk{PCGAMG} does not handle blocking, at each pseudo-block GMRES iteration, \pk{PCApply} is called on all active columns. \pk{PCASM} and \pk{PCHPDDM} handle blocking, so only rely on \pk{PCMatApply}. In the fourth line, the time spent setting up the preconditioners is given. \pk{PCASM} is extremely cheap but not very robust numerically, while both multilevel preconditioners have a similar setup time. Eventually, in the last line, the time spent in the full eigensolve is given. Clearly, having both a \pk{KSP} and a \pk{PC} which can deal with multiple vectors efficiently is mandatory to achieve reasonable performance with such an outer solver that heavily relies on blocking.
 \pgfplotstableread{
 PC       outer PCApply PCMatApply PCSetUp       EPSSolve
 PCASM    54    ---     378        2.8536e+00    265.6564
@@ -1374,7 +1374,7 @@ these correction formulae may be applied to either a single vector or a block
 of multiple vectors optimally. Indeed, the one-level preconditioner $M^{-1}$ is
 applied with either \pk{PCApply} or \pk{PCMatApply}, and the
 restriction-correction-interpolation operator $Q$ is applied in a block fashion
-in HPDDM, and not column by column. See the effect of this strategy~\cref{sec:lobpcg}.
+in HPDDM, and not column by column. See the effect of this strategy in~\cref{sec:lobpcg}.
 
     \subsubsection{Extension of the GenEO framework}
 The local generalized eigenvalue problems~\cref{eq:gevp} can also be adjusted.
@@ -1468,7 +1468,7 @@ Its strong formulation is given by:
 	\end{split}
 \end{align}
 The physical domain $\Omega$ is a beam of dimensions $[0,6] \times [0,1] \times [0,1]$.
-The Cauchy stress tensor $\sigma$ is given by Hooke’s law: it can be expressed in terms of Young’s modulus $E$ and Poisson’s ratio $\nu$.
+The Cauchy stress tensor $\sigma$ is given by Hooke’s law: it can be expressed in terms of Young’s modulus $E$ and Poisson’s ratio $\nu$,
 \[
 	\sigma_{ij}(u) =
 	\begin{cases}
@@ -1589,7 +1589,7 @@ By default, the coarse problem in \pk{PCHPDDM} is solved using an exact $LU$ or 
 -prefix_pop
 \end{Verbatim}
 \end{minipage} \\
-In this third configuration, $M$ is the number of subdomains used to define the second-level domain decomposition, which is an aggregation of first-level subdomain.
+In this third configuration, $M$ is the number of subdomains used to define the second-level domain decomposition, which is an aggregation of first-level subdomains.
 
 Considering the parametrization used for the \pk{PCHPDDM} solvers, \cref{enum:exact} and \cref{enum:inexact} yield the same number of outer iterates. In~\cref{fig:gamg-geneo}, the convergence history of \pk{PCGAMG} and \pk{PCHPDDM} are reported. In~\cref{fig:inexact}, the number of inner coarse iterations are reported for various values of $M$. In the case of a two-level method,~\cref{enum:exact}, this number is equal to one and is thus not reported in the figure.
 \pgfplotstableread{
@@ -1823,7 +1823,7 @@ explained \pk{PCHPDDMSetAuxiliaryMat} function, this is done automatically with 
 \end{itemize}
 Since the system is not too stiff here, both strategies lead to the same
 convergence history, which is displayed in~\cref{fig:bratu-conv}. The complete set of
-options is given in~\cref{fig:bratu-options}. Results can be reproduced using the FreeFEM script at \url{https://github.com/prj-/jolivet2020sisc}
+options is given in~\cref{fig:bratu-options}. Results can be reproduced using the FreeFEM script at \url{https://github.com/prj-/jolivet2020petsc}
 \pgfplotstableread{
 it first                second               third                  fourth
  0 1.199398376742e+01   3.397386070782e-04   1.863266214507e-05     8.796157053238e-07
@@ -1900,7 +1900,7 @@ $1$
 \end{semilogyaxis}
 \end{tikzpicture}
 }
-    \subfloat[\parbox{5cm}{\pk{SNES}, \pk{KSP}, and \pk{PC} options for the
+    \subfloat[\parbox{5cm}{\pk{SNES}, \pk{KSP}, and \pk{PC} options for
     solving~\cref{eq:bratu}}\label{fig:bratu-options}]{
         {\setlength{\fboxrule}{0.1mm}
         \fbox{\BUseVerbatim[fontsize=\footnotesize]{VerbEnv}}
@@ -1975,11 +1975,11 @@ Deluxe scaling is used to build an adaptive second level with \pk{PCBDDC}. On th
 second level, new subdomains are built by aggregating the coarse element matrices of
 8 fine-level subdomains. The BDDC coarse problem composed of $\frac{512}{8} =
 64$ subdomains is then solved using \pk{PCHPDDM}, which itself builds another adaptive
-level using $10$ local eigenvectors per subdomains. The coarsest level is
+level using $10$ local eigenvectors per subdomain. The coarsest level is
 aggregated on a single process and solved using an exact Cholesky factorization.
-The magnitude of the electric field is plotted~\cref{fig:E}. For the
-convergence history of the solver, it is~\cref{fig:BDDC}. The outer solver
-reaches the prescribed convergence criterion in 17 iterations~\ref{pgfplots:res}. The number of
+The magnitude of the electric field is plotted in~\cref{fig:E}. The
+convergence history of the solver is shown in~\cref{fig:BDDC}. The outer solver
+reaches the prescribed convergence tolerance in 17 iterations~\ref{pgfplots:res}. The number of
 inner iterations for solving the BDDC coarse problem is reported as well~\ref{pgfplots:inner}.
 \pgfplotstableread{
 it res inner
