@@ -154,7 +154,8 @@ They mainly rely on matrix--vector
 operations such as multiplications or transpose multiplications and,
 for robust convergence when dealing with challenging high-dimensional systems,
 on the application of appropriate preconditioners.
-PETSc (as of version 3.13.2) already offers 44 different types of Krylov methods within the \pk{KSP} base class. Some of the
+PETSc, as of version 3.14.0, already offers 44 different types of
+Krylov methods within the \pk{KSP} base class. Some of the
 most used types are \pk{KSPGMRES}, \pk{KSPCG}, or \pk{KSPBCGS}, which respectively implement
 the generalized minimal residual method~\cite{saad1986gmres}~(GMRES), conjugate
 gradient~\cite{hestenes1952methods}~(CG), or biconjugate gradient stabilized method~\cite{van1992bi}~(BCGS). % Some of these methods are also
@@ -252,20 +253,22 @@ HPDDM will repeatedly call the following PETSc routines:
     \item \pk{MatMatMult}($A$, $X$, {\small \pk{MAT\_REUSE\_MATRIX}}, {\small
         \pk{PETSC\_DEFAULT}}, $Y$)\footnote{or \pk{MatProductNumeric}($Y$) with PETSc 3.14.0 and above} for $Y =
         AX$;
-    \item \pk{PCApply}($P_{A'}$, $y$, $x$) for $x = P_{A'}y$;
-    \item \pk{PCMatApply}($P_{A'}$, $Y$, $X$) for $X = P_{A'}Y$;
+    \item \pk{PCApply}($P_{A'}$, $x$, $y$) for $y = P_{A'}x$;
+    \item \pk{PCMatApply}($P_{A'}$, $X$, $Y$) for $Y = P_{A'}X$;
 \end{itemize}
 As of version 3.14.0, PETSc provides unified routines for applying $A$ or $P_{A'}$
-to a tall-and-skinny dense matrix $Y$. However, when no specialized implementation
-is available, PETSc will loop over the columns of $Y$ and successively apply $A$
-or $P_{A'}$ to get all columns of $X$. For matrix--matrix products, there are
+to a tall-and-skinny dense matrix $X$. However, when no specialized implementation
+is available, PETSc will loop over the columns of $X$ and successively apply $A$
+or $P_{A'}$ to get all columns of $Y$. For matrix--matrix products, there are
 currently specialized implementations for the following \pk{MatType}:
 \begin{itemize}
-    \item \pk{MatMPIAIJ};
-    \item \pk{MatShell};
-    \item \pk{MatNest};
-    \item \pk{MatSeqAIJ}, \pk{MatSeqBAIJ}, and \pk{MatSeqSBAIJ};
-    \item \pk{MatSeqAIJcuSPARSE}.
+    \item \pk{MatSeqAIJ}, standard sequential sparse matrix, based on compressed sparse row format;
+    \item \pk{MatSeqBAIJ}, block sparse matrix, based on block compressed sparse row format;
+    \item \pk{MatSeqSBAIJ}, symmetric block sparse matrix stored in upper triangular form.
+    \item \pk{MatMPIAIJ}, standard parallel sparse matrix;
+    \item \pk{MatShell}, user-defined matrix;
+    \item \pk{MatNest}, block-defined matrix with nested submatrices;
+    \item \pk{MatSeqAIJCUSPARSE}, standard sequential sparse matrix, offloaded to a GPU using cuSPARSE~\cite{cusparse-web-page}.
 \end{itemize}
 The following preconditioners have specialized implementations for dealing
 efficiently with multiple vectors:
@@ -274,13 +277,13 @@ efficiently with multiple vectors:
     \item \pk{PCKSP}: embedded Krylov method inside $P_{A'}$;
     \item \pk{PCMAT}: multiplication by $A'$, i.e., $P_{A'} = {A'}$;
     \item \pk{PCSHELL}: user-defined preconditioner, e.g., matrix-free;
-    \item \pk{PCSPAI}: sparse approximate inverse~\cite{grote1997parallel};
+    % \item \pk{PCSPAI}: sparse approximate inverse~\cite{grote1997parallel};
     \item \pk{PCHARA}~\cite{10.1145/3232850};
     \item \pk{PCHPDDM}: see~\cref{sec:PCHPDDM};\label{it:hpddm}
     \item \pk{PCASM} and \pk{PCGASM}: overlapping Schwarz methods;\label{it:asm}
     \item \pk{PCBJACOBI}: block Jacobi;\label{it:bjacobi}
     \item \pk{PCLU} or \pk{PCCHOLESKY}: exact $LU$ or Cholesky factorization,
-        i.e., $P_{A'} = {A'}^{-1}$;\label{it:lu}
+        e.g., $P_{A'} = {L}^{-1}{U}^{-1}$;\label{it:lu}
     \item \pk{PCILU} or \pk{PCICC}: incomplete $LU$ or Cholesky
         factorization.\label{it:ilu}
 \end{enumerate}
@@ -289,7 +292,7 @@ One appealing feature of domain decomposition-like preconditioners
 factorizations~\cref{it:lu,it:ilu} as subdomain solvers.
 In these cases, it is possible to access the so-called local or distributed factored matrix $F$
 %via \pk{PCFactorGetMatrix} and then call \pk{MatMatSolve}($F$, $\tilde{Y}$, $\tilde{X}$).
-via \pk{PCFactorGetMatrix}, and then call \pk{MatMatSolve}($F$, $Y$, $X$) to take advantage
+via \pk{PCFactorGetMatrix}, and then call \pk{MatMatSolve}($F$, $X$, $Y$) to take advantage
 of blocked forward eliminations and backward substitutions from the various factorization packages
 interfaced with PETSc. In the case of a sparse coefficient matrix $A'$,
 this strategy is possible with: MUMPS~\cite{amestoy2001fully},
@@ -305,7 +308,7 @@ The rest of the operations are then performed directly inside HPDDM.
 Specifically, within Krylov methods using the Arnoldi process, or when recycling is requested,
 one has to compute $QR$ factorizations of tall-and-skinny dense matrices to orthonormalize
 candidate basis vectors. Such operations are performed using the CholQR algorithm~\cite{stathopoulos2002block}, or
-via the block variants of the (modified) Gram--Schmidt method.
+via the (modified) Gram--Schmidt method.
 For Hessenberg matrices generated by the Arnoldi
 process, it is common to update their $QR$ decomposition using Givens
 rotations~\cite{saad2003iterative}. For block Hessenberg matrices, Householder reflectors are
@@ -316,7 +319,7 @@ These orthonormalization variants can be selected at runtime with the option \pk
 extract convergence information by solving a small standard or a generalized
 dense eigenproblem at the end of each cycle or when convergence is reached, and
 then reuse it appropriately for subsequent
-solves~\cite{saad2000deflated,stathopoulos2002block,soodhalter2014krylov}.
+solves~\cite{saad2000deflated,stathopoulos2009deflation,soodhalter2014krylov}.
 The routine \pk{KSPHPDDMGetDeflationSpace} can be used to retrieve such deflation subspaces, stored as distributed
 dense tall-and-skinny matrices. It is also possible to provide this information
 via \pk{KSPHPDDMSetDeflationSpace} in case end-users already know a good initial
@@ -377,7 +380,7 @@ As a side note, when dealing with
 $A$ a standard sparse matrix of dimension $n$, it is also possible to use block Krylov methods. 
 Indeed, if $p=q=k$, $S = \lambda I$, and $T =
 \mu I$, then solving $(I \otimes S + A \otimes T) x = b$ may be cast into a
-system with multiple right-hand sides $(\lambda I + \mu A)X = B$ where $B$ is
+system with $k$ right-hand sides $(\lambda I + \mu A)X = B$ where $B$ is
 the row-major representation of $b$, i.e., $b_{k \cdot i + j} = B_{i, j},
 \forall (i, j) \in \llbracket 1;n\rrbracket \times \llbracket 1;k\rrbracket$.
 On the one hand, due to the structure of the operator, it is challenging to
@@ -415,14 +418,14 @@ In all the cases, convergence is declared when the initial unpreconditioned resi
 Except for the right-preconditioned GCRODR, these tests are the same as the
 ones from the original GCRODR paper~\cite{parks2006recycling}.
 All PETSc tests are performed using four MPI
-processes and they can be launched using the following command line: \\[-4pt]
+processes and they can be launched using the following command lines: \\[-4pt]
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -pc_type none -ksp_rtol 1e-10             &fvtextcolor[myred][\]
   -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_gmres_restart 40 -ksp_hpddm_recycle 20 &fvtextcolor[myred][\]
   -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -sub_pc_type icc -ksp_rtol 1e-10          &fvtextcolor[myred][\]
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -redundant_pc_type icc -ksp_rtol 1e-10    &fvtextcolor[myred][\]
   -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_gmres_restart 40 -ksp_hpddm_recycle 20 &fvtextcolor[myred][\]
-  -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
+  -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR -pc_type redundant
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -pc_type jacobi -ksp_rtol 1e-10           &fvtextcolor[myred][\]
   -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_gmres_restart 40 -ksp_hpddm_recycle 20 &fvtextcolor[myred][\]
   -ksp_pc_side right -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
@@ -430,8 +433,10 @@ processes and they can be launched using the following command line: \\[-4pt]
   -ksp_type hpddm -ksp_gmres_restart 500                                             &fvtextcolor[myred][\]
   -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
 \end{Verbatim}
-The iteration numbers needed to reach convergence are gathered in~\cref{fig:comparison};
-the cases \ref{pgfplots:r0} and
+For the case of ICC(0), a \pk{PCREDUNDANT} is needed as well since
+PETSc does not provide a parallel ICC solver. The iteration numbers
+needed to reach convergence are gathered in~\cref{fig:comparison}.  The
+cases \ref{pgfplots:r0} and
 \ref{pgfplots:r1} (resp. \ref{pgfplots:r6} and \ref{pgfplots:r7}) reproduce Figure 4.2 in~\cite{parks2006recycling}.
 We note here that the results obtained with
 \pk{PCICC} from PETSc \ref{pgfplots:r3} and ichol from MATLAB \ref{pgfplots:r2}, which uses SuiteSparse, are not consistent.
@@ -443,16 +448,16 @@ We note here that the results obtained with
 %al.~\cite{parks2006recycling}.
 \pgfplotstableread{
 sys none-matlab icc-matlab jacobi-matlab none-hpddm icc-hpddm jacobi-hpddm icc-gmres none-gmres icc-petsc none-petsc
-401 498         293        457           497        131       460          127       438        127       438
-402 228         125        187           231        53        184          127       449        127       449
-403 209         113        182           206        47        177          127       450        127       450
-404 199         112        175           198        47        174          127       450        127       450
-405 198         110        174           198        47        172          127       451        127       451
-406 198         111        174           199        47        174          127       452        127       452
-407 206         114        180           206        49        179          126       458        126       458
-408 207         115        181           208        49        182          128       458        135       458
-409 207         110        181           207        49        181          128       458        128       458
-410 206         110        179           206        49        179          128       457        128       457
+401 498         293        457           497        94        460          127       438        127       438
+402 228         125        187           231        37        184          127       449        127       449
+403 209         113        182           206        34        177          127       450        127       450
+404 199         112        175           198        33        174          127       450        127       450
+405 198         110        174           198        34        172          127       451        127       451
+406 198         111        174           199        34        174          127       452        127       452
+407 206         114        180           206        33        179          126       458        126       458
+408 207         115        181           208        34        182          128       458        135       458
+409 207         110        181           207        34        181          128       458        128       458
+410 206         110        179           206        34        179          128       457        128       457
 }\loadedtable
     \begin{figure}
 \centering \begin{tikzpicture}
@@ -488,7 +493,7 @@ stability analysis and consider the solution of the following generalized eigenv
     J(q_b)x = \lambda \begin{bmatrix}M & 0 \\ 0 & 0 \end{bmatrix} x,
 \end{equation}
 where $J$ is the Jacobian of the incompressible steady-state Navier--Stokes equation
-evaluated using a given base flow $q_b = \begin{bmatrix}u_b & p_b\end{bmatrix}^T$ and
+evaluated using a given base flow $q_b = \begin{bmatrix}u_b \\ p_b\end{bmatrix}$ and
 $M$ the discretization of the mass matrix on the space of velocities. Interested
 readers are referred to~\cite{moulin2018al} for more details and for larger
 runs.
@@ -512,8 +517,9 @@ approach~\cite{Benzi2011a,moulin2018al}
 The effectiveness of subspace recycling is shown for
 finding the 5 eigenpairs closest to the shift $\sigma = 10^{-6} + 0.6\mathfrak{i}$ for a
 flow past a cylinder at Reynolds 100. Results can be reproduced using the following four commands.
-We note here that the first two commands are merely used to generate the base flow $q_b$ with \pk{SNESSolve} using a
-continuation method on the Reynolds number. \\[-4pt]
+We note here that the first two commands are merely used to generate
+the base flow $q_b$ with a \pk{SNES}, a PETSc object used to solve
+nonlinear problems, using a continuation method on the Reynolds number. \\[-4pt]
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Nonlinear-solver.edp -Re 50 -v 0
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Nonlinear-solver.edp -Re 100 -v 0
@@ -601,17 +607,12 @@ N    baij-1-T    baij-1-F   sbaij-1-T   sbaij-1-F  aij-1-T     aij-1-F    baij-3
 64     9.9341e+00   9.4053e+09 1.3822e+01   1.0394e+10   2.6927e+00   9.7350e+09     3.5490e+01   8.6626e+10    4.6966e+01   9.3549e+10     1.9724e+01   8.7615e+10   6.7668e+01   3.4848e+11  6.3229e+01   3.7420e+11  7.4386e+01   3.5046e+11   8.3249e-02   9.7350e+09   5.0956e-01   8.7615e+10   1.2334e+00   3.5046e+11   3.4264e+00  2.3052e+01   8.7358e+01   1.0573e+01   1.3960e+01  6.3695e+01   1.0581e+01   1.3961e+01    6.3949e+01    3.2990e-01    2.1734e+00    1.3526e+01   1.0453e+00 1.4281e+00   7.0763e+00   1.0497e+00   1.4326e+00   7.1714e+00
 }\loadedMatProduct
     \subsubsection{Performance of primitives for block Krylov methods}\label{sec:primitives}
-The readiness of PETSc, as of version 3.13.2, is now discussed
+The readiness of PETSc, as of version 3.14.0, is now discussed
 when it comes to delivering efficient implementations of the core matrix--matrix multiplication
 needed by block Krylov methods and when a restart occurs in recycling Krylov methods.
 
-In particular, we consider three PETSc matrix types:
-\begin{itemize}
-    \item \pk{MatSeqAIJ}, standard sequential sparse matrices, based on compressed sparse row format;
-    \item \pk{MatSeqBAIJ}, block sparse matrices, based on block compressed sparse row format;
-    \item \pk{MatSeqSBAIJ}, symmetric block sparse matrices stored in upper triangular form.
-\end{itemize}
-Their distributed memory counterparts rely on the sequential implementations, with each process
+In particular, the first three matrix types from~\cref{sec:interface-ksp}, \pk{MatSeqAIJ}, \pk{MatSeqBAIJ}, and \pk{MatSeqSBAIJ} are first considered.
+Their distributed memory counterparts, e.g., \pk{MatMPIAIJ}, rely on the sequential implementations, with each process
 storing two such matrices, one with local rows and columns, and another with local rows and ``nonlocal'' columns.
 To keep this study succinct, we only evaluate the performance of the sequential implementations, which can help
 in drawing conclusions for the intraprocess performance of the parallel formats.
@@ -623,7 +624,7 @@ There is an ongoing effort to better integrate these routines in PETSc, but at t
 For benchmarking, we first discretize the Poisson equation on a cube with $\mathbb{P}_1$ finite elements
 and obtain a matrix $A$ of dimension one million. Though the numerical
 values of $A$ are of no interest here, the sparsity pattern is rather common and frequently encountered when
-discretizing partial differential equations. We then generate a random symmetric dense matrix $T$ of dimension $b$,
+discretizing partial differential equations. We then generate a random symmetric dense $b$-by-$b$ matrix $T$,
 for $b \in \{ 1,3,6 \}$, and the matrix $\mathbb{A} = A \otimes T$ is assembled into all three formats described above, using
 a block size of $b$ for the block formats.
 The performance of the \pk{MatProductNumeric} operation is evaluated for tall-and-skinny dense matrices with a varying number
@@ -631,7 +632,7 @@ of columns $N \in \{2,8,16,32,64\}$. For the single column case $N=1$, the \pk{M
 All results have been obtained using double precision arithmetic and 32-bit integers. The scaled efficiency measured in GFLOP per second is reported
 with respect to the baseline \pk{MatAIJ} implementation with $N=1$ in~\cref{fig:perfAX}, where performances have been averaged over five consecutive
 product operations.
-They can be reproduced by using the mini-app \url{https://github.com/prj-/jolivet2020petsc/blob/master/MatProduct.c} and any input \pk{MatAIJ} stored in binary format,
+They can be reproduced by using the mini-app \texttt{MatProduct.c} from \url{https://github.com/prj-/jolivet2020petsc} and any input \pk{MatAIJ} stored in binary format,
 here using the default name \pk{binaryoutput}, available at \url{http://jolivet.perso.enseeiht.fr/binaryoutput}.
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpicc] MatProduct.c -O3 -I&fvtextcolor[myyellow][${PETSC_DIR}]/&fvtextcolor[myyellow][${PETSC_ARCH}]/include                        &fvtextcolor[myred][\]
@@ -795,62 +796,7 @@ single node of {Jean Zay}, a system composed of \pgfmathprintnumber[assume math
 mode=true]{261} nodes with two 20-core Intel Xeon Gold 6248 clocked at
 \SI{2.5}{\giga\hertz} and four NVIDIA Tesla V100 SXM2. Neither transfers
 between host and device nor time spent in \texttt{mkl\_sparse\_optimize} have
-been taken into account. For the sake of completeness, the performance of
-\pk{MatAIJMKL} with $N=1$ but different numbers of threads is also reported in
-\cref{fig:scaling-Ax}. Clearly, it is not advised to use the full socket to
-perform this type of workload for such small sparse matrices and skinny dense
-matrices. But this helps in drawing a fair comparison between a full CPU socket
-and a full GPU device. All in all, the CPU configuration which reaches the
-highest percentage of peak is MatSBAIJMKL~\ref{pgfplots:sbaijmkl3} with $b=3$
-and $N=64$, rightmost middle plot in~\cref{fig:perfAXpar}, with approximately
-63 GFLOP/s. It is still less than 1\% of peak for an Intel Xeon Gold 6248.
-For the GPU configuration, \pk{MatAIJcuSPARSE}~\ref{pgfplots:cusparse10} with $b=6$
-and $N=64$, rightmost bottom plot in~\cref{fig:perfAXpar}, performs at around
-306 GFLOP/s, about 4\% of peak for an NVIDIA Tesla V100 SXM2.
-\pgfplotstableread{
-P       aij1        aij3        aij6
-1       6.6857e-02  7.4649e-01  3.1128e+00       
-2       3.4206e-02  3.7820e-01  1.5723e+00
-4       1.6565e-02  1.8634e-01  7.7238e-01
-8       9.1370e-03  9.7549e-02  3.9884e-01
-16      7.2334e-03  7.9871e-02  3.2154e-01
-20      7.8399e-03  8.6487e-02  3.5536e-01
-}\loadedOMP
-\pgfplotstablegetelem{0}{aij1}\of{\loadedOMP}
-\let\refI\pgfplotsretval
-\pgfplotstablecreatecol[create col/expr={\refI/\thisrow{aij1}}]{speedupI}\loadedOMP
-\pgfplotstablegetelem{0}{aij3}\of{\loadedOMP}
-\let\refIII\pgfplotsretval
-\pgfplotstablecreatecol[create col/expr={\refIII/\thisrow{aij3}}]{speedupIII}\loadedOMP
-\pgfplotstablegetelem{0}{aij6}\of{\loadedOMP}
-\let\refVI\pgfplotsretval
-\pgfplotstablecreatecol[create col/expr={\refVI/\thisrow{aij6}}]{speedupVI}\loadedOMP
-\begin{figure}[tbp]
-  \centering
-    \begin{tikzpicture}
-      \begin{loglogaxis}[
-              ytick={1,2,4,8,20},
-        yticklabel={
-            \pgfmathparse{100*round(exp(\tick))}
-$\pgfmathprintnumber{\pgfmathresult}$\%
-},
-        xtick = {\empty},
-        extra x ticks = {1,2,4,8,16,20},height=6cm,
-          extra x tick labels = {1,2,4,8,16,\hspace*{0.3cm}20},
-          legend style={at={(0.02,0.98)}, legend cell align=left,anchor=north west},
-      ]
-          \addplot[black, dashed] table [x expr=\thisrow{P},y expr=\thisrow{P}]{\loadedOMP};\label{pgfplots:linear}
-          \addplot[blueaccent,mark=square*] table [x expr=\thisrow{P},y expr=\thisrow{speedupI}]{\loadedOMP};\label{pgfplots:speedupI}
-          \addplot[darkgray,mark=*] table [x expr=\thisrow{P},y expr=\thisrow{speedupIII}]{\loadedOMP};\label{pgfplots:speedupIII}
-          \addplot[last,mark=triangle*] table [x expr=\thisrow{P},y expr=\thisrow{speedupVI}]{\loadedOMP};\label{pgfplots:speedupVI}
-          \addlegendentry{Linear speedup}
-          \addlegendentry{$b = 1$}
-          \addlegendentry{$b = 3$}
-          \addlegendentry{$b = 6$}
-    \end{loglogaxis}
-    \end{tikzpicture}
-    \caption{Scalability of \pk{MatMult} with \pk{MatAIJMKL} and different number of processes.\label{fig:scaling-Ax}}
-\end{figure}
+been taken into account. 
 
 \begin{figure}[tbp]
 \pgfkeys{/pgf/fpu}
@@ -900,7 +846,7 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
            \addlegendentry{\pk{MatAIJMKL}}
            \addlegendentry{\pk{MatBAIJMKL}}
            \addlegendentry{MatSBAIJMKL}
-           \addlegendentry{\pk{MatAIJcuSPARSE}}
+           \addlegendentry{\pk{MatAIJCUSPARSE}}
 \node[rotate=0,fill=white,inner sep=0pt,anchor=west] at (rel axis cs:1.02, 0.5) {$b=1$};
     \end{semilogxaxis}
       \begin{semilogxaxis}[
@@ -1003,6 +949,65 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
     \end{tikzpicture}
    \caption{Performance of the matrix--matrix multiplication as implemented in PETSc using intranode parallelism. \label{fig:perfAXpar}}
 \end{figure}
+
+
+For the sake of completeness, the performance of
+\pk{MatAIJMKL} with $N=1$ but different numbers of threads is also reported in
+\cref{fig:scaling-Ax}. Clearly, it is not advised to use the full socket to
+perform this type of workload for such small sparse matrices and skinny dense
+matrices. But this helps in drawing a fair comparison between a full CPU socket
+and a full GPU device. All in all, the CPU configuration which reaches the
+highest percentage of peak is MatSBAIJMKL~\ref{pgfplots:sbaijmkl3} with $b=3$
+and $N=64$, rightmost middle plot in~\cref{fig:perfAXpar}, with approximately
+63 GFLOP/s. It is still less than 1\% of peak for an Intel Xeon Gold 6248.
+For the GPU configuration, \pk{MatAIJCUSPARSE}~\ref{pgfplots:cusparse10} with $b=6$
+and $N=64$, rightmost bottom plot in~\cref{fig:perfAXpar}, performs at around
+306 GFLOP/s, about 4\% of peak for an NVIDIA Tesla V100 SXM2.
+\pgfplotstableread{
+P       aij1        aij3        aij6
+1       6.6857e-02  7.4649e-01  3.1128e+00       
+2       3.4206e-02  3.7820e-01  1.5723e+00
+4       1.6565e-02  1.8634e-01  7.7238e-01
+8       9.1370e-03  9.7549e-02  3.9884e-01
+16      7.2334e-03  7.9871e-02  3.2154e-01
+20      7.8399e-03  8.6487e-02  3.5536e-01
+}\loadedOMP
+\pgfplotstablegetelem{0}{aij1}\of{\loadedOMP}
+\let\refI\pgfplotsretval
+\pgfplotstablecreatecol[create col/expr={\refI/\thisrow{aij1}}]{speedupI}\loadedOMP
+\pgfplotstablegetelem{0}{aij3}\of{\loadedOMP}
+\let\refIII\pgfplotsretval
+\pgfplotstablecreatecol[create col/expr={\refIII/\thisrow{aij3}}]{speedupIII}\loadedOMP
+\pgfplotstablegetelem{0}{aij6}\of{\loadedOMP}
+\let\refVI\pgfplotsretval
+\pgfplotstablecreatecol[create col/expr={\refVI/\thisrow{aij6}}]{speedupVI}\loadedOMP
+\begin{figure}[tbp]
+  \centering
+    \begin{tikzpicture}
+      \begin{loglogaxis}[
+              ytick={1,2,4,8,20},
+        yticklabel={
+            \pgfmathparse{100*round(exp(\tick))}
+$\pgfmathprintnumber{\pgfmathresult}$\%
+},
+        xtick = {\empty},
+        extra x ticks = {1,2,4,8,16,20},height=6cm,
+          extra x tick labels = {1,2,4,8,16,\hspace*{0.3cm}20},
+          legend style={at={(0.02,0.98)}, legend cell align=left,anchor=north west},
+      ]
+          \addplot[black, dashed] table [x expr=\thisrow{P},y expr=\thisrow{P}]{\loadedOMP};\label{pgfplots:linear}
+          \addplot[blueaccent,mark=square*] table [x expr=\thisrow{P},y expr=\thisrow{speedupI}]{\loadedOMP};\label{pgfplots:speedupI}
+          \addplot[darkgray,mark=*] table [x expr=\thisrow{P},y expr=\thisrow{speedupIII}]{\loadedOMP};\label{pgfplots:speedupIII}
+          \addplot[last,mark=triangle*] table [x expr=\thisrow{P},y expr=\thisrow{speedupVI}]{\loadedOMP};\label{pgfplots:speedupVI}
+          \addlegendentry{Linear speedup}
+          \addlegendentry{$b = 1$}
+          \addlegendentry{$b = 3$}
+          \addlegendentry{$b = 6$}
+    \end{loglogaxis}
+    \end{tikzpicture}
+    \caption{Scalability of \pk{MatMult} with \pk{MatAIJMKL} and different number of processes.\label{fig:scaling-Ax}}
+\end{figure}
+
 \subsubsection{Blocking inside SLEPc\label{sec:lobpcg}}
 Finally, the performance of LOBPCG~\cite{knyazev2001toward} as implemented in SLEPc is studied using three different preconditioners:
 \begin{itemize}
@@ -1105,7 +1110,7 @@ which is mandatory to obtain algorithmic scalability with a large number of proc
 % methods using a generalized Dryja, Smith, Widlund
 % preconditioner~\cite{dohrmann2008domain}. Its type is \pk{PCEXOTIC}.
 Furthermore, PETSc provides domain decomposition methods of the non-overlapping
-type; \pk{PCNN} implements a basic balancing Neumann--Neumann
+type. \pk{PCNN} implements a basic balancing Neumann--Neumann
 method~\cite{mandel1993balancing}, while more advanced preconditioning
 techniques are available with \pk{PCBDDC}~\cite{zampini2016pcbddc}, including
 adaptive selection of primal constraints~\cite{pechstein2017unified}, support
@@ -1117,7 +1122,7 @@ For multigrid,
 \pk{PCGAMG}~\cite{adams2004ultra}. There are also interfaces to other well-known
 multigrid packages such as \pk{PCHYPRE}~\cite{falgout2002hypre} or \pk{PCML}~\cite{gee2006ml} from Trilinos. Of
 course, there are many other available domain decomposition preconditioners,
-either accessible through high-level libraries, e.g., FROSch~\cite{Heinlein:2016:PIT} in
+either accessible through high-level libraries other than PETSc, e.g., FROSch~\cite{Heinlein:2016:PIT} in
 Trilinos, or as stand-alone packages, e.g., BDDCML~\cite{vsistek2013parallel} or
 FEMPAR-BDDC~\cite{badia2014highly}.
 
@@ -1157,7 +1162,7 @@ return a local vector on each process, possibly with some overlap.
 $\{\tilde{R}_i\}_{i=1}^N$ are the same operators except that coefficients on the
 overlap are set to 0~\cite{cai1999restricted}. The action of each $\{R_i A R_i^T\}^{-1}_{i}$
 can be parameterized through a local \pk{KSP}. When $A$ is the
-discretization of a linear partial differential operator operator $\mathcal{L}$ on a domain $\Omega$, it is
+discretization of a linear partial differential operator $\mathcal{L}$ on a domain $\Omega$, it is
 extremely common to exhibit parallelism by distributing $\Omega$ on $N$
 processes, possibly with some overlap, and to construct the $\{R_i\}_{i=1}^N$ so
 that they map global unknowns to unknowns local to each process.
@@ -1270,9 +1275,9 @@ from~\cref{eq:one} using a spectral coarse grid built in the following way:
 \begin{enumerate}
     \item have SLEPc solve the local generalized eigenvalue problem concurrently:
         \begin{equation}\label{eq:gevp}
-            \mathring{A}_i \Lambda_i = \lambda_i \tilde{R}_i R_i^T (R_i A R_i^T) \tilde{R}_i R_i^T \Lambda_i ;
+            \mathring{A}_i y_i = \lambda_i \tilde{R}_i R_i^T (R_i A R_i^T) \tilde{R}_i R_i^T y_i ;
         \end{equation}
-    \item retrieve the $\nu_i$ smallest eigenpairs $\{\Lambda_{i_j}, \lambda_{i_j}\}_{j=1}^{\nu_i}$ and assemble a local deflation dense matrix $W_i = \begin{bmatrix} \tilde{R}_i R_i^T \Lambda_{i_1} & \cdots & \tilde{R}_i R_i^T \Lambda_{i_{\nu_j}} \end{bmatrix}$;
+    \item retrieve the $\nu_i$ smallest eigenpairs $\{y_{i_j}, \lambda_{i_j}\}_{j=1}^{\nu_i}$ and assemble a local deflation dense matrix $W_i = \begin{bmatrix} \tilde{R}_i R_i^T y_{i_1} & \cdots & \tilde{R}_i R_i^T y_{i_{\nu_i}} \end{bmatrix}$;
     \item define a global deflation matrix $P = \begin{bmatrix} R_1^T W_1 & \cdots & R_N^T W_N\end{bmatrix}$ and a new two-level preconditioner using the Galerkin product of $A$ and $P$:
         \begin{equation}\label{eq:two}
             M'^{-1}_{\text{additive}} = P \left(P^T A P\right)^{-1} P^T + \sum_{i = 1}^N \tilde{R}_i^T (R_i A R_i^T)^{-1} R_i.
@@ -1326,7 +1331,7 @@ could be easily added upon request.
     \subfloat[Overlapping decomposition on which auxiliary operators $\{\mathring{A}_i\}_{i=1}^N$ are assembled.\label{fig:overlapping}]{
         \includegraphics[width=0.45\textwidth]{Data/p4est_overlapping.pdf}
     }
-    \caption{Automatic generation of overlapping subdomains when using a~\pk{DMP4EST}. For clarity, only four subdomains, one of which is disconnected, are colored.\label{fig:p4est}}
+    \caption{Automatic generation of overlapping subdomains when using a~\pk{DMPLEX}. For clarity, only four subdomains, one of which is disconnected, are colored.\label{fig:p4est}}
 \end{figure}
 
 With the local
@@ -1345,9 +1350,8 @@ implications, see~\cref{fig:perfAX}. When applying the preconditioner,
 between levels, instead of the variable-size alternatives \texttt{MPI\_Gatherv}
 and \texttt{MPI\_Scatterv}, that could exhibit worse performance. In addition,
 standard eigensolvers such as ARPACK~\cite{lehoucq1998arpack} or
-\pk{EPSKRYLOVSCHUR} from SLEPc, cannot compute all eigenpairs in a given
-interval of $\mathbb{R}^+$. Instead, an upper bound of the number of eigenpairs
-has to be provided.
+\pk{EPSKRYLOVSCHUR} from SLEPc, cannot cheaply evaluate the exact number of eigenpairs in a given
+interval of $\mathbb{R}^+$. Instead, it is often more efficient to provide an upper bound of the number of eigenpairs.
 
 The option \pk{-pc\_hpddm\_coarse\_p} can be used to provide the size of the
 subcommunicator that will be used to remap the coarse operator. With the default
@@ -1366,7 +1370,7 @@ corrections~\cite{tang2009comparison,bastian1998additive} as:
     \text{(default)}\\
     M'^{-1}_{\text{balanced}} &= Q + \left(I - AQ\right)M^{-1}\left(I - AQ\right),
 \end{align*}
-with $Q = P \left(P^T A P\right)^{-1} P^T$. This is parameterized using the
+with $Q = P \left(P^T A P\right)^{-1} P^T$ and $M^{-1}$ defined in~\cref{eq:one}. This is parameterized using the
 options \pk{-pc\_hpddm\_coarse\_correction}
 \pk{(deflated$|$additive$|$balanced)} or the routine
 \pk{PCHPDDMSetCoarseCorrectionType}. It is important to keep in mind that all
@@ -1386,7 +1390,7 @@ the routine \pk{PCHPDDMSetRHSMat}(pc, $B_i$).
 In such a case, the following generalized eigenvalue problems, called GenEO-2 in the
 literature~\cite{haferssas2017soras}, are then solved in each subdomain:
 \begin{equation*}
-    \mathring{A}_i \Lambda_i = \lambda_i B_i \Lambda_i.
+    \mathring{A}_i y_i = \lambda_i B_i y_i.
 \end{equation*}
 This may be useful when dealing with nearly indefinite systems, e.g., nearly incompressible elasticity or the system of Stokes.
 Indeed, for such equations, one needs to compute a lot of eigenvectors from the classical GenEO eigenproblem~\cref{eq:gevp} to generate a robust preconditioner. GenEO-2 alleviates this phenomenon.
@@ -1437,8 +1441,9 @@ Additional examples for the solver customization are provided in~\cref{sec:pchpd
 
     \subsubsection{PCHPDDM for non-overlapping domain decomposition}
 Because of the intrinsic nature of balancing domain
-decomposition methods, \pk{PCNN} and \pk{PCBDDC} must be supplied local unassembled
-matrices. These matrices are equivalent to the $\{\mathring{A}_i\}_{i=1}^N$
+decomposition methods, \pk{PCNN} and \pk{PCBDDC} must be supplied a \pk{MatIS}
+which stores local unassembled matrices and local to global mappings.
+These local matrices are equivalent to the $\{\mathring{A}_i\}_{i=1}^N$
 defined \cref{sec:interface-pc}, assuming the domain decomposition is without
 overlap, see for example $\Omega_1$ and $\Omega_2$ from~\cref{fig:poisson} in a
 finite element context. Since the assembled form of these operators can be reconstructed,
@@ -1814,9 +1819,9 @@ here, it is shown that it can solve the linearized equations
 from~\cref{eq:bratu} in few iterates.  There are two strategies to define the
 \pk{PC} here:
 \begin{itemize}
-\item supply whenever the Jacobian is being updated in the \pk{SNESSetJacobian}
-function new unassembled Neumann matrices at the current linearization point with the previously
-explained \pk{PCHPDDMSetAuxiliaryMat} function, this is done automatically with a
+\item whenever the Jacobian is being updated in the \pk{SNESSetJacobian}
+function, new unassembled Neumann matrices at the current linearization point are updated as well and supplied to the previously
+explained \pk{PCHPDDMSetAuxiliaryMat} function, this is done automatically if the nonliear solver is attached to a
 \pk{DMPLEX} or a \pk{DMP4EST};
 \item by reusing the \pk{PCHPDDM} hierarchy assembled when solving the first
     linearized system, using the \pk{SNESSetLagPreconditioner} option.
@@ -2116,9 +2121,10 @@ repository. This work was granted access to the GENCI-sponsored HPC resources of
   Analysis and Applications, 26 (2005), pp.~962--984.
 
 \bibitem{balay1997cient}
-{\sc S.~Balay, W.~Gropp, L.~Curfman~McInnes, and B.~F. Smith}, {\em Efficient
-  management of parallelism in object-oriented numerical software libraries},
-  Modern Software Tools in Scientific Computing,  (1997), pp.~163--202.
+{\sc S.~Balay, W.~D. Gropp, L.~Curfman~McInnes, and B.~F. Smith}, {\em
+  Efficient management of parallelism in object-oriented numerical software
+  libraries}, Modern Software Tools in Scientific Computing,  (1997),
+  pp.~163--202.
 
 \bibitem{barrett1994templates}
 {\sc R.~Barrett, M.~Berry, T.~F. Chan, J.~Demmel, J.~Donato, J.~Dongarra,
@@ -2225,11 +2231,6 @@ repository. This work was granted access to the GENCI-sponsored HPC resources of
 {\sc M.~W. Gee, C.~M. Siefert, J.~J. Hu, R.~S. Tuminaro, and M.~G. Sala}, {\em
   {ML} 5.0 smoothed aggregation user's guide}, Tech. Report SAND2006-2649,
   Sandia National Laboratories, 2006, \url{https://trilinos.github.io/ml.html}.
-
-\bibitem{grote1997parallel}
-{\sc M.~J. Grote and T.~Huckle}, {\em Parallel preconditioning with sparse
-  approximate inverses}, SIAM Journal on Scientific Computing, 18 (1997),
-  pp.~838--853.
 
 \bibitem{gutknecht2006block}
 {\sc M.~H. Gutknecht}, {\em Block {K}rylov space methods for linear systems
@@ -2420,7 +2421,8 @@ repository. This work was granted access to the GENCI-sponsored HPC resources of
   SIAM Journal on Scientific Computing, 14 (1993), pp.~461--469.
 
 \bibitem{saad2003iterative}
-{\sc Y.~Saad}, {\em {Iterative Methods for Sparse Linear Systems}}, SIAM, 2003.
+{\sc Y.~Saad}, {\em {Iterative Methods for Sparse Linear Systems, Second
+  Edition}}, SIAM, 2003.
 
 \bibitem{saad1986gmres}
 {\sc Y.~Saad and M.~H. Schultz}, {\em {GMRES: a generalized minimal residual
@@ -2480,6 +2482,11 @@ repository. This work was granted access to the GENCI-sponsored HPC resources of
   robust finite element tearing and interconnecting and balanced domain
   decomposition algorithms}, International Journal for Numerical Methods in
   Engineering, 95 (2013), pp.~953--990.
+
+\bibitem{stathopoulos2009deflation}
+{\sc A.~Stathopoulos, A.~Abdel-Rehim, and K.~Orginos}, {\em {Deflation for
+  inversion with multiple right-hand sides in QCD}}, in Journal of Physics:
+  Conference Series, vol.~180, IOP Publishing, 2009.
 
 \bibitem{stathopoulos2002block}
 {\sc A.~Stathopoulos and K.~Wu}, {\em {A Block Orthogonalization Procedure with
