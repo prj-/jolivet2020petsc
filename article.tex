@@ -1827,7 +1827,7 @@ from~\cref{eq:bratu} in few iterates.  There are two strategies to define the
 \begin{itemize}
 \item whenever the Jacobian is being updated in the \pk{SNESSetJacobian}
 function, new unassembled Neumann matrices at the current linearization point are updated as well and supplied to the previously
-explained \pk{PCHPDDMSetAuxiliaryMat} function, this is done automatically if the nonliear solver is attached to a
+explained \pk{PCHPDDMSetAuxiliaryMat} function, this is done automatically if the nonlinear solver is attached to a
 \pk{DMPLEX} or a \pk{DMP4EST};
 \item by reusing the \pk{PCHPDDM} hierarchy assembled when solving the first
     linearized system, using the \pk{SNESSetLagPreconditioner} option.
