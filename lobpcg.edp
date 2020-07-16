@@ -81,7 +81,7 @@ else if(usedARGV("-gamg") != -1)
 else if(usedARGV("-asm") != -1)
   params = "-pc_type asm -sub_pc_type cholesky -sub_pc_factor_mat_solver_type mumps";
 if(params.length > 0)
-  set(A, sparams  = "-prefix_push st_ -ksp_type hpddm -ksp_max_it 5 -ksp_rtol 1e-8 " + params + " -prefix_pop",prefix = "st_", setup = 1);
+  set(A, sparams  = "-prefix_push st_ -ksp_type hpddm -ksp_max_it 5 -ksp_rtol 1e-8 " + params + " -prefix_pop", prefix = "st_", setup = 1);
 
 Vh<real>[int] ev(1); // array to store eigenvectors
 params = " -eps_nev 20" +

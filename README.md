@@ -34,7 +34,10 @@ Here are the main command line parameters common to all scripts.
 
 For `lobpcg.edp`, default options for the three inner preconditioners compared in the paper are turned on with the additional command line parameters `-asm` (for `PCASM`), `-gamg` (for `PCGAMG`), or `-hpddm` (for `PCHPDDM`).
 
+### `MatProduct` mini-app
+The source code of the mini-app is in the file `MatProduct.c`. It can be compiled using a recent PETSc installation (3.14.0 or above) and launched using the same parameters as in the paper. One can generate one's own `MatSeqAIJ` and then save it in binary format, or download the matrix used in the benchmark: [binaryoutput](http://jolivet.perso.enseeiht.fr/binaryoutput).
+
 ## Acknowledgements
-* HPC resources of [TGCC@CEA](http://www-hpc.cea.fr/index-en.htm), resp. [IDRIS@CNRS](), under the allocation A0070607519, resp. AP010611780, made by [GENCI](http://www.genci.fr/en)
+* HPC resources of [TGCC@CEA](http://www-hpc.cea.fr/index-en.htm), resp. [IDRIS@CNRS](http://www.idris.fr/), under the allocation A0070607519, resp. AP010611780, made by [GENCI](http://www.genci.fr/en)
 
 <p align="center"><img src="https://github.com/prj-/jolivet2020petsc/raw/master/footer.png" height="300"></p>
