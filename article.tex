@@ -218,10 +218,10 @@ line option \pk{-ksp\_type hpddm}, or the routine \pk{KSPSetType}(ksp,
     \item pseudo-block GMRES or flexible GMRES~\cite{saad1993flexible};
     \item pseudo-block CG or flexible CG~\cite{notay2000flexible};
     \item pseudo-block GCRODR or flexible GCRODR~\cite{carvalho2011flexible};
-    \item block GMRES or flexible GMRES~\cite{calandra2012flexible};
+    \item block GMRES or flexible GMRES~\cite{calandra2012flexible}, with deflation at each restart;
     \item block CG~\cite{o1980block};
-    \item breakdown-free block CG~\cite{ji2017breakdown};
-    \item block GCRODR or flexible GCRODR.
+    \item breakdown-free block CG~\cite{ji2017breakdown}, with deflation at each iteration;
+    \item block GCRODR or flexible GCRODR, with deflation at each restart.
 \end{itemize}
 While being mathematically equivalent to
 their ``standard'' counterparts, the pseudo-block variants try to fuse together multiple similar
@@ -283,7 +283,7 @@ efficiently with multiple vectors:
     \item \pk{PCASM} and \pk{PCGASM}: overlapping Schwarz methods;\label{it:asm}
     \item \pk{PCBJACOBI}: block Jacobi;\label{it:bjacobi}
     \item \pk{PCLU} or \pk{PCCHOLESKY}: exact $LU$ or Cholesky factorization,
-        e.g., $P_{A'} = {L}^{-1}{U}^{-1}$;\label{it:lu}
+        e.g., $P_{A'} = {U}^{-1}{L}^{-1}$;\label{it:lu}
     \item \pk{PCILU} or \pk{PCICC}: incomplete $LU$ or Cholesky
         factorization.\label{it:ilu}
 \end{enumerate}
@@ -1349,9 +1349,10 @@ implications, see~\cref{fig:perfAX}. When applying the preconditioner,
 \texttt{MPI\_Gather} and \texttt{MPI\_Scatter} operations are used to move
 between levels, instead of the variable-size alternatives \texttt{MPI\_Gatherv}
 and \texttt{MPI\_Scatterv}, that could exhibit worse performance. In addition,
-standard eigensolvers such as ARPACK~\cite{lehoucq1998arpack} or
-\pk{EPSKRYLOVSCHUR} from SLEPc, cannot cheaply evaluate the exact number of eigenpairs in a given
-interval of $\mathbb{R}^+$. Instead, it is often more efficient to provide an upper bound of the number of eigenpairs.
+standard eigensolvers such as \pk{EPSKRYLOVSCHUR} from SLEPc, cannot cheaply
+evaluate the exact number of eigenpairs in a given interval of $\mathbb{R}^+$.
+Instead, it is often more efficient to provide an upper bound of the number of
+eigenpairs.
 
 The option \pk{-pc\_hpddm\_coarse\_p} can be used to provide the size of the
 subcommunicator that will be used to remap the coarse operator. With the default
@@ -2343,12 +2344,6 @@ repository. This work was granted access to the GENCI-sponsored HPC resources of
 {\sc A.~V. Knyazev}, {\em {Toward the optimal preconditioned eigensolver:
   Locally optimal block preconditioned conjugate gradient method}}, SIAM
   journal on scientific computing, 23 (2001), pp.~517--541.
-
-\bibitem{lehoucq1998arpack}
-{\sc R.~Lehoucq, D.~Sorensen, and C.~Yang}, {\em {ARPACK} users’ guide\col\
-  solution of large-scale eigenvalue problems with implicitly restarted Arnoldi
-  methods}, vol.~6, Society for Industrial and Applied Mathematics, 1998,
-  \url{http://www.caam.rice.edu/software/ARPACK}.
 
 \bibitem{li2005overview}
 {\sc X.~S. Li}, {\em {An overview of SuperLU: Algorithms, implementation, and
