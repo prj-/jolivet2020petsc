@@ -1937,8 +1937,9 @@ The strong formulation of the continuous problem is given by:
         \sin{4\pi z}&\sin{4\pi x} \end{bmatrix}^T \text{on } \partial \Omega.
 	\end{split}
 \end{align}
-It is discretized using first order N\'ed\'elec finite elements and the \pk{PCBDDC} solver
-is automatically customized to obtain a stable method with these elements~\cite{zampini2017balancing}.
+It is discretized using first order N\'ed\'elec finite elements and \pk{PCBDDC}
+is automatically customized to obtain a stable method with these
+elements~\cite{zampini2017balancing}. The number of unknowns is $\pgfmathprintnumber{5.6} \times 10^6$.
 The following command line options are used. \\[-4pt]
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 512 ./ex3p -m ../../data/fichera.mesh -f 4 --petscopts rc_ex3p_bddc      &fvtextcolor[myred][\]
@@ -1984,7 +1985,7 @@ The option file shows how \pk{PCHPDDM} may be composed into \pk{PCBDDC}. \\[-4pt
 \end{Verbatim}
 \end{minipage}
 Deluxe scaling is used to build an adaptive second level with \pk{PCBDDC}. On this
-second level, new subdomains are built by aggregating the coarse element matrices of
+second level with 16${,}$284 unknowns, new subdomains are built by aggregating the coarse element matrices of
 8 fine-level subdomains. The BDDC coarse problem composed of $\frac{512}{8} =
 64$ subdomains is then solved using \pk{PCHPDDM}, which itself builds another adaptive
 level using $10$ local eigenvectors per subdomain. The coarsest level is
