@@ -121,9 +121,9 @@ On the other hand, HPDDM~\cite{jolivet2013scalable}, the High-Performance unifie
 is a much smaller project focusing on robust and scalable domain decomposition
 preconditioners and advanced iterative
 methods~\cite{jolivet2016block} which can efficiently deal with linear
-systems with multiple right-hand sides (i.e. block iterative methods),
+systems with multiple right-hand sides, i.e., block iterative methods,
 and when there is a recurrence of varying coefficient matrices and right-hand
-sides (recycling iterative methods).
+sides, i.e., recycling iterative methods.
 
 % Htool ?
 Here, we describe the integration of the HPDDM solvers suite consisting of advanced iterative
@@ -151,7 +151,7 @@ Codes not already available in other public repositories are available at
 \section{Advanced Krylov methods in PETSc: KSPHPDDM}\label{sec:KSPHPDDM}
   \subsection{Related work}
 Krylov subspace methods are widely used in numerical linear algebra for solving
-linear systems of equations because of their memory efficiency~\cite{barrett1994templates}.
+linear systems of equations because of their memory efficiency~\cite{barrett1994templates,saad2003iterative}.
 They mainly rely on matrix--vector
 operations such as multiplications or transpose multiplications and,
 for robust convergence when dealing with challenging high-dimensional systems,
@@ -1022,7 +1022,7 @@ The following generalized eigenvalue problem is solved in a three-dimensional cu
 \begin{equation*}
     -\nabla \cdot (\kappa \nabla u) = \lambda u.\label{eq:lobpcg}
 \end{equation*}
-This continuous equation is discretized with $\mathbb{P}_3$ finite elements using FreeFEM. The script is available at \url{https://github.com/prj-/jolivet2020petsc}. The following timings and convergence histories have been obtained on $2{,}304$ processes of Ir\`ene, for solving a problem of dimension \pgfmathprintnumber{74618461}. By default, SLEPc applies at most 5 iterations of GMRES on each column of a so-called set of active columns. Since the option \pk{-eps\_lobpcg\_blocksize 40} is used for computing 20 eigenpairs, the size of the set varies between 40 to 1. This size corresponds to the number of right-hand sides in systems that will be solved throughout LOBPCG iterations. Instead of using \pk{KSPGMRES}, which does not handle blocking, \pk{KSPHPDDM} is used, with the pseudo-block GMRES. That means that, assuming the size of the set of active columns is 40, one LOBPCG iterations implies doing at most 5 GMRES iterations with 40 vectors simultaneously, using \pk{MatProductNumeric} and \pk{PCMatApply}, instead of doing at most $40\times 5$ successive GMRES iterations, using \pk{MatMult} and \pk{PCApply}. Results are gathered in~\cref{fig:lobpcg}. In the first line, the numbers of outer LOBPCG iterations are reported with the three different inner preconditioners mentioned above. \pk{PCASM} is known to yield a preconditioned operator whose condition number grows as the number of subdomains, here processes, increases. Thus, the number of outer iterations is higher than with \pk{PCHPDDM} or \pk{PCGAMG} since the inner solves are not converging to meaningful solutions in just 5 iterations. The multilevel preconditioners perform similarly, since the difference in the number of outer iterations is minimal (1). The second and third lines represent the number of times \pk{PCApply} and \pk{PCMatApply} are called. Since \pk{PCGAMG} does not handle blocking, at each pseudo-block GMRES iteration, \pk{PCApply} is called on each single active column. \pk{PCASM} and \pk{PCHPDDM} handle blocking, so only rely on \pk{PCMatApply}. In the fourth line, the time spent setting up the preconditioners is given. \pk{PCASM} is extremely cheap but not very robust numerically, while both multilevel preconditioners have a similar setup time. Eventually, in the last line, the time spent in the full eigensolve is given. Clearly, having both a \pk{KSP} and a \pk{PC} which can deal with multiple vectors efficiently is mandatory to achieve reasonable performance with such an outer solver that heavily relies on blocking.
+This continuous equation is discretized with third-order Lagrange finite elements using FreeFEM. The script is available at \url{https://github.com/prj-/jolivet2020petsc}. The following timings and convergence histories have been obtained on $2{,}304$ processes of Ir\`ene, for solving a problem of dimension \pgfmathprintnumber{74618461}. By default, SLEPc applies at most 5 iterations of GMRES on each column of a so-called set of active columns. Since the option \pk{-eps\_lobpcg\_blocksize 40} is used for computing 20 eigenpairs, the size of the set varies between 40 to 1. This size corresponds to the number of right-hand sides in systems that will be solved throughout LOBPCG iterations. Instead of using \pk{KSPGMRES}, which does not handle blocking, \pk{KSPHPDDM} is used, with the pseudo-block GMRES. That means that, assuming the size of the set of active columns is 40, one LOBPCG iterations implies doing at most 5 GMRES iterations with 40 vectors simultaneously, using \pk{MatProductNumeric} and \pk{PCMatApply}, instead of doing at most $40\times 5$ successive GMRES iterations, using \pk{MatMult} and \pk{PCApply}. Results are gathered in~\cref{fig:lobpcg}. In the first line, the numbers of outer LOBPCG iterations are reported with the three different inner preconditioners mentioned above. \pk{PCASM} is known to yield a preconditioned operator whose condition number grows as the number of subdomains, here processes, increases. Thus, the number of outer iterations is higher than with \pk{PCHPDDM} or \pk{PCGAMG} since the inner solves are not converging to meaningful solutions in just 5 iterations. The multilevel preconditioners perform similarly, since the difference in the number of outer iterations is minimal (1). The second and third lines represent the number of times \pk{PCApply} and \pk{PCMatApply} are called. Since \pk{PCGAMG} does not handle blocking, at each pseudo-block GMRES iteration, \pk{PCApply} is called on each single active column. \pk{PCASM} and \pk{PCHPDDM} handle blocking, so only rely on \pk{PCMatApply}. In the fourth line, the time spent setting up the preconditioners is given. \pk{PCASM} is extremely cheap but not very robust numerically, while both multilevel preconditioners have a similar setup time. Eventually, in the last line, the time spent in the full eigensolve is given. Clearly, having both a \pk{KSP} and a \pk{PC} which can deal with multiple vectors efficiently is mandatory to achieve reasonable performance with such an outer solver that heavily relies on blocking.
 \pgfplotstableread{
 PC       outer PCApply PCMatApply PCSetUp       EPSSolve
 PCASM    54    ---     378        2.8536e+00    265.6564
@@ -1126,7 +1126,7 @@ FEMPAR-BDDC~\cite{badia2014highly}.
 
 HPDDM implements the same one-level overlapping Schwarz methods as PETSc as
 well as optimized Schwarz methods~\cite{gander2006optimized}, which may be used
-in PETSc with \pk{PCSetModifySubMatrices}.  It also provides support for
+in PETSc with \pk{PCSetModifySubMatrices}, see~\cite{gander2019new}.  It also provides support for
 defining robust two-level methods using the Generalized Eigenvalue problem on
 the Overlap (GenEO) framework, for finite
 elements~\cite{spillane2011robust,spillane2013abstract} and boundary
@@ -1303,7 +1303,7 @@ of solvers in PETSc~\cite{may2016extreme}.
 
 % Of course, users do not have to implement the three previous steps themselves.
 In order to use GenEO from PETSc, the auxiliary operators $\{\mathring{A}_i\}_{i=1}^N$
-and the corresponding local to global map of degrees of freedom (see~\cref{fig:poisson})
+and the corresponding local to global map of degrees of freedom, see~\cref{fig:poisson},
 can be provided using the routine \pk{PCHPDDMSetAuxiliaryMat}.
 In special cases where the matrix has been constructed using the PETSc discretization
 infrastructure, the relevant information is automatically computed
@@ -1488,8 +1488,8 @@ where
 \]
 $\Gamma_D$ is the subset of the boundary of $\Omega$ corresponding to $x = 0$.
 $\Gamma_N$ is defined as the complementary of $\Gamma_D$ with respect to the boundary of $\Omega$.
-\Cref{eq:elasticity} is discretized using
-$(\mathbb{P}_1, \mathbb{P}_1, \mathbb{P}_1)$ finite elements resulting in $\pgfmathprintnumber{593} \times 10^6$ number of unknowns
+\Cref{eq:elasticity} is discretized using piecewise linear
+finite elements resulting in $\pgfmathprintnumber{593} \times 10^6$ number of unknowns
 with approximately $\pgfmathprintnumber{45}$ nonzero coefficients per row.
 The physical domain $\Omega$ is decomposed in $13{,}824$ subdomains using the automatic graph partitioner ParMETIS~\cite{karypis1998fast}.
 There are heterogeneities due to jumps in $E$ and $\nu$. The following discontinuous piecewise constant values are considered: $(E_1, \nu_1) = ({\color{paraviewred}2\times 10^{11}}, 0.25)$ in blue regions, while $(E_2, \nu_2) = ({\color{paraviewblue}10^7}, 0.45)$ in red regions, see~\cref{fig:elas}.
@@ -1754,7 +1754,7 @@ see~\cref{fig:kappa}. This equation may model the temperature distribution in
 combustion models. Here, it is merely used to test \pk{PCHPDDM} in the context
 of solving successive linearized equations%, but there are many other techniques for solving such a nonlinear equation, such as first decomposing the domain and then linearizing the equation~\cite{dryja1997nonlinear}
 . The physical domain $\Omega$ is the unit cube. It is decomposed in $10{,}272$ subdomains.
-\Cref{eq:bratu} is discretized using $\mathbb{P}_2$ finite elements.
+\Cref{eq:bratu} is discretized using second-order Lagrange finite elements.
 The number of unknowns is $\pgfmathprintnumber{217} \times 10^6$, with
 approximately $\pgfmathprintnumber{29}$ nonzero coefficients per row.
 It is solved using a \pk{SNES}, with \pk{PCHPDDM} being the preconditioner for
@@ -2081,8 +2081,8 @@ ones) to further exploit the block solve primitives, for instance block Krylov-S
 
 
 \section*{Acknowledgments}
-The authors would like to thank S. Balay, J. Brown, V. Hapla, M. Knepley,
-and B. Smith for reviewing the successive merge requests in the PETSc
+The authors would like to thank S.~Balay, J.~Brown, V.~Hapla, M.~Knepley,
+and B.~Smith for reviewing the successive merge requests in the PETSc
 repository. This work was granted access to the GENCI-sponsored HPC resources of:
 \begin{itemize}
     \item TGCC@CEA under allocation A0070607519;
@@ -2235,9 +2235,9 @@ Jose E.~Roman was supported by the Spanish Agencia Estatal de Investigaci\'{o}n 
   pp.~303--318.
 
 \bibitem{falgout2002hypre}
-{\sc R.~Falgout and U.~Yang}, {\em \emph{hypre}: a library of high performance
-  preconditioners}, Computational Science---ICCS 2002,  (2002), pp.~632--641,
-  \url{https://www.llnl.gov/casc/hypre}.
+{\sc R.~Falgout and U.~M. Yang}, {\em \emph{hypre}: a library of high
+  performance preconditioners}, Computational Science---ICCS 2002,  (2002),
+  pp.~632--641, \url{https://www.llnl.gov/casc/hypre}.
 
 \bibitem{frommer2017block}
 {\sc A.~Frommer, K.~Lund, and D.~B. Szyld}, {\em {Block Krylov Subspace Methods
@@ -2247,6 +2247,11 @@ Jose E.~Roman was supported by the Spanish Agencia Estatal de Investigaci\'{o}n 
 \bibitem{gander2006optimized}
 {\sc M.~J. Gander}, {\em Optimized {S}chwarz {M}ethods}, SIAM Journal on
   Numerical Analysis, 44 (2006), pp.~699--731.
+
+\bibitem{gander2019new}
+{\sc M.~J. Gander and S.~Van~Criekingen}, {\em {New Coarse Corrections for
+  Optimized Restricted Additive Schwarz Using PETSc}}, in International
+  Conference on Domain Decomposition Methods, Springer, 2019.
 
 \bibitem{gee2006ml}
 {\sc M.~W. Gee, C.~M. Siefert, J.~J. Hu, R.~S. Tuminaro, and M.~G. Sala}, {\em
@@ -2472,7 +2477,7 @@ Jose E.~Roman was supported by the Spanish Agencia Estatal de Investigaci\'{o}n 
   \url{http://users.math.cas.cz/~sistek/software/bddcml.html}.
 
 \bibitem{smith2004domain}
-{\sc B.~F. Smith, P.~Bj{\o}rstad, and W.~Gropp}, {\em Domain decomposition:
+{\sc B.~F. Smith, P.~Bj{\o}rstad, and W.~D. Gropp}, {\em Domain decomposition:
   parallel multilevel methods for elliptic partial differential equations},
   Cambridge University Press, 2004.
 
