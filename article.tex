@@ -83,9 +83,12 @@
     end-users robust overlapping Schwarz preconditioners and advanced Krylov
     methods featuring recycling and block solution techniques.
     The flexibility of the implementation %, which for example may deal with various matrix formats,
-    is showcased and explained with minimalist, easy-to-run and reproducible examples
-    ranging from {\color{red}fracture mechanics to linear stability analysis}
+    is showcased and explained with minimalist, easy-to-run, and reproducible examples,
     to ease the integration of these algorithms into more advanced frameworks.
+    The examples simulate the linear or nonlinear solves of typical
+    applications in fracture mechanics, linear stability analysis or more
+    broadly-speaking eigenanalysis, elasticity, combustion, and
+    electromagnetism.
 \end{abstract}
 
 % REQUIRED
@@ -99,10 +102,13 @@
 \end{AMS}
 
 \section{Introduction}
-Implementing and maintaining robust and scalable applications is highly relevant
-in the field of computational science and engineering. The efficient production of
-such applications requires a rich ecosystem of state-of-the-art reusable libraries
-\cite{Bartlett:2017:XFT}. In this paper, we focus on the interoperability of two such libraries.
+Implementing and maintaining robust and scalable applications is highly
+relevant in the field of computational science and engineering. The efficient
+production of such applications requires a rich ecosystem of state-of-the-art
+reusable libraries \cite{Bartlett:2017:XFT}. They can then be used by domain
+specialists who can decide what are the best tools available for their
+applications. In this paper, we focus on the interoperability of two such
+libraries.
 
 On the one hand, PETSc \cite{balay1997cient}, the
 Portable and Extensible Toolkit for Scientific computation, is a
@@ -134,6 +140,12 @@ Association for Computing Machinery
 \url{https://www.acm.org/publications/policies/artifact-review-badging}, as well as to 
 ease the integration of these algorithms into more advanced frameworks
 and facilitate the analysis and comparison of performance results~\cite{hoefler2015scientific}.
+Furthermore, the benefits of code refactorization are shown for
+applications that deal with multiple right-hand sides. This is the case of some
+eigensolvers in SLEPc~\cite{hernandez2005ssf}, the Scalable Library for
+Eigenvalue Problem computations. SLEPc is an add-on library that extends PETSc
+with several classes for linear and nonlinear eigenvalue problems, as well as with
+tools to facilitate the use of shift-and-invert spectral transformations.
 
 The paper is divided in two main parts. \Cref{sec:KSPHPDDM} introduces
 \pk{KSPHPDDM} and discusses the readiness of PETSc with respect to block Krylov methods.
@@ -356,23 +368,6 @@ block preconditioner application phase.
 % \pk{KSPMatSolve} is then called repeatedly until all sub-blocks are traversed.
 % This was inspired by MUMPS~\cite{amestoy2001fully} option
 % ICNTL(27)\footnote{\url{http://mumps.enseeiht.fr/doc/userguide_5.3.1.pdf}, section 6.1}.
-
-{\color{red} THIS PARAGRAPH IS A BIT DETACHED FROM THE REST OF THE SECTION.
-WHAT ABOUT ADDING A SMALL PARAGRAPH IN THE INTRODUCTION (in the spirit of third party code that directly benefits from the PETSc-HPDDM interface) RIGHT BEFORE THE OUTLINE OF THE PAPER
-AND CONTINUE THE DISCUSSION IN ~\cref{sec:lobpcg}?}
-With these added functions, it is now possible to do code refactorization for
-applications that deal with multiple right-hand sides. This is the case of some
-eigensolvers in SLEPc~\cite{hernandez2005ssf}, the Scalable Library for
-Eigenvalue Problem computations. SLEPc is an add-on library that extends PETSc
-with several classes for linear and nonlinear eigenvalue problems, as well as with
-tools to facilitate the use of shift-and-invert spectral transformations.
-The implementations {\color{red} spell out LOBPGC and CISS} of LOBPCG~\cite{knyazev2001toward} and CISS~\cite{sakurai2003projection}
-in SLEPc were previously not using blocking when applying the preconditioner or solving linear systems.
-In version 3.14.0, we have adapted these solvers to employ \pk{KSPMatSolve} and \pk{PCMatApply}.
-In the case of LOBPCG, which is a purely blocked method, all steps were already
-implemented as block operations, except the applications of the preconditioner,
-which ruined the benefits of blocking. With the new implementation, the gains
-are striking, as reported in~\cref{sec:lobpcg}.
 
 %As a side note, when dealing with
 %\pk{MatKAIJ} matrices, for which it is assumed that an operator may be written as $I \otimes S
@@ -627,7 +622,7 @@ for $b \in \{ 1,3,6 \}$, and the matrix $\mathbb{A} = A \otimes T$ is assembled 
 a block size of $b$ for the block formats.
 The performance of the \pk{MatProductNumeric} operation is evaluated for tall-and-skinny dense matrices with a varying number
 of columns $N \in \{2,8,16,32,64\}$. For the single column case $N=1$, the \pk{MatMult} operation is used.
-All results have been obtained using double precision arithmetic and 32-bit integers. The scaled efficiency measured in GFLOP per second is reported
+All results have been obtained using double-precision arithmetic and 32-bit integers. The scaled efficiency measured in GFLOP per second is reported
 with respect to the baseline \pk{MATAIJ} implementation with $N=1$ in~\cref{fig:perfAX}, where performances have been averaged over five consecutive
 product operations.
 They can be reproduced by using the mini-app \texttt{MatProduct.c} from \url{https://github.com/prj-/jolivet2020petsc} and any input \pk{MATAIJ} stored in binary format,
@@ -1007,6 +1002,16 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
 \end{figure}
 
 \subsubsection{Blocking inside SLEPc\label{sec:lobpcg}}
+The implementations of the Locally Optimal Block Preconditioned Conjugate
+Gradient~\cite{knyazev2001toward}~(LOBPCG) and the Contour Integral Spectrum
+Slicing method~\cite{sakurai2003projection}~(CISS) in SLEPc were previously not
+using blocking when applying the preconditioner or solving linear systems. In
+version 3.14.0, these solvers have been adapted to employ \pk{KSPMatSolve} and
+\pk{PCMatApply}.  In the case of LOBPCG, which is a purely blocked method, all
+steps were already implemented as block operations, except the applications of
+the preconditioner, which undermined the benefits of blocking. With the new
+implementation, the gains are striking, as reported in~\cref{sec:lobpcg}.
+
 Finally, the performance of LOBPCG~\cite{knyazev2001toward} as implemented in SLEPc is studied using three different preconditioners:
 \begin{itemize}
     \item \pk{PCASM}: one-level overlapping Schwarz method with one level of overlap and exact Cholesky factorizations in each subdomain;
@@ -2054,14 +2059,11 @@ it res inner
     \caption{MFEM example ex3p for solving the Fichera corner problem.}
 \end{figure}
 \section{Conclusion and perspectives}\label{sec:conclusion}
-{\color{red} I WOULD PREFER CONCLUSIONS in ACTIVE TENSE. ALSO, THE TONE IS 
-TOO MUCH COLLOQUIAL (i.e. using "and such"). THERE ARE FEW POINTS WE CAN ADD FOR
-FUTURE WORK: BDD-GENEO?, GPU AWARE HPDDM? SOME MORE SPECIFICS ON BLOCK KRYLOV-SCHUR?}
 
-In this paper, the interface between PETSc and HPDDM is presented. The new
-registered Krylov and overlapping Schwarz methods are explained and numerical
-examples are provided to show the applicability of these. Solving well-known
-problems, various options have been described. %Some more unconventional test
+In this paper, we presente the interface between PETSc and HPDDM. The new
+registered Krylov and overlapping Schwarz methods are explained and we show the
+applicability of these  with numerical examples. Solving well-known problems,
+we describe various runtime options. %Some more unconventional test
 %cases were commented as well, for example using \pk{MatKAIJ} or \pk{MatIS} matrix types.
 Overall, the interface paves the way for having recycling and block Krylov
 methods plus robust overlapping Schwarz methods using the GenEO framework in
@@ -2071,14 +2073,24 @@ Concerning PETSc, the infrastructure for dealing with blocks of vectors has
 been laid out. Still, only a little fraction of the built-in matrix types and
 preconditioners may efficiently handle such a format.
 
+Concerning SLEPc, we plan to implement new solvers or extend existing ones to
+further exploit block solve primitives, for instance, block
+Krylov--Schur~\cite{zhou2008block}. The current code for Arnoldi iterations
+would then handle block Arnoldi iterations.
+
 Concerning HPDDM, its integration inside PETSc offers a much-needed flexibility
 compared to the standard implementation. Indeed, it is now possible to switch at
 runtime many parameters that are determined at compile-time in the standard implementation, e.g.,
-subdomain solvers, matrix types, and such.
+subdomain solvers and matrix types.
 
-Concerning SLEPc, as a future work we plan to implement new solvers (or extend existing
-ones) to further exploit the block solve primitives, for instance block Krylov-Schur.
-
+The interface between PETSc and HPDDM has still room for future improvements,
+and we discuss openly two of them next. First, HPDDM handles mixed-precision,
+e.g., using single-precision scalars for assembling coarse operators while
+using double-precision scalars at the fine level. The topic of mixed-precision
+is under scrutiny for the next major overhaul of PETSc. Second, HPDDM does not
+currently handle GPU efficiently, but the interface with PETSc provides a very
+thorough test bed with \pk{Mat} and \pk{PC} implementations that are exploiting
+GPU.
 
 \section*{Acknowledgments}
 The authors would like to thank S.~Balay, J.~Brown, V.~Hapla, M.~Knepley,
@@ -2108,22 +2120,24 @@ Jose E.~Roman was supported by the Spanish Agencia Estatal de Investigaci\'{o}n 
   Spaces}}, Journal of Scientific Computing,  (2019), p.~submitted for
   publication, \url{https://github.com/prj-/aldaas2019multi}.
 
+\bibitem{ambartsumyan2020hierarchical}
+{\sc I.~Ambartsumyan, W.~Boukaram, T.~Bui-Thanh, O.~Ghattas, D.~Keyes,
+  G.~Stadler, G.~Turkiyyah, and S.~Zampini}, {\em {Hierarchical Matrix
+  Approximations of Hessians Arising in Inverse Problems Governed by PDEs}},
+  arXiv:2003.10173,  (2020).
+
 \bibitem{amestoy2001fully}
 {\sc P.~Amestoy, I.~Duff, J.-Y. L'Excellent, and J.~Koster}, {\em A fully
   asynchronous multifrontal solver using distributed dynamic scheduling}, SIAM
   Journal on Matrix Analysis and Applications, 23 (2001), pp.~15--41,
   \url{http://mumps.enseeiht.fr}.
 
-\bibitem{ambartsumyan2020hierarchical}
-{\sc I.~Ambartsumyan, W.~Boukaram, T.~Bui-Thanh, O.~Ghattas, D.~Keyes, G.~Stadler, G.~Turkiyyah and S.~Zampini},
-  {\em Hierarchical Matrix Approximations of Hessians Arising in Inverse Problems Governed by PDEs},
-  arXiv preprint arXiv:2003.10173 (2020).
-
 \bibitem{anderson2019mfem}
 {\sc R.~Anderson, J.~Andrej, A.~Barker, J.~Bramwell, J.-S. Camier, J.~Cerveny,
-  V.~Dobrev, Y.~Dudouit, A.~Fisher, T.~Kolev, et~al.}, {\em {MFEM: a modular
-  finite element methods library}}, arXiv:1911.09220,  (2019),
-  \url{http://mfem.org}.
+  V.~Dobrev, Y.~Dudouit, A.~Fisher, T.~Kolev, W.~Pazner, M.~Stowell, V.~Tomov,
+  I.~Akkerman, J.~Dahm, D.~Medina, and S.~Zampini}, {\em {MFEM: A modular
+  finite element methods library}}, Computers \& Mathematics with Applications,
+   (2020), \url{http://mfem.org}.
 
 \bibitem{badia2014highly}
 {\sc S.~Badia, A.~F. Mart{\'\i}n, and J.~Principe}, {\em A highly scalable
@@ -2554,6 +2568,10 @@ Jose E.~Roman was supported by the Spanish Agencia Estatal de Investigaci\'{o}n 
   Domain Decomposition by Constraints Algorithms for Curl-Conforming Spaces of
   Arbitrary Order}}, in International Conference on Domain Decomposition
   Methods, Springer, 2017, pp.~103--116.
+
+\bibitem{zhou2008block}
+{\sc Y.~Zhou and Y.~Saad}, {\em {Block Krylov--Schur method for large symmetric
+  eigenvalue problems}}, Numerical Algorithms, 47 (2008), pp.~341--359.
 
 \end{thebibliography}
 \end{document}
