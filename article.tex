@@ -11,7 +11,7 @@
 % Optional PDF information
 \ifpdf
 \hypersetup{
-  pdftitle={KSPHPDDM and PCHPDDM: Extending PETSc with Robust Overlapping Schwarz Preconditioners and Advanced Krylov Methods},
+  pdftitle={KSPHPDDM and PCHPDDM: Extending PETSc with Robust Overlapping Schwarz Preconditioners and Advanced Krylov Solvers},
   pdfauthor={P. Jolivet, J. E. Roman, and S. Zampini}
 }
 \fi
@@ -121,37 +121,34 @@ On the other hand, HPDDM~\cite{jolivet2013scalable}, the High-Performance unifie
 is a much smaller project focusing on robust and scalable domain decomposition
 preconditioners and advanced iterative
 methods~\cite{jolivet2016block} which can efficiently deal with linear
-systems with multiple right-hand sides, also known and as block iterative methods,
+systems with multiple right-hand sides (i.e. block iterative methods),
 and when there is a recurrence of varying coefficient matrices and right-hand
-sides, recycling iterative methods.
+sides (recycling iterative methods).
 
 % Htool ?
-Here, we describe the integration of the entire HPDDM suite, its advanced iterative
-methods and its domain decomposition preconditioners, into PETSc.
+Here, we describe the integration of the HPDDM solvers suite consisting of advanced iterative
+methods and robust domain decomposition preconditioners into PETSc.
 The design principles of the interface are showcased considering % alongside
-minimalist and easy-to-run examples. Necessary command line
-options are provided to:
-\begin{itemize}
-    \item fulfill reproducibility requirements as advocated by the
+minimalist and easy-to-run examples, with a focus on fulfilling reproducibility requirements as advocated by the
 Association for Computing Machinery
-\url{https://www.acm.org/publications/policies/artifact-review-badging};
-    \item ease the integration of these algorithms into more advanced frameworks;
-    \item analyze performance results~\cite{hoefler2015scientific}.
-\end{itemize}
+\url{https://www.acm.org/publications/policies/artifact-review-badging}, as well as to 
+ease the integration of these algorithms into more advanced frameworks
+and facilitate the analysis and comparison of performance results~\cite{hoefler2015scientific}.
 
 The paper is divided in two main parts. \Cref{sec:KSPHPDDM} introduces
-\pk{KSPHPDDM}. The readiness of PETSc for interacting with block Krylov methods
-is discussed.  Multiple applications are provided, two of which are within
-eigensolver frameworks, showing the interoperability of the proposed
-methodology.  \Cref{sec:PCHPDDM} introduces \pk{PCHPDDM}. Again, diverse
-problems are dealt with, for example in the context of a nonlinear solver.
-Eventually, concluding remarks may be found \cref{sec:conclusion}. All PETSc
+\pk{KSPHPDDM} and discusses the readiness of PETSc with respect to block Krylov methods.
+Different applications from eigen-analysis are also provided.
+\Cref{sec:PCHPDDM} introduces \pk{PCHPDDM} and presents diverse
+applications for solving linear and nonlinear partial differential equations.
+Eventually, concluding remarks may be found in \cref{sec:conclusion}.
+
+All PETSc
 keywords and options are typeset in \texttt{typewriter} font, these are
 public and documented at \url{https://www.mcs.anl.gov/petsc/petsc-master/docs}.
 Codes not already available in other public repositories are available at 
 \url{https://github.com/prj-/jolivet2020petsc}.
 
-\section{KSPHPDDM}\label{sec:KSPHPDDM}
+\section{Advanced Krylov methods in PETSc: KSPHPDDM}\label{sec:KSPHPDDM}
   \subsection{Related work}
 Krylov subspace methods are widely used in numerical linear algebra for solving
 linear systems of equations because of their memory efficiency~\cite{barrett1994templates}.
@@ -175,13 +172,13 @@ convergence plateaus. Recycling techniques have been introduced to attenuate
 these effects. In PETSc, the Loose GMRES~\cite{baker2005technique}~(LGMRES) and the
 Deflated GMRES~\cite{erhel1996restarted,wakam2013158}~(DGMRES), implemented as
 \pk{KSPLGMRES} and \pk{KSPDGMRES}, are available. However, neither handle variable
-preconditioning, and \pk{KSPDGMRES} does not support complex arithmetic. {\color{red} Also note
-that when solving a sequence of linear systems $A_i x_i = b_i, i = 1, 2,
-\ldots$, it is not trivial to extend the theory of these methods to perform
-recycling throughout both the restarts and the different systems. The
+preconditioning, and \pk{KSPDGMRES} does not support complex arithmetic;
+moreover, extending the recycling capabilites of such methods to sequence of linear systems
+with smoothly varying coefficient matrices and right-hand sides is not trivial.
+On the other hand, HPDDM offers support for the
 generalized conjugate residual method with inner orthogonalization and deflated
-restarting~\cite{parks2006recycling}~(GCRODR) does not suffer from this
-limitation.}
+restarting~\cite{parks2006recycling}~(GCRODR), which does not suffer from the aforementioned
+limitations.
 
 % Recycling put aside,
 Another important aspect of Krylov methods is their ability
@@ -190,12 +187,10 @@ Block Krylov methods~\cite{gutknecht2006block} are
 designed for solving linear systems $A X = B$, where
 $X$ and $B$ are tall-and-skinny matrices with $k \geq 1$ columns.
 Such methods, while having higher arithmetic
-intensities, generate larger subspaces and typically converge in fewer iterates.
-
-These methods are not currently offered in PETSc and they are
+intensities, generate larger subspaces and typically converge in fewer iterates. These methods are not currently offered in PETSc and they are
 less frequently implemented in general purpose libraries because they require
 somehow more involved kernels such as matrix--matrix multiplication, instead of
-matrix--vector, and may involve different inner-product realizations~\cite{frommer2017block}.
+matrix--vector products, and may involve different inner-product realizations~\cite{frommer2017block}.
 Still, systems with multiple right-hand sides are ubiquitous,
 e.g., in tomography~\cite{tournier2016micro}, data
 analytics~\cite{KALANTZIS2018136}, eigensolvers~\cite{knyazev2001toward}, geophysics~\cite{calandra2012flexible}, quantum chromodynamics~\cite{sakurai2010application}, and optimization with time-dependent partial differential equations as constraints.
@@ -217,7 +212,7 @@ consequently the solutions, are always dense vectors or matrices.
 \pk{KSPHPDDM}, the interface between HPDDM Krylov methods and PETSc, is automatically
 registered since PETSc version 3.12 when configuring PETSc with the extra
 flag \pk{-{}-download-hpddm}. HPDDM linear solvers can be selected using the command
-line option \pk{-ksp\_type hpddm}, or the routine \pk{KSPSetType}(ksp,
+line option \pk{-ksp\_type hpddm}, or programmatically via \pk{KSPSetType}(\pk{ksp},
 \pk{KSPHPDDM}), and the following Krylov methods can be accessed:
 \begin{itemize}
     \item pseudo-block GMRES or flexible GMRES~\cite{saad1993flexible};
@@ -233,10 +228,11 @@ their ``standard'' counterparts, the pseudo-block variants try to fuse together 
 operations like matrix--vector
 products to achieve higher arithmetic intensity, or to decrease the
 number of global synchronizations needed for scalar products.
+
 HPDDM Krylov methods may be selected using the % {\color{red} TODO API FOR KSPHPDDMSetVariant?}
 options \pk{-ksp\_hpddm\_type}
-\pk{(gmres$|$cg$|$gcrodr$|$bgmres$|$bcg$|$bfbcg$|$bgcrodr$|$preonly)}, or the
-routine \pk{KSPHPDDMSetType}(ksp, \pk{KSPHPDDMType}).
+\pk{(gmres$|$cg$|$gcrodr$|$bgmres$|$bcg$|$bfbcg$|$bgcrodr$|$preonly)}, or programmatically 
+by using \pk{KSPHPDDMSetType}(\pk{ksp}, \pk{KSPHPDDMType}).
 Preconditioning variants can be specified via
 \pk{-ksp\_hpddm\_variant} \pk{(left$|$right$|$flexible)} to select whether the
 preconditioner is applied on the left, on the right, or if it cannot be
@@ -248,68 +244,37 @@ possible to set the preconditioning side through the more common PETSc option
 \pk{KSPMonitor} interface is fully supported, as well as the specification of
 customized convergence testing via the \pk{KSPSetConvergenceTest} callback.
 
-According to the standard PETSc notation, ksp($A$, $P_{A'}$)
-defines a \pk{KSP} used to solve a system $Ax=b$ using a preconditioner $P_{A'}$ built
-using an operator $A'$ which is usually, but not necessarily, equal to $A$. While solving
-the linear system via \pk{KSPSolve}(ksp, $b$, $x$) or \pk{KSPMatSolve}(ksp, $B$, $X$),
-HPDDM will repeatedly call the following PETSc routines:
+Recycling Krylov methods try to
+extract convergence information by solving a small standard or a generalized
+dense eigenproblem at the end of each cycle or when convergence is reached, and
+then reuse it appropriately for subsequent
+solves~\cite{saad2000deflated,stathopoulos2009deflation,soodhalter2014krylov}.
+Such deflation subspaces, stored as dense tall-and-skinny matrices, can be accessed with \pk{KSPHPDDMGetDeflationSpace}. User-defined deflation subspaces can also be specified via \pk{KSPHPDDMSetDeflationSpace}.
+
+To fully support HPDDM solvers, from version 3.14.0 of PETSc we added interface routines
+for solving systems with multiple right-hand sides, \pk{KSPMatSolve}(\pk{ksp},\pk{X},\pk{Y}),
+and to apply preconditioning methods, i.e. \pk{PCMatApply}(\pk{ksp},\pk{X},\pk{Y}).
+Both input $X$ and output $Y$ matrices are currently limited to be dense tall-and-skinny matrices.
+With \pk{KSPHPDDM}, \mbox{(pseudo-)block} methods Krylov methods will be used; instead, when no specialized implementation
+is available, PETSc will perform the solution phase
+in a column by column fashion.
+Furthermore, a function \pk{KSPSetMatSolveBlockSize} is also provided to
+decompose a single large block of column vectors into multiple sub-blocks.
+\pk{KSPMatSolve} is then called repeatedly until all sub-blocks are traversed.
+This was inspired by MUMPS~\cite{amestoy2001fully} option
+ICNTL(27)\footnote{\url{http://mumps.enseeiht.fr/doc/userguide_5.3.3.pdf},
+section 6.1}.
+
+While solving the (block) linear system, HPDDM will repeatedly call the following PETSc routines:
 \begin{itemize}
     \item \pk{MatMult}($A$, $x$, $y$) for $y = Ax$;
     \item \pk{MatMatMult}($A$, $X$, {\small \pk{MAT\_REUSE\_MATRIX}}, {\small
         \pk{PETSC\_DEFAULT}}, $Y$)\footnote{or \pk{MatProductNumeric}($Y$) with PETSc 3.14.0 and above} for $Y =
         AX$;
-    \item \pk{PCApply}($P_{A'}$, $x$, $y$) for $y = P_{A'}x$;
-    \item \pk{PCMatApply}($P_{A'}$, $X$, $Y$) for $Y = P_{A'}X$;
+    \item \pk{PCApply}(M, $x$, $y$) to apply a preconditioner to $x$, i.e. for $y = M^{-1}x$;
+    \item \pk{PCMatApply}(M, $X$, $Y$) for $Y = M^{-1}X$;
 \end{itemize}
-As of version 3.14.0, PETSc provides unified routines for applying $A$ or $P_{A'}$
-to a tall-and-skinny dense matrix $X$. However, when no specialized implementation
-is available, PETSc will loop over the columns of $X$ and successively apply $A$
-or $P_{A'}$ to get all columns of $Y$. For matrix--matrix products, there are
-currently specialized implementations for the following \pk{MatType}:
-\begin{itemize}
-    \item \pk{MatSeqAIJ}, standard sequential sparse matrix, based on compressed sparse row format;
-    \item \pk{MatSeqBAIJ}, block sparse matrix, based on block compressed sparse row format;
-    \item \pk{MatSeqSBAIJ}, symmetric block sparse matrix stored in upper triangular form.
-    \item \pk{MatMPIAIJ}, standard parallel sparse matrix;
-    \item \pk{MatShell}, user-defined matrix;
-    \item \pk{MatNest}, block-defined matrix with nested submatrices;
-    \item \pk{MatSeqAIJCUSPARSE}, standard sequential sparse matrix, offloaded to a GPU using cuSPARSE~\cite{cusparse-web-page}.
-\end{itemize}
-The following preconditioners have specialized implementations for dealing
-efficiently with multiple vectors:
-\begin{enumerate}
-    \item \pk{PCNONE}: $P_{A'} = I$, identity matrix;
-    \item \pk{PCKSP}: embedded Krylov method inside $P_{A'}$;
-    \item \pk{PCMAT}: multiplication by $A'$, i.e., $P_{A'} = {A'}$;
-    \item \pk{PCSHELL}: user-defined preconditioner, e.g., matrix-free;
-    % \item \pk{PCSPAI}: sparse approximate inverse~\cite{grote1997parallel};
-    \item \pk{PCHARA}~\cite{10.1145/3232850} {\color{red}more info?};
-    \item \pk{PCHPDDM}: see~\cref{sec:PCHPDDM};\label{it:hpddm}
-    \item \pk{PCASM} and \pk{PCGASM}: overlapping Schwarz methods;\label{it:asm}
-    \item \pk{PCBJACOBI}: block Jacobi;\label{it:bjacobi}
-    \item \pk{PCLU} or \pk{PCCHOLESKY}: exact $LU$ or Cholesky factorization,
-        e.g., $P_{A'} = {U}^{-1}{L}^{-1}$;\label{it:lu}
-    \item \pk{PCILU} or \pk{PCICC}: incomplete $LU$ or Cholesky
-        factorization.\label{it:ilu}
-\end{enumerate}
-One appealing feature of domain decomposition-like preconditioners 
-\cref{it:hpddm,it:asm,it:bjacobi} is that they most often rely on exact or inexact
-factorizations~\cref{it:lu,it:ilu} as subdomain solvers.
-In these cases, it is possible to access the so-called local or distributed factored matrix $F$
-%via \pk{PCFactorGetMatrix} and then call \pk{MatMatSolve}($F$, $\tilde{Y}$, $\tilde{X}$).
-via \pk{PCFactorGetMatrix}, and then call \pk{MatMatSolve}($F$, $X$, $Y$) to take advantage
-of blocked forward eliminations and backward substitutions from the various factorization packages
-interfaced with PETSc. In the case of a sparse coefficient matrix $A'$,
-this strategy is possible with: MUMPS~\cite{amestoy2001fully},
-SuiteSparse~\cite{davis2004algorithm}, MKL
-PARDISO or CPARDISO~\cite{mkl-web-page}, and SuperLU~\cite{li2005overview} or
-SuperLU\_DIST~\cite{li2003superlu_dist}. For the case of a dense coefficient
-matrix $A'$: ScaLAPACK and Elemental~\cite{poulson2013elemental}. 
-Future work will consider extending the various implementations of PETSc
-preconditioning infrastructure to increase the arithmetic intensity of the
-block preconditioner application phase.
-
-The rest of the operations are then performed directly inside HPDDM.
+The rest of the operations are performed directly inside HPDDM.
 Specifically, within Krylov methods using the Arnoldi process, or when recycling is requested,
 one has to compute $QR$ factorizations of tall-and-skinny dense matrices to orthonormalize
 candidate basis vectors. Such operations are performed using the CholQR algorithm~\cite{stathopoulos2002block}, or
@@ -318,17 +283,51 @@ For Hessenberg matrices generated by the Arnoldi
 process, it is common to update their $QR$ decomposition using Givens
 rotations~\cite{saad2003iterative}. For block Hessenberg matrices, Householder reflectors are
 used instead~\cite{gutknecht2008updating}.
-These orthonormalization variants can be selected at runtime with the option \pk{-ksp\_hpddm\_qr (cholqr$|$mgs$|$cgs)}. % {\color{red} API?}
+These orthonormalization variants can be selected at runtime with the option \pk{-ksp\_hpddm\_qr (cholqr$|$mgs$|$cgs)}.
 
-    \subsubsection{User-defined deflation space} Recycling Krylov methods try to
-extract convergence information by solving a small standard or a generalized
-dense eigenproblem at the end of each cycle or when convergence is reached, and
-then reuse it appropriately for subsequent
-solves~\cite{saad2000deflated,stathopoulos2009deflation,soodhalter2014krylov}.
-The routine \pk{KSPHPDDMGetDeflationSpace} can be used to retrieve such deflation subspaces, stored as distributed
-dense tall-and-skinny matrices. It is also possible to provide this information
-via \pk{KSPHPDDMSetDeflationSpace} in case end-users already know a good initial
-deflation subspace.
+For matrix--matrix products, there are
+currently specialized implementations for the following \pk{MatType}:
+\begin{itemize}
+    \item \pk{MATSEQAIJ}, standard sequential sparse matrix, based on compressed sparse row format;
+    \item \pk{MATSEQBAIJ}, block sparse matrix, based on block compressed sparse row format;
+    \item \pk{MATSEQSBAIJ}, symmetric block sparse matrix stored in upper triangular form.
+    \item \pk{MATMPIAIJ}, standard parallel sparse matrix;
+    \item \pk{MATSHELL}, user-defined matrix;
+    \item \pk{MATNEST}, block-defined matrix with nested submatrices;
+    \item \pk{MATAIJCUSPARSE}, sequential or parallel sparse matrix, offloaded to a GPU using cuSPARSE~\cite{cusparse-web-page}.
+\end{itemize}
+
+The following preconditioners have specialized implementations for dealing
+efficiently with multiple vectors:
+\begin{enumerate}
+    %\item \pk{PCNONE}: $P_{A'} = I$, identity matrix;
+    \item \pk{PCKSP}: preconditionining via an embedded Krylov;
+    \item \pk{PCMAT}: preconditioning via matrix multiplication;
+    %\item \pk{PCSHELL}: user-defined preconditioner, e.g., matrix-free;
+    % \item \pk{PCSPAI}: sparse approximate inverse~\cite{grote1997parallel};
+    \item \pk{PCHARA}~\cite{10.1145/3232850,ambartsumyan2020hierarchical}: hierarchical matrix preconditioners; 
+    \item \pk{PCHPDDM}: see~\cref{sec:PCHPDDM};\label{it:hpddm}
+    \item \pk{PCASM} and \pk{PCGASM}: overlapping Schwarz methods;\label{it:asm}
+    \item \pk{PCBJACOBI}: block Jacobi;\label{it:bjacobi}
+    \item \pk{PCLU} or \pk{PCCHOLESKY}: exact $LU$ or Cholesky factorization;\label{it:lu}
+    \item \pk{PCILU} or \pk{PCICC}: incomplete $LU$ or Cholesky
+        factorization.\label{it:ilu}
+\end{enumerate}
+One appealing feature of domain decomposition-like preconditioners (i.e. 
+\cref{it:hpddm,it:asm,it:bjacobi}) is that they most often rely on exact or inexact
+factorizations~ (\cref{it:lu,it:ilu}) as subdomain solvers.
+In these cases, it is possible to access the so-called factored matrix $F$
+%via \pk{PCFactorGetMatrix} and then call \pk{MatMatSolve}($F$, $\tilde{Y}$, $\tilde{X}$).
+via \pk{PCFactorGetMatrix}, and then call \pk{MatMatSolve}($F$, $X$, $Y$) to take advantage
+of blocked forward eliminations and backward substitutions from the various factorization packages
+interfaced with PETSc. In the case of a sparse matrix,
+this strategy is possible with: MUMPS~\cite{amestoy2001fully},
+SuiteSparse~\cite{davis2004algorithm}, MKL
+PARDISO or CPARDISO~\cite{mkl-web-page}, and SuperLU~\cite{li2005overview} or
+SuperLU\_DIST~\cite{li2003superlu_dist}. For the case of a dense
+matrix: ScaLAPACK and Elemental~\cite{poulson2013elemental}. 
+Future work will consider extending the multigrid framework \pk{PCMG}, as well as other preconditioning classes to increase the arithmetic intensity of the
+block preconditioner application phase.
 
 %     \subsubsection{MatKAIJ and systems with multiple right-hand sides\label{sec:matkaij}}
 % {\color{red} TODO: move KSPMatSolve discussion out, and clean up the section, add results for irk?}
@@ -357,27 +356,17 @@ deflation subspace.
 % \pk{KSPMatSolve} is then called repeatedly until all sub-blocks are traversed.
 % This was inspired by MUMPS~\cite{amestoy2001fully} option
 % ICNTL(27)\footnote{\url{http://mumps.enseeiht.fr/doc/userguide_5.3.1.pdf}, section 6.1}.
-    \subsubsection{Systems with multiple right-hand sides\label{sec:kspmatsolve}}
-Along with \pk{PCMatApply} introduced in PETSc 3.14.0, a new function
-\pk{KSPMatSolve} was added for solving systems with multiple right-hand sides.
-It takes as input argument a \pk{KSP} and, just as for \pk{PCMatApply}, two
-dense \pk{Mat}. If the input \pk{KSP} is not of type \pk{KSPHPDDM}, the
-solution phase is done in a column by column fashion.  Otherwise, it is
-possible to use any \pk{KSPHPDDM} \mbox{(pseudo-)block} Krylov methods.
-Furthermore, a function \pk{KSPSetMatSolveBlockSize} is also provided to
-decompose a single large block of column vectors into multiple sub-blocks.
-\pk{KSPMatSolve} is then called repeatedly until all sub-blocks are traversed.
-This was inspired by MUMPS~\cite{amestoy2001fully} option
-ICNTL(27)\footnote{\url{http://mumps.enseeiht.fr/doc/userguide_5.3.3.pdf},
-section 6.1}.
 
+{\color{red} THIS PARAGRAPH IS A BIT DETACHED FROM THE REST OF THE SECTION.
+WHAT ABOUT ADDING A SMALL PARAGRAPH IN THE INTRODUCTION (in the spirit of third party code that directly benefits from the PETSc-HPDDM interface) RIGHT BEFORE THE OUTLINE OF THE PAPER
+AND CONTINUE THE DISCUSSION IN ~\cref{sec:lobpcg}?}
 With these added functions, it is now possible to do code refactorization for
 applications that deal with multiple right-hand sides. This is the case of some
 eigensolvers in SLEPc~\cite{hernandez2005ssf}, the Scalable Library for
 Eigenvalue Problem computations. SLEPc is an add-on library that extends PETSc
-with several classes for linear and nonlinear eigenvalue problems, as well as
-tools to, e.g., facilitate the use of shift-and-invert spectral transformations.
-The implementations of LOBPCG~\cite{knyazev2001toward} and CISS~\cite{sakurai2003projection}
+with several classes for linear and nonlinear eigenvalue problems, as well as with
+tools to facilitate the use of shift-and-invert spectral transformations.
+The implementations {\color{red} spell out LOBPGC and CISS} of LOBPCG~\cite{knyazev2001toward} and CISS~\cite{sakurai2003projection}
 in SLEPc were previously not using blocking when applying the preconditioner or solving linear systems.
 In version 3.14.0, we have adapted these solvers to employ \pk{KSPMatSolve} and \pk{PCMatApply}.
 In the case of LOBPCG, which is a purely blocked method, all steps were already
@@ -385,23 +374,23 @@ implemented as block operations, except the applications of the preconditioner,
 which ruined the benefits of blocking. With the new implementation, the gains
 are striking, as reported in~\cref{sec:lobpcg}.
 
-As a side note, when dealing with
-\pk{MatKAIJ} matrices, for which it is assumed that an operator may be written as $I \otimes S
-+ A \otimes T$, with $S$ and $T$ elements of $\mathbb{K}^{p\times q}$ and
-$A$ a standard sparse matrix of dimension $n$, it is also possible to use block Krylov methods. 
-Indeed, if $p=q=k$, $S = \lambda I$, and $T =
-\mu I$, then solving $(I \otimes S + A \otimes T) x = b$ may be cast into a
-system with $k$ right-hand sides $(\lambda I + \mu A)X = B$ where $B$ is
-the row-major representation of $b$, i.e., $b_{k \cdot i + j} = B_{i, j},
-\forall (i, j) \in \llbracket 1;n\rrbracket \times \llbracket 1;k\rrbracket$.
-On the one hand, due to the structure of the operator, it is challenging to
-define appropriate preconditioners for $(I \otimes S + A \otimes T)$: only
-\pk{PCPBJACOBI} is currently implemented for \pk{MatKAIJ}. On the other hand,
-it may be simpler to efficiently approximate the inverse of $A$. In
-\pk{KSPHPDDM}, the type of the operators is checked: if it is \pk{MatKAIJ} and
-the previous condition on $p, q, S$, and $T$ is fulfilled, the single
-right-hand side system is automatically cast into a system with multiple
-right-hand sides instead.
+%As a side note, when dealing with
+%\pk{MatKAIJ} matrices, for which it is assumed that an operator may be written as $I \otimes S
+%+ A \otimes T$, with $S$ and $T$ elements of $\mathbb{K}^{p\times q}$ and
+%$A$ a standard sparse matrix of dimension $n$, it is also possible to use block Krylov methods. 
+%Indeed, if $p=q=k$, $S = \lambda I$, and $T =
+%\mu I$, then solving $(I \otimes S + A \otimes T) x = b$ may be cast into a
+%system with $k$ right-hand sides $(\lambda I + \mu A)X = B$ where $B$ is
+%the row-major representation of $b$, i.e., $b_{k \cdot i + j} = B_{i, j},
+%\forall (i, j) \in \llbracket 1;n\rrbracket \times \llbracket 1;k\rrbracket$.
+%On the one hand, due to the structure of the operator, it is challenging to
+%define appropriate preconditioners for $(I \otimes S + A \otimes T)$: only
+%\pk{PCPBJACOBI} is currently implemented for \pk{MatKAIJ}. On the other hand,
+%it may be simpler to efficiently approximate the inverse of $A$. In
+%\pk{KSPHPDDM}, the type of the operators is checked: if it is \pk{MatKAIJ} and
+%the previous condition on $p, q, S$, and $T$ is fulfilled, the single
+%right-hand side system is automatically cast into a system with multiple
+%right-hand sides instead.
 
   \subsection{Applications and numerical results}
     \subsubsection{Reproducibility of the results from Parks et
@@ -411,12 +400,10 @@ a MATLAB implementation was provided and is since then
 available\footnote{\url{https://www.sandia.gov/~mlparks/GCRODR.zip}}. It comes
 with a sequence of ten ``linear systems from a finite element fracture mechanics
 problem constructed by Philippe H.\ Geubelle and Spandan Maiti." The goal of
-this paragraph is to explain how the results have been reproduced in PETSc.
-The dataset and the source code are available at
+this paragraph is to explain how the results can be reproduced with PETSc and \pk{KSPHPDDM}: the matrix files used are available at
 \url{https://gitlab.com/petsc/datafiles/-/tree/master/matrices/hpddm/GCRODR}
-and
-\url{https://www.mcs.anl.gov/petsc/petsc-master/src/ksp/ksp/tutorials/ex75.c.html}
-respectively. In order to check the correctness of the \pk{KSPHPDDM} interface,
+while the driver code is part of the PETSc testsuite and available at
+\url{https://www.mcs.anl.gov/petsc/petsc-master/src/ksp/ksp/tutorials/ex75.c.html}. In order to check the correctness of the \pk{KSPHPDDM} interface,
 the following tests are performed:
 \begin{itemize}
     \item in MATLAB, unpreconditioned GCRODR(40, 20), ICC(0) left-preconditioned
@@ -622,17 +609,17 @@ The readiness of PETSc, as of version 3.14.0, is now discussed
 when it comes to delivering efficient implementations of the core matrix--matrix multiplication
 needed by block Krylov methods and when a restart occurs in recycling Krylov methods.
 
-In particular, the first three matrix types from~\cref{sec:interface-ksp}, \pk{MatSeqAIJ}, \pk{MatSeqBAIJ}, and \pk{MatSeqSBAIJ} are first considered.
-Their distributed memory counterparts, e.g., \pk{MatMPIAIJ}, rely on the sequential implementations, with each process
+In particular, we consider the first three matrix types from~\cref{sec:interface-ksp}, namely \pk{MATSEQAIJ}, \pk{MATSEQBAIJ}, and \pk{MATSEQSBAIJ}.
+Their distributed memory counterparts, e.g., \pk{MATMPIAIJ}, rely on the sequential implementations, with each process
 storing two such matrices, one with local rows and columns, and another with local rows and ``nonlocal'' columns.
 To keep this study succinct, we only evaluate the performance of the sequential implementations, which can help
 in drawing conclusions for the intraprocess performance of the parallel formats.
-For this reason, from now on, the \pk{Seq} substring is dropped.
+For this reason, from now on, we drop the \pk{SEQ} substring.
 The performance of the multiplication primitives of the three aforementioned types will also be compared to
 those obtained with the MKL inspector--executor sparse BLAS routines~\cite{mkl-web-page}, using a single OpenMP thread.
 There is an ongoing effort to better integrate these routines in PETSc, but at the time of writing, direct calls to the MKL were used.
 
-For benchmarking, we first discretize the Poisson equation on a cube with $\mathbb{P}_1$ finite elements
+For benchmarking, we first discretize the Poisson equation on a cube with trilinear finite elements
 and obtain a matrix $A$ of dimension one million. Though the numerical
 values of $A$ are of no interest here, the sparsity pattern is rather common and frequently encountered when
 discretizing partial differential equations. We then generate a random symmetric dense $b$-by-$b$ matrix $T$,
@@ -641,9 +628,9 @@ a block size of $b$ for the block formats.
 The performance of the \pk{MatProductNumeric} operation is evaluated for tall-and-skinny dense matrices with a varying number
 of columns $N \in \{2,8,16,32,64\}$. For the single column case $N=1$, the \pk{MatMult} operation is used.
 All results have been obtained using double precision arithmetic and 32-bit integers. The scaled efficiency measured in GFLOP per second is reported
-with respect to the baseline \pk{MatAIJ} implementation with $N=1$ in~\cref{fig:perfAX}, where performances have been averaged over five consecutive
+with respect to the baseline \pk{MATAIJ} implementation with $N=1$ in~\cref{fig:perfAX}, where performances have been averaged over five consecutive
 product operations.
-They can be reproduced by using the mini-app \texttt{MatProduct.c} from \url{https://github.com/prj-/jolivet2020petsc} and any input \pk{MatAIJ} stored in binary format,
+They can be reproduced by using the mini-app \texttt{MatProduct.c} from \url{https://github.com/prj-/jolivet2020petsc} and any input \pk{MATAIJ} stored in binary format,
 here using the default name \pk{binaryoutput}, available at \url{http://jolivet.perso.enseeiht.fr/binaryoutput}.
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpicc] MatProduct.c -O3 -I&fvtextcolor[myyellow][${PETSC_DIR}]/&fvtextcolor[myyellow][${PETSC_ARCH}]/include                        &fvtextcolor[myred][\]
@@ -697,12 +684,12 @@ draw=black,fill, area legend,postaction={pattern=crosshatch dots}] table [x expr
            \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-1-F}/\thisrow{aijmkl-seq-1-T}/(\storeresultI*1000000000.0)]{\loadedMatProduct};\label{pgfplots:mklaijseq1}
            \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{baij-1-F}/\thisrow{baijmkl-seq-1-T}/(\storeresultI*1000000000.0)]{\loadedMatProduct};\label{pgfplots:mklbaijseq1}
            \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-1-F}/\thisrow{sbaijmkl-seq-1-T}/(\storeresultI*1000000000.0)]{\loadedMatProduct};\label{pgfplots:mklsbaijseq1}
-           \addlegendentry{\pk{MatAIJ}}
-           \addlegendentry{\pk{MatBAIJ}}
-           \addlegendentry{\pk{MatSBAIJ}}
-           \addlegendentry{\pk{MatAIJMKL}}
-           \addlegendentry{\pk{MatBAIJMKL}}
-           \addlegendentry{MatSBAIJMKL}
+           \addlegendentry{\pk{MATAIJ}}
+           \addlegendentry{\pk{MATBAIJ}}
+           \addlegendentry{\pk{MATSBAIJ}}
+           \addlegendentry{\pk{MATAIJMKL}}
+           \addlegendentry{\pk{MATBAIJMKL}}
+           \addlegendentry{\pk{MATSBAIJMKL}}
 \node[rotate=0,fill=white,inner sep=0pt,anchor=west] at (rel axis cs:1.02, 0.5) {$b=1$};
     \end{semilogxaxis}
       \begin{semilogxaxis}[
@@ -788,12 +775,12 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
 \end{figure}
 Some conclusions may be drawn:
 \begin{itemize}
-    \item with a block size of 1, top plot $b=1$ in~\cref{fig:perfAX}, using any type but \pk{MatAIJ}~\ref{pgfplots:aij1} is counterproductive when $N>1$, see~\ref{pgfplots:baij1} and~\ref{pgfplots:sbaij1}, even when using MKL, see~\ref{pgfplots:mklbaijseq1} and~\ref{pgfplots:mklsbaijseq1}. With 8 or more columns, the performance of \pk{MatAIJ} plateaus and the efficiency reaches approximately 200\%, while the performance of the MKL primitives stagnate at around 175\%, see~\ref{pgfplots:aij1};
-for the single column case, \pk{MatSBAIJ} and \pk{MatAIJMKL} deliver slightly better performances;
-    \item for block sizes lower or equal than 5, loops for matrix--vector and matrix--matrix multiplications are unrolled by hand for block formats. This yields rather disappointing performance, except for \pk{MatAIJ}, see~\ref{pgfplots:aij3} in middle plot $b=3$, and its 350\% efficiency, even with a moderate number of columns. For block formats \ref{pgfplots:baij3} and~\ref{pgfplots:sbaij3}, given the small value of $b$, it could be beneficial to switch to optimized libraries for small matrices, e.g., LIBXSMM~\cite{heinecke2016libxsmm}. In fact, MKL implementation for block formats is here clearly outperforming PETSc, see~\ref{pgfplots:mklbaijseq3} and~\ref{pgfplots:mklsbaijseq3};
-    \item for block sizes larger than 5, block entry multiplication with PETSc block formats is performed using \texttt{?gemv} or \texttt{?gemm} operations. For \pk{MatAIJ}~\ref{pgfplots:aij10} in the bottom plot corresponding to $b=6$, the efficiency quickly caps near 400\% for $N\in\{8,16,32,64\}$, while reaching 500\% for large number of columns for the block formats, see~\ref{pgfplots:baij10} and~\ref{pgfplots:sbaij10} for $N=64$. With these numbers of columns, PETSc and MKL perform similarly.
+    \item with a block size of 1, top plot $b=1$ in~\cref{fig:perfAX}, using any type but \pk{MATAIJ}~\ref{pgfplots:aij1} is counterproductive when $N>1$, see~\ref{pgfplots:baij1} and~\ref{pgfplots:sbaij1}, even when using MKL, see~\ref{pgfplots:mklbaijseq1} and~\ref{pgfplots:mklsbaijseq1}. With 8 or more columns, the performance of \pk{MATAIJ} plateaus and the efficiency reaches approximately 200\%, while the performance of the MKL primitives stagnate at around 175\%, see~\ref{pgfplots:aij1};
+for the single column case, \pk{MATSBAIJ} and \pk{MATAIJMKL} deliver slightly better performances;
+    \item for block sizes lower or equal than 5, loops for matrix--vector and matrix--matrix multiplications are unrolled by hand for block formats. This yields rather disappointing performance, except for \pk{MATAIJ}, see~\ref{pgfplots:aij3} in middle plot $b=3$, and its 350\% efficiency, even with a moderate number of columns. For block formats \ref{pgfplots:baij3} and~\ref{pgfplots:sbaij3}, given the small value of $b$, it could be beneficial to switch to optimized libraries for small matrices, e.g., LIBXSMM~\cite{heinecke2016libxsmm}. In fact, MKL implementation for block formats is here clearly outperforming PETSc, see~\ref{pgfplots:mklbaijseq3} and~\ref{pgfplots:mklsbaijseq3};
+    \item for block sizes larger than 5, block entry multiplication with PETSc block formats is performed using \texttt{?gemv} or \texttt{?gemm} operations. For \pk{MATAIJ}~\ref{pgfplots:aij10} in the bottom plot corresponding to $b=6$, the efficiency quickly caps near 400\% for $N\in\{8,16,32,64\}$, while reaching 500\% for large number of columns for the block formats, see~\ref{pgfplots:baij10} and~\ref{pgfplots:sbaij10} for $N=64$. With these numbers of columns, PETSc and MKL perform similarly.
 \end{itemize}
-% These results are of course specific to the sparsity pattern of the initial matrix $A$, and thus $\mathbb{A} = A\otimes T$, and matrix types. For example, if the matrices were to be offloaded to a GPU, one could instead benchmark \pk{MatAIJcuSPARSE}.
+% These results are of course specific to the sparsity pattern of the initial matrix $A$, and thus $\mathbb{A} = A\otimes T$, and matrix types. For example, if the matrices were to be offloaded to a GPU, one could instead benchmark \pk{MATAIJcuSPARSE}.
 
 The mini-app is then used to benchmark intranode performance of matrix--matrix multiplications, either with multiple OpenMP threads, or by offloading the operation to a GPU and using cuSPARSE~\cite{cusparse-web-page} as interfaced in PETSc.
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
@@ -802,7 +789,7 @@ The mini-app is then used to benchmark intranode performance of matrix--matrix m
   -bs 1,3,6 -N 1,2,8,16,32,64 -type aijmkl,baijmkl,sbaijmkl,aijcusparse
 \end{Verbatim}
 Results reported in~\cref{fig:perfAXpar} have been scaled with respect to the
-baseline implementation \pk{MatAIJMKL} with $N=1$. They have been obtained on a
+baseline implementation \pk{MATAIJMKL} with $N=1$. They have been obtained on a
 single node of {Jean Zay}, a system composed of \pgfmathprintnumber[assume math
 mode=true]{261} nodes with two 20-core Intel Xeon Gold 6248 clocked at
 \SI{2.5}{\giga\hertz} and four NVIDIA Tesla V100 SXM2. Neither transfers
@@ -854,10 +841,10 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
 \begin{pgfonlayer}{foreground}
            \addplot+[draw=black,fill, area legend] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{aij-1-F}/\thisrow{cusparse-1-T}/(\storeresultI*1000000000.0)]{\loadedMatProduct};\label{pgfplots:cusparse1}
 \end{pgfonlayer}{foreground}
-           \addlegendentry{\pk{MatAIJMKL}}
-           \addlegendentry{\pk{MatBAIJMKL}}
-           \addlegendentry{MatSBAIJMKL}
-           \addlegendentry{\pk{MatAIJCUSPARSE}}
+           \addlegendentry{\pk{MATAIJMKL}}
+           \addlegendentry{\pk{MATBAIJMKL}}
+           \addlegendentry{\pk{MATSBAIJMKL}}
+           \addlegendentry{\pk{MATAIJCUSPARSE}}
 \node[rotate=0,fill=white,inner sep=0pt,anchor=west] at (rel axis cs:1.02, 0.5) {$b=1$};
     \end{semilogxaxis}
       \begin{semilogxaxis}[
@@ -963,15 +950,15 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
 
 
 For the sake of completeness, the performance of
-\pk{MatAIJMKL} with $N=1$ but different numbers of threads is also reported in
+\pk{MATAIJMKL} with $N=1$ but different numbers of threads is also reported in
 \cref{fig:scaling-Ax}. Clearly, it is not advised to use the full socket to
 perform this type of workload for such small sparse matrices and skinny dense
 matrices. But this helps in drawing a fair comparison between a full CPU socket
 and a full GPU device. All in all, the CPU configuration which reaches the
-highest percentage of peak is MatSBAIJMKL~\ref{pgfplots:sbaijmkl3} with $b=3$
+highest percentage of peak is \pk{MATSBAIJMKL}~\ref{pgfplots:sbaijmkl3} with $b=3$
 and $N=64$, rightmost middle plot in~\cref{fig:perfAXpar}, with approximately
 63 GFLOP/s. It is still less than 1\% of peak for an Intel Xeon Gold 6248.
-For the GPU configuration, \pk{MatAIJCUSPARSE}~\ref{pgfplots:cusparse10} with $b=6$
+For the GPU configuration, \pk{MATAIJCUSPARSE}~\ref{pgfplots:cusparse10} with $b=6$
 and $N=64$, rightmost bottom plot in~\cref{fig:perfAXpar}, performs at around
 306 GFLOP/s, about 4\% of peak for an NVIDIA Tesla V100 SXM2.
 \pgfplotstableread{
@@ -1016,7 +1003,7 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
           \addlegendentry{$b = 6$}
     \end{loglogaxis}
     \end{tikzpicture}
-    \caption{Scalability of \pk{MatMult} with \pk{MatAIJMKL} and different number of processes.\label{fig:scaling-Ax}}
+    \caption{Scalability of \pk{MatMult} with \pk{MATAIJMKL} and different number of threads.\label{fig:scaling-Ax}}
 \end{figure}
 
 \subsubsection{Blocking inside SLEPc\label{sec:lobpcg}}
@@ -1035,7 +1022,7 @@ The following generalized eigenvalue problem is solved in a three-dimensional cu
 \begin{equation*}
     -\nabla \cdot (\kappa \nabla u) = \lambda u.\label{eq:lobpcg}
 \end{equation*}
-This continuous equation is discretized with $\mathbb{P}_3$ finite elements using FreeFEM. The script is available at \url{https://github.com/prj-/jolivet2020petsc}. The following timings and convergence histories have been obtained on $2{,}304$ processes of Ir\`ene, for solving a problem of dimension \pgfmathprintnumber{74618461}. By default, SLEPc applies at most 5 iterations of GMRES on each column of a so-called set of active columns. Since the option \pk{-eps\_lobpcg\_blocksize 40} is used for computing 20 eigenpairs, the size of the set varies between 40 to 1. This size corresponds to the number of right-hand sides in systems that will be solved throughout LOBPCG iterations. Instead of using \pk{KSPGMRES}, which does not handle blocking, \pk{KSPHPDDM} is used, with the pseudo-block GMRES. That means that, assuming the size of the set of active columns is 40, one LOBPCG iterations implies doing at most 5 GMRES iterations with 40 vectors simultaneously, using \pk{MatProductNumeric} and \pk{PCMatApply}, instead of doing at most $40\times 5$ successive GMRES iterations, using \pk{MatMult} and \pk{PCApply}. Results are gathered in~\cref{fig:lobpcg}. In the first line, the numbers of outer LOBPCG iterations are reported with the three different inner preconditioners mentioned above. \pk{PCASM} is known to yield a preconditioned operator whose condition number grows as the number of subdomains, here processes, increases. Thus, the number of outer iterations is higher than with \pk{PCHPDDM} or \pk{PCGAMG} since the inner solves are not converging to meaningful solutions in just 5 iterations. For both multilevel preconditioners, however, it seems that they perform an equivalent job since the difference in number of outer iterations is only 1. The second and third lines represent the number of times \pk{PCApply} and \pk{PCMatApply} are called. Since \pk{PCGAMG} does not handle blocking, at each pseudo-block GMRES iteration, \pk{PCApply} is called on all active columns. \pk{PCASM} and \pk{PCHPDDM} handle blocking, so only rely on \pk{PCMatApply}. In the fourth line, the time spent setting up the preconditioners is given. \pk{PCASM} is extremely cheap but not very robust numerically, while both multilevel preconditioners have a similar setup time. Eventually, in the last line, the time spent in the full eigensolve is given. Clearly, having both a \pk{KSP} and a \pk{PC} which can deal with multiple vectors efficiently is mandatory to achieve reasonable performance with such an outer solver that heavily relies on blocking.
+This continuous equation is discretized with $\mathbb{P}_3$ finite elements using FreeFEM. The script is available at \url{https://github.com/prj-/jolivet2020petsc}. The following timings and convergence histories have been obtained on $2{,}304$ processes of Ir\`ene, for solving a problem of dimension \pgfmathprintnumber{74618461}. By default, SLEPc applies at most 5 iterations of GMRES on each column of a so-called set of active columns. Since the option \pk{-eps\_lobpcg\_blocksize 40} is used for computing 20 eigenpairs, the size of the set varies between 40 to 1. This size corresponds to the number of right-hand sides in systems that will be solved throughout LOBPCG iterations. Instead of using \pk{KSPGMRES}, which does not handle blocking, \pk{KSPHPDDM} is used, with the pseudo-block GMRES. That means that, assuming the size of the set of active columns is 40, one LOBPCG iterations implies doing at most 5 GMRES iterations with 40 vectors simultaneously, using \pk{MatProductNumeric} and \pk{PCMatApply}, instead of doing at most $40\times 5$ successive GMRES iterations, using \pk{MatMult} and \pk{PCApply}. Results are gathered in~\cref{fig:lobpcg}. In the first line, the numbers of outer LOBPCG iterations are reported with the three different inner preconditioners mentioned above. \pk{PCASM} is known to yield a preconditioned operator whose condition number grows as the number of subdomains, here processes, increases. Thus, the number of outer iterations is higher than with \pk{PCHPDDM} or \pk{PCGAMG} since the inner solves are not converging to meaningful solutions in just 5 iterations. The multilevel preconditioners perform similarly, since the difference in the number of outer iterations is minimal (1). The second and third lines represent the number of times \pk{PCApply} and \pk{PCMatApply} are called. Since \pk{PCGAMG} does not handle blocking, at each pseudo-block GMRES iteration, \pk{PCApply} is called on each single active column. \pk{PCASM} and \pk{PCHPDDM} handle blocking, so only rely on \pk{PCMatApply}. In the fourth line, the time spent setting up the preconditioners is given. \pk{PCASM} is extremely cheap but not very robust numerically, while both multilevel preconditioners have a similar setup time. Eventually, in the last line, the time spent in the full eigensolve is given. Clearly, having both a \pk{KSP} and a \pk{PC} which can deal with multiple vectors efficiently is mandatory to achieve reasonable performance with such an outer solver that heavily relies on blocking.
 \pgfplotstableread{
 PC       outer PCApply PCMatApply PCSetUp       EPSSolve
 PCASM    54    ---     378        2.8536e+00    265.6564
@@ -1153,16 +1140,12 @@ The interface between HPDDM overlapping Schwarz methods and PETSc, \pk{PCHPDDM},
 registered since PETSc version 3.12 when one configures PETSc with the extra
 flag \pk{-{}-download-hpddm -{}-download-slepc}. It is then
 possible to select the corresponding \pk{PC}
-using the command line option \pk{-pc\_type hpddm}, or the routine \pk{PCSetType}(pc,
+using the command line option \pk{-pc\_type hpddm}, or the routine \pk{PCSetType}(\pk{pc},
 \pk{PCHPDDM}).
  % and its Fortran equivalent.
-In this section, we are interested in solving
-\begin{equation}
-    Ax = b,
-\end{equation}
-for a given coefficient matrix $A$ and right-hand side $b$ of dimension $n$
-assembled on $N$ processes. For simplicity, a ksp($A$, $P_A$) is used next, i.e., the matrix used to
-define the preconditioner is $A$ itself. Without anything more from the user,
+
+In this section, we are interested in constructing a preconditioner
+for a given coefficient matrix $A$. Without user intervention,
 \pk{PCHPDDM} is strictly equivalent to \pk{PCASM}. That is, if $A$ is distributed among
 $N$ processes, the action of the preconditioner $M^{-1}$ is:
 \begin{equation}\label{eq:one}
@@ -1181,11 +1164,10 @@ that they map global unknowns to unknowns local to each process.
 In addition to
 the local operators $\{R_i A R_i^T\}_{i=1}^N$, GenEO needs users to supply
 the local unassembled matrices~$\{\mathring{A}_i\}_{i=1}^N$, also known as
-Neumann matrices. These are yielded by the
-discretization of $\mathcal{L}$ on each subdomain, with added natural boundary
-conditions on the subdomain boundaries that are not boundaries of the initial
-domain $\Omega$. In the case of the 1D Poisson
-equation with homogeneous Dirichlet boundary conditions discretized using $\mathbb{P}_1$ finite elements, an explicit representation of these  operators is given~\cref{fig:poisson} for a
+Neumann matrices, representing the
+discretization of $\mathcal{L}$ on the extended local subdomain with overlap, endowed with natural boundary
+conditions. In the case of the 1D Poisson
+equation with homogeneous Dirichlet boundary conditions discretized using linear finite elements, an explicit representation of these  operators is given~\cref{fig:poisson} for a
 two-domain decomposition.
 \begin{figure}[t]
     \begin{minipage}[t]{0.495\textwidth}
@@ -1332,7 +1314,7 @@ mesh has been constructed internally by \pk{DMPLEX} using a random pattern of no
 and a space-filling curve distribution by p4est~\cite{BursteddeWilcoxGhattas11}.
 The required elements needed to properly assemble the Neumann operators in a conforming way are pictured with a lighter color.
 Other \pk{DMType}s, including user-defined, may be supported by
-implementing the proper \pk{DMCreateNeumannOverlap} callback. Support for \pk{DMDA}
+implementing the proper \pk{DMCreateNeumannOverlap} callback. Support for the structured grid infrastructure (\pk{DMDA})
 could be easily added upon request.
 \begin{figure}[htbp]
   \centering
@@ -1354,12 +1336,13 @@ $20\times N$ under the assumption that all concurrent SLEPc solves converge.
 
 For performance reasons, it is better to compute the same number of
 eigenvectors on each process, since in this case the coarse operator will be
-assembled using the \pk{MatMPISBAIJ} or \pk{MatMPIBAIJ} matrix type, with
-usually large block sizes. This can have serious memory and performance
-implications, see~\cref{fig:perfAX}. When applying the preconditioner,
-\texttt{MPI\_Gather} and \texttt{MPI\_Scatter} operations are used to move
-between levels, instead of the variable-size alternatives \texttt{MPI\_Gatherv}
-and \texttt{MPI\_Scatterv}, that could exhibit worse performance. In addition,
+assembled using the blocked matrix formats, with
+usually large block sizes, with consequent impact on memory, floating point and message passing performances.
+% When applying the preconditioner,
+%\texttt{MPI\_Gather} and \texttt{MPI\_Scatter} operations are used to move
+%between levels, instead of the variable-size alternatives \texttt{MPI\_Gatherv}
+%and \texttt{MPI\_Scatterv}, that could exhibit worse performance.
+In addition,
 standard eigensolvers such as \pk{EPSKRYLOVSCHUR} from SLEPc, cannot cheaply
 evaluate the exact number of eigenpairs in a given interval of $\mathbb{R}^+$.
 Instead, it is often more efficient to provide an upper bound of the number of
@@ -1385,12 +1368,12 @@ corrections~\cite{tang2009comparison,bastian1998additive} as:
 with $Q = P \left(P^T A P\right)^{-1} P^T$ and $M^{-1}$ defined in~\cref{eq:one}. This is parameterized using the
 options \pk{-pc\_hpddm\_coarse\_correction}
 \pk{(deflated$|$additive$|$balanced)} or the routine
-\pk{PCHPDDMSetCoarseCorrectionType}. It is important to keep in mind that all
-these correction formulae may be applied to either a single vector or a block
+\pk{PCHPDDMSetCoarseCorrectionType}. All of
+the correction formulas can be applied to either a single vector or a block
 of multiple vectors optimally. Indeed, the one-level preconditioner $M^{-1}$ is
 applied with either \pk{PCApply} or \pk{PCMatApply}, and the
 restriction-correction-interpolation operator $Q$ is applied in a block fashion
-in HPDDM, and not column by column. See the effect of this strategy in~\cref{sec:lobpcg}.
+in HPDDM, and not column by column. % See the effect of this strategy in~\cref{sec:lobpcg}.
 
     \subsubsection{Extension of the GenEO framework}
 The local generalized eigenvalue problems~\cref{eq:gevp} can also be adjusted.
@@ -2071,11 +2054,15 @@ it res inner
     \caption{MFEM example ex3p for solving the Fichera corner problem.}
 \end{figure}
 \section{Conclusion and perspectives}\label{sec:conclusion}
+{\color{red} I WOULD PREFER CONCLUSIONS in ACTIVE TENSE. ALSO, THE TONE IS 
+TOO MUCH COLLOQUIAL (i.e. using "and such"). THERE ARE FEW POINTS WE CAN ADD FOR
+FUTURE WORK: BDD-GENEO?, GPU AWARE HPDDM? SOME MORE SPECIFICS ON BLOCK KRYLOV-SCHUR?}
+
 In this paper, the interface between PETSc and HPDDM is presented. The new
 registered Krylov and overlapping Schwarz methods are explained and numerical
 examples are provided to show the applicability of these. Solving well-known
-problems, various options have been described. Some more unconventional test
-cases were commented as well, for example using \pk{MatKAIJ} or \pk{MatIS} matrix types.
+problems, various options have been described. %Some more unconventional test
+%cases were commented as well, for example using \pk{MatKAIJ} or \pk{MatIS} matrix types.
 Overall, the interface paves the way for having recycling and block Krylov
 methods plus robust overlapping Schwarz methods using the GenEO framework in
 PETSc.
@@ -2126,6 +2113,11 @@ Jose E.~Roman was supported by the Spanish Agencia Estatal de Investigaci\'{o}n 
   asynchronous multifrontal solver using distributed dynamic scheduling}, SIAM
   Journal on Matrix Analysis and Applications, 23 (2001), pp.~15--41,
   \url{http://mumps.enseeiht.fr}.
+
+\bibitem{ambartsumyan2020hierarchical}
+{\sc I.~Ambartsumyan, W.~Boukaram, T.~Bui-Thanh, O.~Ghattas, D.~Keyes, G.~Stadler, G.~Turkiyyah and S.~Zampini},
+  {\em Hierarchical Matrix Approximations of Hessians Arising in Inverse Problems Governed by PDEs},
+  arXiv preprint arXiv:2003.10173 (2020).
 
 \bibitem{anderson2019mfem}
 {\sc R.~Anderson, J.~Andrej, A.~Barker, J.~Bramwell, J.-S. Camier, J.~Cerveny,
