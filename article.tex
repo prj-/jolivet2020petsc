@@ -367,12 +367,18 @@ ICNTL(27)\footnote{\url{http://mumps.enseeiht.fr/doc/userguide_5.3.3.pdf},
 section 6.1}.
 
 With these added functions, it is now possible to do code refactorization for
-applications that deal with multiple right-hand sides.  As a striking example,
-LOBPCG~\cite{knyazev2001toward} or CISS~\cite{sakurai2003projection}
-implementations in SLEPc~\cite{hernandez2005ssf}, the Scalable Library for
-Eigenvalue Problem computations built on top of PETSc, were previously not
-using blocking when applying the preconditioner or solving linear systems. This has been rewritten for version 3.14.0 and the benefit of
-this new implementation is displayed in~\cref{sec:lobpcg}.
+applications that deal with multiple right-hand sides. This is the case of some
+eigensolvers in SLEPc~\cite{hernandez2005ssf}, the Scalable Library for
+Eigenvalue Problem computations. SLEPc is an add-on library that extends PETSc
+with several classes for linear and nonlinear eigenvalue problems, as well as
+tools to, e.g., facilitate the use of shift-and-invert spectral transformations.
+The implementations of LOBPCG~\cite{knyazev2001toward} and CISS~\cite{sakurai2003projection}
+in SLEPc were previously not using blocking when applying the preconditioner or solving linear systems.
+In version 3.14.0 we have adapted these solvers to employ \pk{KSPMatSolve} and \pk{PCMatApply}.
+In the case of LOBPCG, which is a purely blocked method, all steps were already
+implemented as block operations, except the applications of the preconditioner,
+which ruined the benefits of blocking. With the new implementation, the gains
+are striking, as reported in~\cref{sec:lobpcg}.
 
 As a side note, when dealing with
 \pk{MatKAIJ} matrices, for which it is assumed that an operator may be written as $I \otimes S
