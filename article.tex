@@ -95,7 +95,7 @@
 
 % REQUIRED
 \begin{keywords}
-  Krylov methods, domain decomposition preconditioners, distributed computing
+  Krylov methods, domain decomposition preconditioners, distributed-memory parallel computing
 \end{keywords}
 
 % REQUIRED
@@ -1031,7 +1031,7 @@ The following generalized eigenvalue problem is solved in a three-dimensional cu
 \begin{equation*}
     -\nabla \cdot (\kappa \nabla u) = \lambda u.\label{eq:lobpcg}
 \end{equation*}
-This continuous equation is discretized with third-order Lagrange finite elements using FreeFEM. The script is available at \url{https://github.com/prj-/jolivet2020petsc}. The following timings and convergence histories have been obtained on $2{,}304$ processes of Ir\`ene, for solving a problem of dimension \pgfmathprintnumber{74618461}. By default, SLEPc applies at most 5 iterations of GMRES on each column of a so-called set of active columns. Since the option \pk{-eps\_lobpcg\_blocksize 40} is used for computing 20 eigenpairs, the size of the set varies between 40 to 1. This size corresponds to the number of right-hand sides in systems that will be solved throughout LOBPCG iterations. Instead of using \pk{KSPGMRES}, which does not handle blocking, \pk{KSPHPDDM} is used, with the pseudo-block GMRES. That means that, assuming the size of the set of active columns is 40, one LOBPCG iterations implies doing at most 5 GMRES iterations with 40 vectors simultaneously, using \pk{MatProductNumeric} and \pk{PCMatApply}, instead of doing at most $40\times 5$ successive GMRES iterations, using \pk{MatMult} and \pk{PCApply}. Results are gathered in~\cref{fig:lobpcg}. In the first line, the numbers of outer LOBPCG iterations are reported with the three different inner preconditioners mentioned above. \pk{PCASM} is known to yield a preconditioned operator whose condition number grows as the number of subdomains, here processes, increases. Thus, the number of outer iterations is higher than with \pk{PCHPDDM} or \pk{PCGAMG} since the inner solves are not converging to meaningful solutions in just 5 iterations. The multilevel preconditioners perform similarly, since the difference in the number of outer iterations is minimal (1). The second and third lines represent the number of times \pk{PCApply} and \pk{PCMatApply} are called. Since \pk{PCGAMG} does not handle blocking, at each pseudo-block GMRES iteration, \pk{PCApply} is called on each single active column. \pk{PCASM} and \pk{PCHPDDM} handle blocking, so only rely on \pk{PCMatApply}. In the fourth line, the time spent setting up the preconditioners is given. \pk{PCASM} is extremely cheap but not very robust numerically, while both multilevel preconditioners have a similar setup time. Eventually, in the last line, the time spent in the full eigensolve is given. Clearly, having both a \pk{KSP} and a \pk{PC} which can deal with multiple vectors efficiently is mandatory to achieve reasonable performance with such an outer solver that heavily relies on blocking.
+This continuous equation is discretized with third-order Lagrange finite elements using FreeFEM. The script is available at \url{https://github.com/prj-/jolivet2020petsc}. The following timings and convergence histories have been obtained on $2{,}304$ processes of Ir\`ene, for solving a problem of dimension \pgfmathprintnumber{74618461}. By default, SLEPc applies at most 5 iterations of GMRES on each column of a so-called set of active columns. Since the option \pk{-eps\_lobpcg\_blocksize 40} is used for computing 20 eigenpairs, the size of the set varies between 40 to 1. This size corresponds to the number of right-hand sides in systems that will be solved throughout LOBPCG iterations. Instead of using \pk{KSPGMRES}, which does not handle blocking, \pk{KSPHPDDM} is used, with the pseudo-block GMRES. That means that, assuming the size of the set of active columns is 40, one LOBPCG iterations implies doing at most 5 GMRES iterations with 40 vectors simultaneously, using \pk{MatProductNumeric} and \pk{PCMatApply}, instead of doing at most $40\times 5$ successive GMRES iterations, using \pk{MatMult} and \pk{PCApply}. Results are gathered in~\cref{tab:lobpcg}. In the first line, the numbers of outer LOBPCG iterations are reported with the three different inner preconditioners mentioned above. \pk{PCASM} is known to yield a preconditioned operator whose condition number grows as the number of subdomains, here processes, increases. Thus, the number of outer iterations is higher than with \pk{PCHPDDM} or \pk{PCGAMG} since the inner solves are not converging to meaningful solutions in just 5 iterations. The multilevel preconditioners perform similarly, since the difference in the number of outer iterations is minimal (1). The second and third lines represent the number of times \pk{PCApply} and \pk{PCMatApply} are called. Since \pk{PCGAMG} does not handle blocking, at each pseudo-block GMRES iteration, \pk{PCApply} is called on each single active column. \pk{PCASM} and \pk{PCHPDDM} handle blocking, so only rely on \pk{PCMatApply}. In the fourth line, the time spent setting up the preconditioners is given. \pk{PCASM} is extremely cheap but not very robust numerically, while both multilevel preconditioners have a similar setup time. Eventually, in the last line, the time spent in the full eigensolve is given. Clearly, having both a \pk{KSP} and a \pk{PC} which can deal with multiple vectors efficiently is mandatory to achieve reasonable performance with such an outer solver that heavily relies on blocking.
 \pgfplotstableread{
 PC       outer PCApply PCMatApply PCSetUp       EPSSolve
 PCASM    54    ---     378        2.8536e+00    265.6564
@@ -1042,7 +1042,8 @@ PCGAMG   15    4{,}049    ---     2.6528e+01    391.822
     colnames from=PC,
     input colnames to=PC
 ]\mytablenew{\mytable}
-\begin{figure}[h!]
+\begin{table}[h!]
+\caption{Performance of \pk{EPSLOBPCG} with three different inner preconditioners: \pk{PCASM} and \pk{PCHPDDM}, which utilize \pk{PCMatApply}, and \pk{PCGAMG}, which utilizes \pk{PCApply}.\label{tab:lobpcg}}
     \centering
 \pgfplotstabletypeset[
 columns/PCHPDDM/.style={
@@ -1093,8 +1094,7 @@ before row={\rowcolor[gray]{0.9}}},
         after row=\bottomrule
     },
 string type]{\mytablenew}
-\caption{Performance of \pk{EPSLOBPCG} with three different inner preconditioners: \pk{PCASM} and \pk{PCHPDDM}, which utilize \pk{PCMatApply}, and \pk{PCGAMG}, which utilizes \pk{PCApply}.\label{fig:lobpcg}}
-\end{figure}
+\end{table}
 \section{PCHPDDM}\label{sec:PCHPDDM}
   \subsection{Related work}
 Domain decomposition methods are, alongside multigrid methods, one of the
@@ -2078,7 +2078,8 @@ preconditioners may efficiently handle such a format.
 Concerning SLEPc, we plan to implement new solvers or extend existing ones to
 further exploit block solve primitives, for instance, block
 Krylov--Schur~\cite{zhou2008block}. The current code for Arnoldi iterations
-would then handle block Arnoldi iterations.
+would then handle block Arnoldi iterations, and shift-and-invert solves would
+operate on the whole block instead of column by column.
 
 Concerning HPDDM, its integration inside PETSc offers a much-needed flexibility
 compared to the standard implementation. Indeed, it is now possible to switch at
