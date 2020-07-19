@@ -84,13 +84,23 @@ if(params.length > 0)
   set(A, sparams  = "-prefix_push st_ -ksp_type hpddm -ksp_max_it 5 -ksp_rtol 1e-8 " + params + " -prefix_pop", prefix = "st_", setup = 1);
 
 Vh<real>[int] ev(1); // array to store eigenvectors
-params = " -eps_nev 20" +
-         " -eps_type lobpcg" +
-         " -eps_lobpcg_blocksize 40" +
-         " -st_type precond -st_matstructure same" +
-         " -bv_orthog_block svqb -bv_type contiguous" +
-         " -eps_view" +
-         " -eps_gen_hermitian";
+
+if(usedARGV("-ciss") != -1)
+  params = " -eps_type ciss" +
+           " -eps_ciss_usest" +
+           " -rg_type ellipse -rg_ellipse_center 630 -rg_ellipse_radius 318 -rg_ellipse_vscale 0.1" +
+           " -st_matstructure same" +
+           " -bv_orthog_block svqb -bv_type contiguous" +
+           " -eps_view" +
+           " -eps_gen_hermitian";
+else
+  params = " -eps_nev 20" +
+           " -eps_type lobpcg" +
+           " -eps_lobpcg_blocksize 40" +
+           " -st_type precond -st_matstructure same" +
+           " -bv_orthog_block svqb -bv_type contiguous" +
+           " -eps_view" +
+           " -eps_gen_hermitian";
 
 PetscLogStagePush("Eigensolve");
 int k = EPSSolve(A, B, vectors = ev, sparams = params);
