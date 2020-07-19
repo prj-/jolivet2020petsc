@@ -85,9 +85,11 @@
     The flexibility of the implementation %, which for example may deal with various matrix formats,
     is showcased and explained with minimalist, easy-to-run, and reproducible examples,
     to ease the integration of these algorithms into more advanced frameworks.
-    The examples simulate the linear or nonlinear solves of typical
-    applications in fracture mechanics, linear stability analysis or more
-    broadly-speaking eigenanalysis, elasticity, combustion, and
+    The examples provided cover applications from
+    %simulate the linear or nonlinear solves of typical
+    %applications in fracture mechanics, linear stability analysis or more
+    %broadly-speaking
+    eigenanalysis, elasticity, combustion, and
     electromagnetism.
 \end{abstract}
 
@@ -1009,10 +1011,11 @@ using blocking when applying the preconditioner or solving linear systems. In
 version 3.14.0, these solvers have been adapted to employ \pk{KSPMatSolve} and
 \pk{PCMatApply}.  In the case of LOBPCG, which is a purely blocked method, all
 steps were already implemented as block operations, except the applications of
-the preconditioner, which undermined the benefits of blocking. With the new
-implementation, the gains are striking, as reported in~\cref{sec:lobpcg}.
+the preconditioner, which undermined the benefits of blocking.
+%With the new
+%implementation, the gains are striking, as reported in~\cref{sec:lobpcg}.
 
-Finally, the performance of LOBPCG~\cite{knyazev2001toward} as implemented in SLEPc is studied using three different preconditioners:
+The performance of LOBPCG~\cite{knyazev2001toward} as implemented in SLEPc is studied using three different preconditioners:
 \begin{itemize}
     \item \pk{PCASM}: one-level overlapping Schwarz method with one level of overlap and exact Cholesky factorizations in each subdomain;
     \item \pk{PCHPDDM}: multilevel overlapping Schwarz method;
@@ -2060,10 +2063,8 @@ it res inner
 \end{figure}
 \section{Conclusion and perspectives}\label{sec:conclusion}
 
-In this paper, we presente the interface between PETSc and HPDDM. The new
-registered Krylov and overlapping Schwarz methods are explained and we show the
-applicability of these  with numerical examples. Solving well-known problems,
-we describe various runtime options. %Some more unconventional test
+In this paper, we presented the interface between PETSc and HPDDM and discussed the new Krylov and overlapping Schwarz methods, providing several
+numerical examples and describing various runtime options. %Some more unconventional test
 %cases were commented as well, for example using \pk{MatKAIJ} or \pk{MatIS} matrix types.
 Overall, the interface paves the way for having recycling and block Krylov
 methods plus robust overlapping Schwarz methods using the GenEO framework in
