@@ -1131,9 +1131,12 @@ string type]{\mytablenew}
 \end{table}
 The script available at \url{https://github.com/prj-/jolivet2020petsc} may be
 used to solve the same eigenproblem using \pk{EPSCISS} by providing the
-additional command line argument \pk{-eps\_type ciss}. Blocking is also
-available and tested in SLEPc test suite for \pk{EPSSUBSPACE} and
-\pk{NEPCISS} since version 3.14.0.
+additional command line argument \pk{-eps\_type ciss}.
+However, this eigensolver is mostly suited for finding interior eigenpairs.
+For fairness, its performance is not reported, but the options from the script
+can be readily used for problems where \pk{EPSCISS} is an appropriate solver.
+Blocking is also available and tested in SLEPc test suite for \pk{EPSSUBSPACE}
+and \pk{NEPCISS} since version 3.14.0.
 \section{PCHPDDM}\label{sec:PCHPDDM}
   \subsection{Related work}
 Domain decomposition methods are, alongside multigrid methods, one of the
