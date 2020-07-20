@@ -855,12 +855,10 @@ and $N=64$, rightmost middle plot in~\cref{fig:perfAXpar}, with approximately
 mini-app. Still, it is less than 1\% of peak for an Intel Xeon Gold 6248.
 For the GPU configuration, \pk{MATAIJCUSPARSE}~\ref{pgfplots:cusparse10} with $b=6$
 and $N=64$, rightmost bottom plot in~\cref{fig:perfAXpar}, performs at around
-306 GFLOP/s, about 4\% of peak for an NVIDIA Tesla V100 SXM2. These rather disappointing performances
-suggest to consider different, interlaced layouts for storing the dense right-hand sides and we plan to extend the
-current PETSc functionality in the future to maximize performances while maintaining interface flexibility
+306 GFLOP/s, about 4\% of peak for an NVIDIA Tesla V100 SXM2. Future work may
+consider using interlaced layouts for storing the dense right-hand sides and extend the
+current PETSc functionality in order to maximize performances while maintaining interface flexibility
 and the user friendliness of the library.
-{\color{red} Pierre, can you do a quick run hacking MatProduct.cpp and using MAIJ MatMult instead of MatProductNumeric just to confirm this
-sentence and add preliminary numbers in terms of CPU peak performance? (forget about GPU, we need a new interface to CUSPARSE for that)}
 
 \pgfplotstableread{
 P       aij1        aij3        aij6
