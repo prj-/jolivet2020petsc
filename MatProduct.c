@@ -1,6 +1,6 @@
 /*
    Author(s): Pierre Jolivet <pierre.jolivet@enseeiht.fr>
-              Jose Roman <jroman@dsic.upv.es>
+              Jose E. Roman <jroman@dsic.upv.es>
               Stefano Zampini <stefano.zampini@kaust.edu.sa>
         Date: 2020-07-10
 
@@ -259,22 +259,19 @@ int main(int argc, char** argv) {
               const PetscScalar *c_ptr;
               PetscScalar       *d_ptr;
               ierr = MatCreateMAIJ(A, N[k], &E);CHKERRQ(ierr);
-              ierr = MatCreateVecs(E, &cC, &cD);CHKERRQ(ierr);
               ierr = MatTranspose(C, MAT_INPLACE_MATRIX, &C);CHKERRQ(ierr);
               ierr = MatTranspose(D, MAT_INPLACE_MATRIX, &D);CHKERRQ(ierr);
               ierr = MatDenseGetArrayRead(C, &c_ptr);CHKERRQ(ierr);
               ierr = MatDenseGetArrayWrite(D, &d_ptr);CHKERRQ(ierr);
-              ierr = VecPlaceArray(cC, c_ptr);CHKERRQ(ierr);
-              ierr = VecPlaceArray(cD, d_ptr);CHKERRQ(ierr);
+              ierr = VecCreateMPIWithArray(PETSC_COMM_WORLD, 1, AM * N[k], PETSC_DECIDE, c_ptr, &cC);CHKERRQ(ierr);
+              ierr = VecCreateMPIWithArray(PETSC_COMM_WORLD, 1, AM * N[k], PETSC_DECIDE, d_ptr, &cD);CHKERRQ(ierr);
               ierr = MatMult(E, cC, cD);CHKERRQ(ierr);
-              ierr = PetscPrintf(PETSC_COMM_WORLD, "Benchmarking MatMult: with A %s %Dx%D\n", MATMAIJ, AM, AN);
+              ierr = PetscPrintf(PETSC_COMM_WORLD, "Benchmarking MatMult: with A %s %Dx%D and B %s %Dx%D\n", MATMAIJ, AM, AN, VECMPI, AM * N[k], 1);
               ierr = PetscLogStagePush(stage);CHKERRQ(ierr);
               for (mm = 0; mm < trial; ++mm) {
                 ierr = MatMult(E, cC, cD);CHKERRQ(ierr);
               }
               ierr = PetscLogStagePop();CHKERRQ(ierr);
-              ierr = VecResetArray(cC);CHKERRQ(ierr);
-              ierr = VecResetArray(cD);CHKERRQ(ierr);
               ierr = VecDestroy(&cD);CHKERRQ(ierr);
               ierr = VecDestroy(&cC);CHKERRQ(ierr);
               ierr = MatDestroy(&E);CHKERRQ(ierr);
