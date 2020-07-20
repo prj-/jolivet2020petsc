@@ -104,12 +104,12 @@
 \end{AMS}
 
 \section{Introduction}
-Implementing and maintaining robust and scalable applications is highly
-relevant in the field of computational science and engineering. The efficient
-production of such applications requires a rich ecosystem of state-of-the-art
-reusable libraries \cite{Bartlett:2017:XFT}. They can then be used by domain
-specialists who can decide what are the best tools available for their
-applications. In this paper, we focus on the interoperability of two such
+Computational science and engineering today enjoys unprecedented opportunities to transform
+the way society solves many of its most urgent technological problems through predictive simulations.
+At the heart of simulations are robust and scalable solution algorithms, and the efficient
+production of applications requires a rich ecosystem of state-of-the-art
+reusable libraries from which domain
+specialists can benefit \cite{Bartlett:2017:XFT}. In this paper, we focus on the interoperability of two such
 libraries.
 
 On the one hand, PETSc \cite{balay1997cient}, the
@@ -142,19 +142,22 @@ Association for Computing Machinery
 \url{https://www.acm.org/publications/policies/artifact-review-badging}, as well as to 
 ease the integration of these algorithms into more advanced frameworks
 and facilitate the analysis and comparison of performance results~\cite{hoefler2015scientific}.
-Furthermore, the benefits of code refactorization are shown for
-applications that deal with multiple right-hand sides. This is the case of some
-eigensolvers in SLEPc~\cite{hernandez2005ssf}, the Scalable Library for
-Eigenvalue Problem computations. SLEPc is an add-on library that extends PETSc
+
+Fruits of the proposed enhancement are discussed for 
+applications from
+the Scalable Library for
+Eigenvalue Problem computations (SLEPc)~\cite{hernandez2005ssf}, 
+an add-on library that extends PETSc
 with several classes for linear and nonlinear eigenvalue problems, as well as with
 tools to facilitate the use of shift-and-invert spectral transformations.
 
 The paper is divided in two main parts. \Cref{sec:KSPHPDDM} introduces
-\pk{KSPHPDDM} and discusses the readiness of PETSc with respect to block Krylov methods.
+the interface to recycling and block Krylov methods
+(\pk{KSPHPDDM}) and discusses the readiness of the PETSc library with respect to block Krylov methods.
 Different applications from eigen-analysis are also provided.
-\Cref{sec:PCHPDDM} introduces \pk{PCHPDDM} and presents diverse
-applications for solving linear and nonlinear partial differential equations.
-Eventually, concluding remarks may be found in \cref{sec:conclusion}.
+\Cref{sec:PCHPDDM} introduces the suite of robust multilevel overlapping Schwarz methods (\pk{PCHPDDM})
+with examples from linear and nonlinear partial differential equations.
+Eventually, concluding remarks are provided in \cref{sec:conclusion}.
 
 All PETSc
 keywords and options are typeset in \texttt{typewriter} font, these are
@@ -251,10 +254,10 @@ Preconditioning variants can be specified via
 \pk{-ksp\_hpddm\_variant} \pk{(left$|$right$|$flexible)} to select whether the
 preconditioner is applied on the left, on the right, or if it cannot be
 represented as a linear operator. In this latter case, the preconditioner is
-always applied on the right, except for FCG. HPDDM CG
-and its variants BCG and BFBCG only handle left-preconditioning.  It is also
+always applied on the right, except for the conjugate gradient methods BCG, 
+BFCG and BFBCG, that only handle left-preconditioning.  It is also
 possible to set the preconditioning side through the more common PETSc option
-\pk{-ksp\_pc\_side (left$|$right)}.  Finally, convergence monitoring with the
+\pk{-ksp\_pc\_side (left$|$right)}.  In addition, convergence monitoring with the
 \pk{KSPMonitor} interface is fully supported, as well as the specification of
 customized convergence testing via the \pk{KSPSetConvergenceTest} callback.
 
@@ -267,7 +270,7 @@ Such deflation subspaces, stored as dense tall-and-skinny matrices, can be acces
 
 To fully support HPDDM solvers, from version 3.14.0 of PETSc we added interface routines
 for solving systems with multiple right-hand sides, \pk{KSPMatSolve}(\pk{ksp},\pk{X},\pk{Y}),
-and to apply preconditioning methods, i.e. \pk{PCMatApply}(\pk{ksp},\pk{X},\pk{Y}).
+and to apply preconditioning methods, i.e. \pk{PCMatApply}(\pk{pc},\pk{X},\pk{Y}).
 Both input $X$ and output $Y$ matrices are currently limited to be dense tall-and-skinny matrices.
 With \pk{KSPHPDDM}, \mbox{(pseudo-)block} methods Krylov methods will be used; instead, when no specialized implementation
 is available, PETSc will perform the solution phase
@@ -277,7 +280,7 @@ decompose a single large block of column vectors into multiple sub-blocks.
 \pk{KSPMatSolve} is then called repeatedly until all sub-blocks are traversed.
 This was inspired by MUMPS~\cite{amestoy2001fully} option
 ICNTL(27)\footnote{\url{http://mumps.enseeiht.fr/doc/userguide_5.3.3.pdf},
-section 6.1}.
+section 6.1}. Similar considerations apply to the block preconditioning application phase.
 
 While solving the (block) linear system, HPDDM will repeatedly call the following PETSc routines:
 \begin{itemize}
@@ -428,8 +431,9 @@ processes and they can be launched using the following command lines: \\[-4pt]
   -ksp_type hpddm -ksp_gmres_restart 500                                             &fvtextcolor[myred][\]
   -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
 \end{Verbatim}
-For the case of ICC(0), a \pk{PCREDUNDANT} is needed as well since
-PETSc does not provide a parallel ICC solver. The iteration numbers
+%For the case of ICC(0), a \pk{PCREDUNDANT} is needed as well since
+%PETSc does not provide a parallel ICC solver.
+The iteration numbers
 needed to reach convergence are gathered in~\cref{fig:comparison}.  The
 cases \ref{pgfplots:r0} and
 \ref{pgfplots:r1} (resp. \ref{pgfplots:r6} and \ref{pgfplots:r7}) reproduce Figure 4.2 in~\cite{parks2006recycling}.
@@ -478,120 +482,10 @@ sys none-matlab icc-matlab jacobi-matlab none-hpddm icc-hpddm jacobi-hpddm icc-g
         al.~\cite{parks2006recycling}. Note that \pk{PCICC} and
         \textnormal{ichol} from MATLAB are not consistent, hence the discrepancy
         between \ref{pgfplots:r2} and \ref{pgfplots:r3}. In the other cases,
-        the numbers of iterations needed by KSPHPDDM match with the respective
+        the numbers of iterations needed by \pk{KSPHPDDM} match with the respective
         MATLAB or PETSc reference implementation.\label{fig:comparison}}
     \end{figure}
-    \subsubsection{Linear stability analysis}
-In this section, we apply recycling Krylov methods in the context of linear
-stability analysis and consider the solution of the following generalized eigenvalue problem:
-\begin{equation}\label{eq:lsa}
-    J(q_b)x = \lambda \begin{bmatrix}M & 0 \\ 0 & 0 \end{bmatrix} x,
-\end{equation}
-where $J$ is the Jacobian of the incompressible steady-state Navier--Stokes equation
-evaluated using a given base flow $q_b = \begin{bmatrix}u_b \\ p_b\end{bmatrix}$ and
-$M$ the discretization of the mass matrix on the space of velocities. Interested
-readers are referred to~\cite{moulin2018al} for more details and for larger
-runs.
 
-The mini-app employed for the numerical results is built on top of
-FreeFEM~\cite{hecht2012new} and it is available at
-\url{https://github.com/prj-/moulin2019al}. As eigenvalue solver, it uses
-SLEPc, and thus reuses PETSc linear solver infrastructure.
-
-There are different methods to compute the eigenvalues
-of~\cref{eq:lsa} near a complex-valued shift $\sigma$. In this paragraph, emphasis will be put
-on the Krylov--Schur method~\cite{Stewart2002}, which for interior eigenvalues relies on spectral transformations
-and on the solution of successive linear systems such as:
-\begin{equation}\label{eq:ks}
-    \left(J(q_b) - \sigma \begin{bmatrix}M&0\\0&0\end{bmatrix}\right)x_i = b_i,
-\end{equation}
-which, in SLEPc, are parameterized using the \pk{-st\_} prefix.
-In this work, the above linear system is preconditioned using a modified augmented Lagrangian
-approach~\cite{Benzi2011a,moulin2018al}
-
-The effectiveness of subspace recycling is shown for
-finding the 5 eigenpairs closest to the shift $\sigma = 10^{-6} + 0.6\mathfrak{i}$ for a
-flow past a cylinder at Reynolds 100. Results can be reproduced using the following four commands.
-We note here that the first two commands are merely used to generate
-the base flow $q_b$ with a \pk{SNES}, a PETSc object used to solve
-nonlinear problems, using a continuation method on the Reynolds number. \\[-4pt]
-\begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Nonlinear-solver.edp -Re 50 -v 0
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Nonlinear-solver.edp -Re 100 -v 0
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Eigensolver.edp -Re 100 -v 0 -st_ksp_rtol 1.0e-4         &fvtextcolor[myred][\]
-  -st_ksp_type fgmres -st_ksp_gmres_restart 200 -st_ksp_converged_reason
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Eigensolver.edp -Re 100 -v 0 -st_ksp_rtol 1.0e-4         &fvtextcolor[myred][\]
-  -st_ksp_type hpddm -st_ksp_gmres_restart 200 -st_ksp_converged_reason              &fvtextcolor[myred][\]
-  -st_ksp_hpddm_variant flexible -st_ksp_hpddm_recycle 10 -st_ksp_hpddm_type gcrodr
-\end{Verbatim}
-
-The Krylov--Schur algorithm converges in six outer iterations (restarts), with a total of 46 inner solves~\cref{eq:ks}.
-Recycling of Krylov subspaces with \pk{KSPHPDDM} provides algorithmic speedup by lowering the number of iterations per inner solve,
-as reported in~\cref{fig:comparison-slepc}, from 80 with \pk{KSPFGMRES} to 45.
-A similar speedup can be observed in terms of runtime, with the time spent for the solution of the eigenvalue problem being reduced from \SI[round-mode = places,round-precision=1,group-minimum-digits=3,group-separator = {,}]{1509}{\sec} to \SI[round-mode = places,round-precision=1,group-minimum-digits=3,group-separator = {,}]{1052}{\sec}. These timings, and all which follow except in~\cref{sec:primitives}, have been obtained on {Ir\`ene}, a system composed of \pgfmathprintnumber[assume math mode=true]{1656} nodes with two 24-core Intel Xeon Platinum 8168 clocked at \SI{2.7}{\giga\hertz}.
-\pgfplotstableread{
-sys hpddm fgmres
-1   77    77
-2   54    83
-3   53    83
-4   52    81
-5   52    81
-6   51    78
-7   51    79
-8   51    80
-9   51    80
-10  51    77
-11  51    79
-12  51    79
-13  51    79
-14  53    77
-15  52    79
-16  49    78
-17  51    77
-18  51    79
-19  52    79
-20  52    79
-21  51    77
-22  51    78
-23  51    79
-24  53    80
-25  54    79
-26  52    79
-27  49    75
-28  51    78
-29  51    78
-30  51    77
-31  50    78
-32  55    81
-33  56    79
-34  54    80
-35  53    80
-36  53    78
-37  50    78
-38  52    79
-39  53    77
-40  52    77
-41  54    80
-42  53    80
-43  55    80
-44  53    79
-45  52    77
-46  53    80
-}\loadedtableSLEPc
-    \begin{figure}[!t]
-\centering \begin{tikzpicture}
-    \begin{axis}[xlabel={Krylov--Schur system index},ylabel={\# of
-        iterations},xmin=1,xmax=46,ymin=0,ymajorgrids,
-        legend columns=1,enlarge x limits=0.05, height=5.5cm,
-        legend style={font=\small,at={(0.98,0.02)}, legend cell align=left,
-        anchor=south east}]
-\addplot[very thick,last]     table[x expr=\thisrowno{0},y expr=\thisrowno{2}, col sep=space] {\loadedtableSLEPc};\label{pgfplots:m0}
-\addplot[very thick,myred,densely dashed]       table[x expr=\thisrowno{0},y expr=\thisrowno{1}, col sep=space] {\loadedtableSLEPc};\label{pgfplots:m1}
-\legend{{\pk{KSPFGMRES}},{\pk{KSPHPDDM}}}
-\end{axis}
-\end{tikzpicture}
-        \caption{\# of inner iterations for systems~\cref{eq:ks} with~\ref{pgfplots:m0} or without~\ref{pgfplots:m1} recycling.\label{fig:comparison-slepc}}
-    \end{figure}
 \pgfplotstableread{
 N    baij-1-T    baij-1-F   sbaij-1-T   sbaij-1-F  aij-1-T     aij-1-F    baij-3-T    baij-3-F   sbaij-3-T   sbaij-3-F  aij-3-T     aij-3-F    baij-10-T   baij-10-F  sbaij-10-T  sbaij-10-F aij-10-T    aij-10-F     cusparse-1-T    cusparse-1-F    cusparse-3-T    cusparse-3-F    cusparse-10-T   cusparse-10-F    aijmkl-seq-1-T      aijmkl-seq-3-T      aijmkl-seq-10-T     baijmkl-seq-1-T      baijmkl-seq-3-T      baijmkl-seq-10-T   sbaijmkl-seq-1-T      sbaijmkl-seq-3-T      sbaijmkl-seq-10-T         aijmkl-1-T      aijmkl-3-T      aijmkl-10-T     baijmkl-1-T      baijmkl-3-T      baijmkl-10-T   sbaijmkl-1-T      sbaijmkl-3-T      sbaijmkl-10-T
 1      2.0126e-01   1.4696e+08 8.0098e-02   1.4696e+08   9.3388e-02   1.4696e+08     8.9584e-01   1.3535e+09    6.2428e-01   1.3638e+09     1.2072e+00   1.3535e+09   4.0734e+00   5.4450e+09    2.2476e+00   5.4708e+09    5.0428e+00   5.4450e+09   2.1248e-03   1.5211e+08   1.3669e-02   1.3690e+09   4.7833e-02   5.4759e+09   6.6857e-02  7.4649e-01   3.1128e+00   4.7672e-01   6.2903e-01  2.2271e+00   4.7675e-01   6.2990e-01    2.2273e+00    7.8399e-03    8.6487e-02    3.5536e-01   5.2814e-02 6.6225e-02   2.4584e-01   4.5115e-02   6.6404e-02   2.4489e-01
@@ -612,7 +506,7 @@ storing two such matrices, one with local rows and columns, and another with loc
 To keep this study succinct, we only evaluate the performance of the sequential implementations, which can help
 in drawing conclusions for the intraprocess performance of the parallel formats.
 For this reason, from now on, we drop the \pk{SEQ} substring.
-The performance of the multiplication primitives of the three aforementioned types will also be compared to
+The performance of the multiplication primitives of the three aforementioned types will also be compared against
 those obtained with the MKL inspector--executor sparse BLAS routines~\cite{mkl-web-page}, using a single OpenMP thread.
 There is an ongoing effort to better integrate these routines in PETSc, but at the time of writing, direct calls to the MKL were used.
 
@@ -686,7 +580,7 @@ draw=black,fill, area legend,postaction={pattern=crosshatch dots}] table [x expr
            \addlegendentry{\pk{MATSBAIJ}}
            \addlegendentry{\pk{MATAIJMKL}}
            \addlegendentry{\pk{MATBAIJMKL}}
-           \addlegendentry{MATSBAIJMKL}
+           \addlegendentry{\pk{MATSBAIJMKL}}
 \node[rotate=0,fill=white,inner sep=0pt,anchor=west] at (rel axis cs:1.02, 0.5) {$b=1$};
     \end{semilogxaxis}
       \begin{semilogxaxis}[
@@ -768,7 +662,7 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
            \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-10-F}/\thisrow{sbaijmkl-seq-10-T}/(\storeresultIII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:mklsbaijseq10}
     \end{semilogxaxis}
     \end{tikzpicture}
-   \caption{Performance of the matrix--matrix multiplication as implemented in PETSc for three sparse matrix types.\label{fig:perfAX}}
+   \caption{Performance of the matrix--matrix multiplication different sparse matrix formats.\label{fig:perfAX}}
 \end{figure}
 Some conclusions may be drawn:
 \begin{itemize}
@@ -792,6 +686,13 @@ mode=true]{261} nodes with two 20-core Intel Xeon Gold 6248 clocked at
 \SI{2.5}{\giga\hertz} and four NVIDIA Tesla V100 SXM2. Neither transfers
 between host and device nor time spent in \texttt{mkl\_sparse\_optimize} have
 been taken into account. 
+For the sake of completeness, the performance of
+the matrix--vector multiplication with \pk{MATAIJMKL} and different numbers of threads is also reported in
+\cref{fig:scaling-Ax}. Clearly, it is not advised to use the full socket to
+perform this type of workload for such small sparse matrices and skinny dense
+matrices. However, these results help in drawing a fair comparison between a full CPU socket
+and a GPU device.
+
 
 \begin{figure}[tbp]
 \pgfkeys{/pgf/fpu}
@@ -840,7 +741,7 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
 \end{pgfonlayer}{foreground}
            \addlegendentry{\pk{MATAIJMKL}}
            \addlegendentry{\pk{MATBAIJMKL}}
-           \addlegendentry{MATSBAIJMKL}
+           \addlegendentry{\pk{MATSBAIJMKL}}
            \addlegendentry{\pk{MATAIJCUSPARSE}}
 \node[rotate=0,fill=white,inner sep=0pt,anchor=west] at (rel axis cs:1.02, 0.5) {$b=1$};
     \end{semilogxaxis}
@@ -946,19 +847,20 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
 \end{figure}
 
 
-For the sake of completeness, the performance of
-\pk{MATAIJMKL} with $N=1$ but different numbers of threads is also reported in
-\cref{fig:scaling-Ax}. Clearly, it is not advised to use the full socket to
-perform this type of workload for such small sparse matrices and skinny dense
-matrices. But this helps in drawing a fair comparison between a full CPU socket
-and a full GPU device. All in all, the CPU configuration which reaches the
-highest percentage of peak is MATSBAIJMKL~\ref{pgfplots:sbaijmkl3} with $b=3$
+The CPU configuration which reaches the
+highest percentage of peak is \pk{MATSBAIJMKL}~\ref{pgfplots:sbaijmkl3} with $b=3$
 and $N=64$, rightmost middle plot in~\cref{fig:perfAXpar}, with approximately
 63 GFLOP/s. This format is not available yet in PETSc, but it is handled by the
 mini-app. Still, it is less than 1\% of peak for an Intel Xeon Gold 6248.
 For the GPU configuration, \pk{MATAIJCUSPARSE}~\ref{pgfplots:cusparse10} with $b=6$
 and $N=64$, rightmost bottom plot in~\cref{fig:perfAXpar}, performs at around
-306 GFLOP/s, about 4\% of peak for an NVIDIA Tesla V100 SXM2.
+306 GFLOP/s, about 4\% of peak for an NVIDIA Tesla V100 SXM2. These rather disappointing performances
+suggest to consider different, interlaced layouts for storing the dense right-hand sides and we plan to extend the
+current PETSc functionality in the future to maximize performances while maintaining interface flexibility
+and the user friendliness of the library.
+{\color{red} Pierre, can you do a quick run hacking MatProduct.cpp and using MAIJ MatMult instead of MatProductNumeric just to confirm this
+sentence and add preliminary numbers in terms of CPU peak performance? (forget about GPU, we need a new interface to CUSPARSE for that)}
+
 \pgfplotstableread{
 P       aij1        aij3        aij6
 1       6.6857e-02  7.4649e-01  3.1128e+00       
@@ -1004,6 +906,120 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
     \caption{Scalability of \pk{MatMult} with \pk{MATAIJMKL} and different number of threads.\label{fig:scaling-Ax}}
 \end{figure}
 
+    \subsubsection{Linear stability analysis}
+In this section, we apply recycling Krylov methods in the context of linear
+stability analysis and consider the solution of the following generalized eigenvalue problem:
+\begin{equation}\label{eq:lsa}
+    J(q_b)x = \lambda \begin{bmatrix}M & 0 \\ 0 & 0 \end{bmatrix} x,
+\end{equation}
+where $J$ is the Jacobian of the incompressible steady-state Navier--Stokes equation
+evaluated using a given base flow $q_b = \begin{bmatrix}u_b \\ p_b\end{bmatrix}$ and
+$M$ the discretization of the mass matrix on the space of velocities.
+The mini-app employed for the numerical results is built on top of
+FreeFEM~\cite{hecht2012new} and it is available at
+\url{https://github.com/prj-/moulin2019al}.
+Interested
+readers are referred to~\cite{moulin2018al} for more details and for larger
+runs.
+
+%As eigenvalue solver, it uses
+%SLEPc, and thus reuses PETSc linear solver infrastructure.
+
+There are different methods to compute the eigenvalues
+of~\cref{eq:lsa} near a complex-valued shift $\sigma$. In this paragraph we consider 
+a Krylov--Schur method~\cite{Stewart2002}, which, for interior eigenvalues, relies on spectral transformations
+and on the solution of successive linear systems such as:
+\begin{equation}\label{eq:ks}
+    \left(J(q_b) - \sigma \begin{bmatrix}M&0\\0&0\end{bmatrix}\right)x_i = b_i,
+\end{equation}
+which, in SLEPc, are parameterized using the \pk{-st\_} prefix.
+In this work, the above linear system is preconditioned using a modified augmented Lagrangian
+approach~\cite{Benzi2011a,moulin2018al}
+
+The effectiveness of subspace recycling is shown for
+finding the 5 eigenpairs closest to the shift $\sigma = 10^{-6} + 0.6\mathfrak{i}$ for a
+flow past a cylinder at Reynolds 100. Results can be reproduced using the following four commands.
+We note here that the first two commands are merely used to generate
+the base flow $q_b$ with a \pk{SNES}, a PETSc object used to solve
+nonlinear problems, using a continuation method on the Reynolds number. \\[-4pt]
+\begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Nonlinear-solver.edp -Re 50 -v 0
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Nonlinear-solver.edp -Re 100 -v 0
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Eigensolver.edp -Re 100 -v 0 -st_ksp_rtol 1.0e-4         &fvtextcolor[myred][\]
+  -st_ksp_type fgmres -st_ksp_gmres_restart 200 -st_ksp_converged_reason
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Eigensolver.edp -Re 100 -v 0 -st_ksp_rtol 1.0e-4         &fvtextcolor[myred][\]
+  -st_ksp_type hpddm -st_ksp_gmres_restart 200 -st_ksp_converged_reason              &fvtextcolor[myred][\]
+  -st_ksp_hpddm_variant flexible -st_ksp_hpddm_recycle 10 -st_ksp_hpddm_type gcrodr
+\end{Verbatim}
+
+The Krylov--Schur algorithm converges in six outer iterations (restarts), with a total of 46 inner solves~\cref{eq:ks}.
+Recycling of Krylov subspaces with \pk{KSPHPDDM} provides algorithmic speedup by lowering the number of iterations per inner solve,
+as reported in~\cref{fig:comparison-slepc}, from 80 with \pk{KSPFGMRES} to 45.
+A similar speedup can be observed in terms of runtime, with the time spent for the solution of the eigenvalue problem being reduced from \SI[round-mode = places,round-precision=1,group-minimum-digits=3,group-separator = {,}]{1509}{\sec} to \SI[round-mode = places,round-precision=1,group-minimum-digits=3,group-separator = {,}]{1052}{\sec}. These timings, and all that follow, have been obtained on {Ir\`ene}, a system composed of \pgfmathprintnumber[assume math mode=true]{1656} nodes with two 24-core Intel Xeon Platinum 8168 clocked at \SI{2.7}{\giga\hertz}.
+\pgfplotstableread{
+sys hpddm fgmres
+1   77    77
+2   54    83
+3   53    83
+4   52    81
+5   52    81
+6   51    78
+7   51    79
+8   51    80
+9   51    80
+10  51    77
+11  51    79
+12  51    79
+13  51    79
+14  53    77
+15  52    79
+16  49    78
+17  51    77
+18  51    79
+19  52    79
+20  52    79
+21  51    77
+22  51    78
+23  51    79
+24  53    80
+25  54    79
+26  52    79
+27  49    75
+28  51    78
+29  51    78
+30  51    77
+31  50    78
+32  55    81
+33  56    79
+34  54    80
+35  53    80
+36  53    78
+37  50    78
+38  52    79
+39  53    77
+40  52    77
+41  54    80
+42  53    80
+43  55    80
+44  53    79
+45  52    77
+46  53    80
+}\loadedtableSLEPc
+    \begin{figure}[!t]
+\centering \begin{tikzpicture}
+    \begin{axis}[xlabel={Krylov--Schur system index},ylabel={\# of
+        iterations},xmin=1,xmax=46,ymin=0,ymajorgrids,
+        legend columns=1,enlarge x limits=0.05, height=5.5cm,
+        legend style={font=\small,at={(0.98,0.02)}, legend cell align=left,
+        anchor=south east}]
+\addplot[very thick,last]     table[x expr=\thisrowno{0},y expr=\thisrowno{2}, col sep=space] {\loadedtableSLEPc};\label{pgfplots:m0}
+\addplot[very thick,myred,densely dashed]       table[x expr=\thisrowno{0},y expr=\thisrowno{1}, col sep=space] {\loadedtableSLEPc};\label{pgfplots:m1}
+\legend{{\pk{KSPFGMRES}},{\pk{KSPHPDDM}}}
+\end{axis}
+\end{tikzpicture}
+        \caption{\# of inner iterations for systems~\cref{eq:ks} with~\ref{pgfplots:m0} or without~\ref{pgfplots:m1} recycling.\label{fig:comparison-slepc}}
+    \end{figure}
+
 \subsubsection{Blocking inside SLEPc\label{sec:lobpcg}}
 The implementations of the Locally Optimal Block Preconditioned Conjugate
 Gradient~\cite{knyazev2001toward}~(LOBPCG) and the Contour Integral Spectrum
@@ -1022,12 +1038,11 @@ The performance of LOBPCG~\cite{knyazev2001toward} as implemented in SLEPc is st
     \item \pk{PCHPDDM}: multilevel overlapping Schwarz method;
     \item \pk{PCGAMG}: algebraic multigrid method~\cite{adams2004ultra}.
 \end{itemize}
-More details are given in the next section where focus is put on preconditioning rather than Krylov methods. The two main points are that:
-\begin{itemize}
-    \item \pk{PCASM} and \pk{PCHPDDM} handle blocking, see the list~\cref{sec:interface-ksp};
-    \item \pk{PCHPDDM} and \pk{PCGAMG} have low contraction factors.
-\end{itemize}
-The following generalized eigenvalue problem is solved in a three-dimensional cube:
+More details on these solvers are given in the next section where focus is put on preconditioning rather than Krylov methods.
+We note here that only \pk{PCASM} and \pk{PCHPDDM} currently handle blocking (see the list~\cref{sec:interface-ksp}),
+and that \pk{PCHPDDM} and \pk{PCGAMG} have lower contraction factors than the cheaper alternative \pk{PCASM}.
+
+As a testbed, we consider the following generalized eigenvalue problem on a three-dimensional cube:
 \begin{equation*}
     -\nabla \cdot (\kappa \nabla u) = \lambda u.\label{eq:lobpcg}
 \end{equation*}
@@ -1036,34 +1051,38 @@ elements using FreeFEM. The script \texttt{blocking-slepc.edp} available at
 \url{https://github.com/prj-/jolivet2020petsc} can be use for reproducibility.
 The following timings and convergence histories have been obtained on $2{,}304$
 processes of Ir\`ene, for solving a problem of dimension
-\pgfmathprintnumber{74618461}. By default, SLEPc applies at most 5 iterations
+\pgfmathprintnumber{74618461}.
+
+By default, SLEPc applies at most 5 iterations
 of GMRES on each column of a so-called set of active columns. Since the option
 \pk{-eps\_lobpcg\_blocksize 40} is used for computing 20 eigenpairs, the size
 of the set varies between 40 to 1. This size corresponds to the number of
-right-hand sides in systems that will be solved throughout LOBPCG iterations.
+right-hand sides that will be solved for throughout LOBPCG iterations.
 Instead of using \pk{KSPGMRES}, which does not handle blocking, \pk{KSPHPDDM}
-is used, with the pseudo-block GMRES. That means that, assuming the size of the
-set of active columns is 40, one LOBPCG iterations implies doing at most 5
-GMRES iterations with 40 vectors simultaneously, using \pk{MatProductNumeric}
-and \pk{PCMatApply}, instead of doing at most $40\times 5$ successive GMRES
-iterations, using \pk{MatMult} and \pk{PCApply}. Results are gathered
-in~\cref{tab:lobpcg}. In the first line, the numbers of outer LOBPCG iterations
+is used, with the pseudo-block GMRES. Thus, assuming the size of the
+set of active columns is 40, one LOBPCG iteration performs at most 5
+pseudo-block GMRES iterations with 40 vectors simultaneously, using \pk{MatProductNumeric}
+and \pk{PCMatApply}, instead of doing (at most) $40\times 5$ successive GMRES
+iterations, using \pk{MatMult} and \pk{PCApply}.
+
+Results are gathered
+in~\cref{tab:lobpcg}. In the first row, the numbers of outer LOBPCG iterations
 are reported with the three different inner preconditioners mentioned above.
 \pk{PCASM} is known to yield a preconditioned operator whose condition number
 grows as the number of subdomains, here processes, increases. Thus, the number
 of outer iterations is higher than with \pk{PCHPDDM} or \pk{PCGAMG} since the
 inner solves are not converging to meaningful solutions in just 5 iterations.
-The multilevel preconditioners perform similarly, since the difference in the
-number of outer iterations is minimal (1). The second and third lines represent
+On the other hand, both multilevel preconditioners perform similarly, with a minimal difference in the
+number of outer iterations. The second and third rows record
 the number of times \pk{PCApply} and \pk{PCMatApply} are called. Since
 \pk{PCGAMG} does not handle blocking, at each pseudo-block GMRES iteration,
-\pk{PCApply} is called on each single active column. \pk{PCASM} and
-\pk{PCHPDDM} handle blocking, so only rely on \pk{PCMatApply}. In the fourth
-line, the time spent setting up the preconditioners is given. \pk{PCASM} is
+\pk{PCApply} is called for each active column separately. \pk{PCASM} and
+\pk{PCHPDDM} handle blocking, so the only rely on \pk{PCMatApply}. In the fourth
+row, the time spent setting up the preconditioners is given. \pk{PCASM} is
 extremely cheap but not very robust numerically, while both multilevel
-preconditioners have a similar setup time.  Eventually, in the last line, the
-time spent in the full eigensolve is given.  Clearly, having both a \pk{KSP}
-and a \pk{PC} which can deal with multiple vectors efficiently is mandatory to
+preconditioners have a similar setup time. The
+time spent in the full eigenvalue solver is reported in the last row. Clearly, having both a \pk{KSP}
+and a \pk{PC} which can efficiently deal with multiple vectors is mandatory to
 achieve reasonable performance with such an outer solver that heavily relies on
 blocking.
 \pgfplotstableread{
@@ -1129,14 +1148,16 @@ before row={\rowcolor[gray]{0.9}}},
     },
 string type]{\mytablenew}
 \end{table}
+
 The script available at \url{https://github.com/prj-/jolivet2020petsc} may be
 used to solve the same eigenproblem using \pk{EPSCISS} by providing the
 additional command line argument \pk{-eps\_type ciss}.
 However, this eigensolver is mostly suited for finding interior eigenpairs.
 For fairness, its performance is not reported, but the options from the script
 can be readily used for problems where \pk{EPSCISS} is an appropriate solver.
-Blocking is also available and tested in SLEPc test suite for \pk{EPSSUBSPACE}
+We finally note that blocking support is also available and tested in SLEPc for \pk{EPSSUBSPACE}
 and \pk{NEPCISS} since version 3.14.0.
+
 \section{PCHPDDM}\label{sec:PCHPDDM}
   \subsection{Related work}
 Domain decomposition methods are, alongside multigrid methods, one of the
@@ -1869,12 +1890,11 @@ solving each linearized system, see~\cref{fig:u}.
 The GenEO framework has seldom been used in the context of nonlinear problems, but
 here, it is shown that it can solve the linearized equations
 from~\cref{eq:bratu} in few iterates.  There are two strategies to define the
-\pk{PC} here:
+preconditioner:
 \begin{itemize}
 \item whenever the Jacobian is being updated in the \pk{SNESSetJacobian}
-function, new unassembled Neumann matrices at the current linearization point are updated as well and supplied to the previously
-explained \pk{PCHPDDMSetAuxiliaryMat} function, this is done automatically if the nonlinear solver is attached to a
-\pk{DMPLEX} or a \pk{DMP4EST};
+function, new unassembled Neumann matrices at the current linearization point can be updated as well and supplied via
+\pk{PCHPDDMSetAuxiliaryMat}
 \item by reusing the \pk{PCHPDDM} hierarchy assembled when solving the first
     linearized system, using the \pk{SNESSetLagPreconditioner} option.
 \end{itemize}
@@ -2116,8 +2136,9 @@ methods plus robust overlapping Schwarz methods using the GenEO framework in
 PETSc.
 
 Concerning PETSc, the infrastructure for dealing with blocks of vectors has
-been laid out. Still, only a little fraction of the built-in matrix types and
-preconditioners may efficiently handle such a format.
+been laid out. However, only a little fraction of the built-in matrix types and
+preconditioners can currently handle them efficiently, and additional
+storage formats may be considered to maximize performances.
 
 Concerning SLEPc, we plan to implement new solvers or extend existing ones to
 further exploit block solve primitives, for instance, block
@@ -2126,17 +2147,17 @@ would then handle block Arnoldi iterations, and shift-and-invert solves would
 operate on the whole block instead of column by column.
 
 Concerning HPDDM, its integration inside PETSc offers a much-needed flexibility
-compared to the standard implementation. Indeed, it is now possible to switch at
-runtime many parameters that are determined at compile-time in the standard implementation, e.g.,
-subdomain solvers and matrix types.
+compared to the standard implementation. Indeed, it is now possible to decide at
+runtime many solvers parameters that are instead determined at compile-time in a
+stand-alone HPDDM implementation.
 
-The interface between PETSc and HPDDM has still room for future improvements,
-and we discuss openly two of them next. First, HPDDM handles mixed-precision,
+The interface between PETSc and HPDDM has still room for future improvements.
+First, HPDDM handles mixed-precision,
 e.g., using single-precision scalars for assembling coarse operators while
 using double-precision scalars at the fine level. The topic of mixed-precision
 is under scrutiny for the next major overhaul of PETSc. Second, HPDDM does not
 handle GPU efficiently currently, but the interface with PETSc provides a very
-thorough test bed with \pk{Mat} and \pk{PC} implementations that are exploiting
+thorough testbed with \pk{Mat} and \pk{PC} implementations that are exploiting
 GPU.
 
 \section*{Acknowledgments}
