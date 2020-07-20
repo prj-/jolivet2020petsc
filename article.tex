@@ -662,7 +662,7 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
            \addplot+[draw=black,fill, area legend,postaction={pattern=bricks}] table [x expr=\thisrow{N}>7?\thisrow{N}/2:\thisrow{N},y expr=\thisrow{sbaij-10-F}/\thisrow{sbaijmkl-seq-10-T}/(\storeresultIII*1000000000.0)]{\loadedMatProduct};\label{pgfplots:mklsbaijseq10}
     \end{semilogxaxis}
     \end{tikzpicture}
-   \caption{Performance of the matrix--matrix multiplication different sparse matrix formats.\label{fig:perfAX}}
+   \caption{Performance of the matrix--matrix multiplication for different sparse matrix formats.\label{fig:perfAX}}
 \end{figure}
 Some conclusions may be drawn:
 \begin{itemize}
@@ -1077,7 +1077,7 @@ number of outer iterations. The second and third rows record
 the number of times \pk{PCApply} and \pk{PCMatApply} are called. Since
 \pk{PCGAMG} does not handle blocking, at each pseudo-block GMRES iteration,
 \pk{PCApply} is called for each active column separately. \pk{PCASM} and
-\pk{PCHPDDM} handle blocking, so the only rely on \pk{PCMatApply}. In the fourth
+\pk{PCHPDDM} handle blocking, so they only rely on \pk{PCMatApply}. In the fourth
 row, the time spent setting up the preconditioners is given. \pk{PCASM} is
 extremely cheap but not very robust numerically, while both multilevel
 preconditioners have a similar setup time. The
