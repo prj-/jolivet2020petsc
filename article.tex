@@ -255,7 +255,7 @@ Preconditioning variants can be specified via
 preconditioner is applied on the left, on the right, or if it cannot be
 represented as a linear operator. In this latter case, the preconditioner is
 always applied on the right, except for the conjugate gradient methods BCG, 
-BFCG and BFBCG, that only handle left-preconditioning.  It is also
+BFCG and BFBCG, that only handle left preconditioning.  It is also
 possible to set the preconditioning side through the more common PETSc option
 \pk{-ksp\_pc\_side (left$|$right)}.  In addition, convergence monitoring with the
 \pk{KSPMonitor} interface is fully supported, as well as the specification of
@@ -278,9 +278,10 @@ in a column by column fashion.
 Furthermore, a function \pk{KSPSetMatSolveBlockSize} is also provided to
 decompose a single large block of column vectors into multiple sub-blocks.
 \pk{KSPMatSolve} is then called repeatedly until all sub-blocks are traversed.
+Similar considerations apply to the underlying calls to \pk{PCMatApply} and \pk{MatProductNumeric}.
 This was inspired by MUMPS~\cite{amestoy2001fully} option
 ICNTL(27)\footnote{\url{http://mumps.enseeiht.fr/doc/userguide_5.3.3.pdf},
-section 6.1}. Similar considerations apply to the block preconditioning application phase.
+section 6.1}.
 
 While solving the (block) linear system, HPDDM will repeatedly call the following PETSc routines:
 \begin{itemize}
@@ -1068,7 +1069,7 @@ iterations, using \pk{MatMult} and \pk{PCApply}.
 Results are gathered
 in~\cref{tab:lobpcg}. In the first row, the numbers of outer LOBPCG iterations
 are reported with the three different inner preconditioners mentioned above.
-\pk{PCASM} is known to yield a preconditioned operator whose condition number
+On the one hand, \pk{PCASM} is known to yield a preconditioned operator whose condition number
 grows as the number of subdomains, here processes, increases. Thus, the number
 of outer iterations is higher than with \pk{PCHPDDM} or \pk{PCGAMG} since the
 inner solves are not converging to meaningful solutions in just 5 iterations.
