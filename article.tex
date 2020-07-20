@@ -581,7 +581,7 @@ draw=black,fill, area legend,postaction={pattern=crosshatch dots}] table [x expr
            \addlegendentry{\pk{MATSBAIJ}}
            \addlegendentry{\pk{MATAIJMKL}}
            \addlegendentry{\pk{MATBAIJMKL}}
-           \addlegendentry{MATSBAIJMKL}
+           \addlegendentry{\pk{MATSBAIJMKL}}
 \node[rotate=0,fill=white,inner sep=0pt,anchor=west] at (rel axis cs:1.02, 0.5) {$b=1$};
     \end{semilogxaxis}
       \begin{semilogxaxis}[
@@ -742,7 +742,7 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
 \end{pgfonlayer}{foreground}
            \addlegendentry{\pk{MATAIJMKL}}
            \addlegendentry{\pk{MATBAIJMKL}}
-           \addlegendentry{MATSBAIJMKL}
+           \addlegendentry{\pk{MATSBAIJMKL}}
            \addlegendentry{\pk{MATAIJCUSPARSE}}
 \node[rotate=0,fill=white,inner sep=0pt,anchor=west] at (rel axis cs:1.02, 0.5) {$b=1$};
     \end{semilogxaxis}
@@ -849,9 +849,9 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
 
 
 The CPU configuration which reaches the
-highest percentage of peak is MATSBAIJMKL~\ref{pgfplots:sbaijmkl3} with $b=3$
+highest percentage of peak is \pk{MATSBAIJMKL}~\ref{pgfplots:sbaijmkl3} with $b=3$
 and $N=64$, rightmost middle plot in~\cref{fig:perfAXpar}, with approximately
-63 GFLOP/s. This format is not available yet in PETSc, but it is handled by the
+63 GFLOP/s. This format is not yet available in PETSc, but it is handled by the
 mini-app. Still, it is less than 1\% of peak for an Intel Xeon Gold 6248.
 For the GPU configuration, \pk{MATAIJCUSPARSE}~\ref{pgfplots:cusparse10} with $b=6$
 and $N=64$, rightmost bottom plot in~\cref{fig:perfAXpar}, performs at around
