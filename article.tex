@@ -1,6 +1,5 @@
 \documentclass[3p,11pt]{elsarticle}
 
-\usepackage{lineno,hyperref}
 % \modulolinenumbers[5]
 
 \journal{Computers \& Mathematics with Applications}
@@ -27,6 +26,7 @@
 \definecolor{darkgray}{RGB}{253,174,97}
 \definecolor{mediumgray}{RGB}{255,255,191}
 \usepackage[outline]{contour}
+\usepackage{enumitem}
 \usepackage{tikz}
 \usepackage[binary-units=true]{siunitx}
 \usetikzlibrary{decorations.text,arrows.meta,calc,plotmarks,shadows,spy,fixedpointarithmetic,patterns,intersections,arrows.meta,shapes,decorations.text,decorations.pathmorphing,backgrounds,fit,positioning,shapes.symbols,chains,3d,calc,external}
@@ -38,15 +38,30 @@
 }
 \makeatother
 \usepackage{amsmath,etoolbox,amssymb}
-\usepackage{cleveref}
 \AtBeginEnvironment{pmatrix}{\setlength{\arraycolsep}{2pt}}
 \pgfmathsetmacro{\dof}{4}
 \pgfmathsetmacro{\overlap}{1}
+\usepackage{lineno,hyperref}
+\usepackage[noabbrev]{cleveref}
+\hypersetup{
+  colorlinks=true
+}
 \begin{document}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=red,
+  urlcolor=blue,
+  citecolor=green!50!black,
+  frenchlinks=false,
+  pdfborder={0 0 0},
+  naturalnames=false,
+  hypertexnames=false,
+  breaklinks
+}
 
 \begin{frontmatter}
 
-\title{KSPHPDDM and PCHPDDM: extending PETS\MakeLowercase{c} with advanced Krylov methods and robust multilevel Overlapping Schwarz preconditioners}
+\title{KSPHPDDM and PCHPDDM: extending PETSc with advanced Krylov methods and robust multilevel overlapping Schwarz preconditioners}
 
 \author[firstaddress]{Pierre Jolivet\corref{correspondingauthor}}
 \cortext[correspondingauthor]{Corresponding author}
@@ -82,14 +97,14 @@
 \end{abstract}
 
 % REQUIRED
-\begin{keywords}
+\begin{keyword}
   Krylov methods, domain decomposition preconditioners, distributed-memory parallel computing
-\end{keywords}
+\end{keyword}
 
 \end{frontmatter}
 
 \linenumbers
-
+\setlist{nosep}
 \section{Introduction}
 Computational science and engineering today enjoys unprecedented opportunities to transform
 the way society solves many of its most urgent technological problems through predictive simulations.
@@ -237,10 +252,10 @@ number of global synchronizations needed for scalar products.
 
 HPDDM Krylov methods may be selected using the % {\color{red} TODO API FOR KSPHPDDMSetVariant?}
 options \pk{-ksp\_hpddm\_type}
-\pk{(gmres$|$cg$|$gcrodr$|$bgmres$|$bcg$|$bfbcg$|$bgcrodr$|$preonly)}, or programmatically 
-by using \pk{KSPHPDDMSetType}(\pk{ksp}, \pk{KSPHPDDMType}).
+\pk{(gmres$|$cg$|$gcrodr$|$\linebreak bgmres$|$bcg$|$bfbcg$|$bgcrodr$|$preonly)}, or programmatically 
+by using \pk{KSPHPDDMSetType}(\pk{ksp},\linebreak \pk{KSPHPDDMType}).
 Preconditioning variants can be specified via
-\pk{-ksp\_hpddm\_variant} \pk{(left$|$right$|$flexible)} to select whether the
+\pk{-ksp\_hpddm\_variant} \pk{(left$|$right$|$\linebreak flexible)} to select whether the
 preconditioner is applied on the left, on the right, or if it cannot be
 represented as a linear operator. In this latter case, the preconditioner is
 always applied on the right, except for the conjugate gradient methods BCG, 
@@ -411,18 +426,17 @@ ones from the original GCRODR paper~\cite{parks2006recycling}.
 All PETSc tests are performed using four MPI
 processes and can be launched using the following command lines. \\[-4pt]
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -pc_type none -ksp_rtol 1e-10             &fvtextcolor[myred][\]
-  -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_gmres_restart 40 -ksp_hpddm_recycle 20 &fvtextcolor[myred][\]
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -pc_type none -ksp_rtol 1e-10 -ksp_gmres_restart 40   &fvtextcolor[myred][\]
+  -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_hpddm_recycle 20                                   &fvtextcolor[myred][\]
   -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -redundant_pc_type icc -ksp_rtol 1e-10    &fvtextcolor[myred][\]
-  -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_gmres_restart 40 -ksp_hpddm_recycle 20 &fvtextcolor[myred][\]
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -redundant_pc_type icc -ksp_rtol 1e-10                &fvtextcolor[myred][\]
+  -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_gmres_restart 40 -ksp_hpddm_recycle 20             &fvtextcolor[myred][\]
   -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR -pc_type redundant
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -pc_type jacobi -ksp_rtol 1e-10           &fvtextcolor[myred][\]
-  -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_gmres_restart 40 -ksp_hpddm_recycle 20 &fvtextcolor[myred][\]
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -pc_type jacobi -ksp_rtol 1e-10 -ksp_gmres_restart 40 &fvtextcolor[myred][\]
+  -ksp_type hpddm -ksp_hpddm_type gcrodr -ksp_hpddm_recycle 20                                   &fvtextcolor[myred][\]
   -ksp_pc_side right -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -pc_type none -ksp_rtol 1e-10             &fvtextcolor[myred][\]
-  -ksp_type hpddm -ksp_gmres_restart 500                                             &fvtextcolor[myred][\]
-  -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 ./ex75 -ksp_converged_reason -pc_type none -ksp_rtol 1e-10 -ksp_gmres_restart 500  &fvtextcolor[myred][\]
+  -ksp_type hpddm -load_dir &fvtextcolor[myyellow][${DATAFILESPATH}]/matrices/hpddm/GCRODR
 \end{Verbatim}
 %For the case of ICC(0), a \pk{PCREDUNDANT} is needed as well since
 %PETSc does not provide a parallel ICC solver.
@@ -517,9 +531,9 @@ product operations.
 They can be reproduced by using the mini-app \texttt{MatProduct.c} from \url{https://github.com/prj-/jolivet2020petsc} and any input \pk{MATAIJ} stored in binary format,
 here using the default name \pk{binaryoutput}, available at \url{http://jolivet.perso.enseeiht.fr/binaryoutput}.
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpicc] MatProduct.c -O3 -I&fvtextcolor[myyellow][${PETSC_DIR}]/&fvtextcolor[myyellow][${PETSC_ARCH}]/include                        &fvtextcolor[myred][\]
-  -I&fvtextcolor[myyellow][${PETSC_DIR}]/include -L&fvtextcolor[myyellow][${PETSC_DIR}]/&fvtextcolor[myyellow][${PETSC_ARCH}]/lib -lpetsc -o MatProduct
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 1 ./MatProduct -f binaryoutput -log_view                                 &fvtextcolor[myred][\]
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpicc] MatProduct.c -O3 -I&fvtextcolor[myyellow][${PETSC_DIR}]/&fvtextcolor[myyellow][${PETSC_ARCH}]/include -I&fvtextcolor[myyellow][${PETSC_DIR}]/include             &fvtextcolor[myred][\]
+  -L&fvtextcolor[myyellow][${PETSC_DIR}]/&fvtextcolor[myyellow][${PETSC_ARCH}]/lib -lpetsc -o MatProduct
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 1 ./MatProduct -f binaryoutput -log_view                                             &fvtextcolor[myred][\]
   -bs 1,3,6 -N 1,2,8,16,32,64 -type aij,aijmkl,baij,baijmkl,sbaij,sbaijmkl
 \end{Verbatim}
 \begin{figure}[htbp]
@@ -671,7 +685,7 @@ operation to a NVIDIA GPU and using cuSPARSE~\cite{cusparse-web-page} as
 interfaced in PETSc.
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][export] OMP_NUM_THREADS=20 &&&& &fvtextcolor[myyellow][export] MKL_NUM_THREADS=20
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 1 ./MatProduct -f binaryoutput -log_view                                 &fvtextcolor[myred][\]
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 1 ./MatProduct -f binaryoutput -log_view                                             &fvtextcolor[myred][\]
   -bs 1,3,6 -N 1,2,8,16,32,64 -type aijmkl,baijmkl,sbaijmkl,aijcusparse
 \end{Verbatim}
 Results reported in~\cref{fig:perfAXpar} have been scaled with respect to the
@@ -689,7 +703,7 @@ matrices. However, these results help in drawing a fair comparison between a ful
 and a GPU device.
 
 
-\begin{figure}[tbp]
+\begin{figure}[!t]
 \pgfkeys{/pgf/fpu}
   \pgfmathparse{1.4696e+08/7.8399e-03/1000000000.0}\edef\storeresultI{\pgfmathresult}
   % \pgfmathparse{1.3535e+09/6.6225e-02/1000000000.0}\edef\storeresultII{\pgfmathresult}
@@ -824,8 +838,8 @@ $\pgfmathprintnumber{\pgfmathresult}$\%
           \begin{pgfonlayer}{foreground}
 \begin{scope}[decoration={snake,amplitude=1pt,pre length=0,post length=0}]
           \path[shape=coordinate]
-(rel axis cs:-0.001,0.54) coordinate(b1) (rel axis cs: 1.001,0.54) coordinate(b2)
-(rel axis cs: 1.001,0.56) coordinate(b3) (rel axis cs:-0.001,0.56) coordinate(b4);
+(rel axis cs:-0.003,0.54) coordinate(b1) (rel axis cs: 1.003,0.54) coordinate(b2)
+(rel axis cs: 1.003,0.56) coordinate(b3) (rel axis cs:-0.003,0.56) coordinate(b4);
   \path[fill=white] (b2) -- (b3)
                 decorate {-- (b4)}
                 -- (b1)
@@ -872,7 +886,7 @@ P       aij1        aij3        aij6
 \pgfplotstablegetelem{0}{aij6}\of{\loadedOMP}
 \let\refVI\pgfplotsretval
 \pgfplotstablecreatecol[create col/expr={\refVI/\thisrow{aij6}}]{speedupVI}\loadedOMP
-\begin{figure}[tbp]
+\begin{figure}[!b]
   \centering
     \begin{tikzpicture}
       \begin{loglogaxis}[
@@ -939,10 +953,10 @@ nonlinear problems, using a continuation method on the Reynolds number. \\[-4pt]
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Nonlinear-solver.edp -Re 50 -v 0
 &fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Nonlinear-solver.edp -Re 100 -v 0
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Eigensolver.edp -Re 100 -v 0 -st_ksp_rtol 1.0e-4         &fvtextcolor[myred][\]
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Eigensolver.edp -Re 100 -v 0 -st_ksp_rtol 1.0e-4                     &fvtextcolor[myred][\]
   -st_ksp_type fgmres -st_ksp_gmres_restart 200 -st_ksp_converged_reason
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Eigensolver.edp -Re 100 -v 0 -st_ksp_rtol 1.0e-4         &fvtextcolor[myred][\]
-  -st_ksp_type hpddm -st_ksp_gmres_restart 200 -st_ksp_converged_reason              &fvtextcolor[myred][\]
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 4 FreeFem++-mpi Eigensolver.edp -Re 100 -v 0 -st_ksp_rtol 1.0e-4                     &fvtextcolor[myred][\]
+  -st_ksp_type hpddm -st_ksp_gmres_restart 200 -st_ksp_converged_reason                          &fvtextcolor[myred][\]
   -st_ksp_hpddm_variant flexible -st_ksp_hpddm_recycle 10 -st_ksp_hpddm_type gcrodr
 \end{Verbatim}
 
@@ -1441,7 +1455,7 @@ corrections~\cite{tang2009comparison,bastian1998additive} as:
 \end{align*}
 with $Q = P \left(P^T A P\right)^{-1} P^T$ and $M^{-1}$ defined in~\cref{eq:one}. This is parameterized using the
 option \pk{-pc\_hpddm\_coarse\_correction}
-\pk{(deflated$|$additive$|$balanced)} or the routine
+\pk{(deflated$|$additive$|$balanced)} or the routine\linebreak
 \pk{PCHPDDMSetCoarseCorrectionType}. All of
 the correction formulas can be applied to either a single vector or a block
 of multiple vectors optimally. Indeed, the one-level preconditioner $M^{-1}$ is
@@ -1983,7 +1997,7 @@ $1$
 \end{semilogyaxis}
 \end{tikzpicture}
 }
-    \subfloat[\parbox{5cm}{\pk{SNES}, \pk{KSP}, and \pk{PC} options for
+    \subfloat[\parbox{4cm}{\pk{SNES}, \pk{KSP}, and \pk{PC} options for
     solving~\cref{eq:bratu}}\label{fig:bratu-options}]{
         {\setlength{\fboxrule}{0.1mm}
         \fbox{\BUseVerbatim[fontsize=\footnotesize]{VerbEnv}}
@@ -2013,8 +2027,7 @@ is automatically customized to obtain a stable method with these
 elements~\cite{zampini2017balancing}. The number of unknowns is $\pgfmathprintnumber{5.6} \times 10^6$.
 The following command line options are used. \\[-4pt]
 \begin{Verbatim}[fontsize=\footnotesize,frame=single,framerule=0.1mm,commandchars=&\[\]]
-&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 512 ./ex3p -m ../../data/fichera.mesh -f 4 --petscopts rc_ex3p_bddc      &fvtextcolor[myred][\]
-  --nonoverlapping
+&fvtextcolor[mygreen][$] &fvtextcolor[myyellow][mpirun] -n 512 ./ex3p -m ../../data/fichera.mesh -f 4 --petscopts rc_ex3p_bddc --nonoverlapping
 \end{Verbatim}
 The option file shows how \pk{PCHPDDM} may be composed into \pk{PCBDDC}. \\[-4pt]
 \begin{minipage}[t]{0.565\textwidth}
@@ -2179,480 +2192,485 @@ Jose E.~Roman was supported by the Spanish Agencia Estatal de Investigaci\'{o}n 
 
 \bibliographystyle{elsarticle-num}
 \begin{thebibliography}{10}
-
-\bibitem{adams2004ultra}
-{\sc M.~Adams, H.~H. Bayraktar, T.~M. Keaveny, and P.~Papadopoulos}, {\em
-  {Ultrascalable Implicit Finite Element Analyses in Solid Mechanics with over
-  a Half a Billion Degrees of Freedom}}, in Proceedings of the 2004 ACM/IEEE
-  Conference on Supercomputing, SC04, IEEE Computer Society, 2004,
-  pp.~\mbox{34:1--34:15}.
-
-\bibitem{aldaas2019multi}
-{\sc H.~Al~Daas, L.~Grigori, P.~Jolivet, and P.-H. Tournier}, {\em {A
-  Multilevel Schwarz Preconditioner Based on a Hierarchy of Robust Coarse
-  Spaces}}, Journal of Scientific Computing,  (2019), p.~submitted for
-  publication, \url{https://github.com/prj-/aldaas2019multi}.
-
-\bibitem{ambartsumyan2020hierarchical}
-{\sc I.~Ambartsumyan, W.~Boukaram, T.~Bui-Thanh, O.~Ghattas, D.~Keyes,
-  G.~Stadler, G.~Turkiyyah, and S.~Zampini}, {\em {Hierarchical Matrix
-  Approximations of Hessians Arising in Inverse Problems Governed by PDEs}},
-  arXiv:2003.10173,  (2020).
-
-\bibitem{amestoy2001fully}
-{\sc P.~Amestoy, I.~Duff, J.-Y. L'Excellent, and J.~Koster}, {\em A fully
-  asynchronous multifrontal solver using distributed dynamic scheduling}, SIAM
-  Journal on Matrix Analysis and Applications, 23 (2001), pp.~15--41,
-  \url{http://mumps.enseeiht.fr}.
-
-\bibitem{anderson2019mfem}
-{\sc R.~Anderson, J.~Andrej, A.~Barker, J.~Bramwell, J.-S. Camier, J.~Cerveny,
-  V.~Dobrev, Y.~Dudouit, A.~Fisher, T.~Kolev, W.~Pazner, M.~Stowell, V.~Tomov,
-  I.~Akkerman, J.~Dahm, D.~Medina, and S.~Zampini}, {\em {MFEM: A modular
-  finite element methods library}}, Computers \& Mathematics with Applications,
-   (2020), \url{http://mfem.org}.
-
-\bibitem{badia2014highly}
-{\sc S.~Badia, A.~F. Mart{\'\i}n, and J.~Principe}, {\em A highly scalable
-  parallel implementation of balancing domain decomposition by constraints},
-  SIAM Journal on Scientific Computing, 36 (2014), pp.~C190--C218.
-
-\bibitem{baker2005technique}
-{\sc A.~H. Baker, E.~R. Jessup, and T.~Manteuffel}, {\em {A Technique for
-  Accelerating the Convergence of Restarted GMRES}}, SIAM Journal on Matrix
-  Analysis and Applications, 26 (2005), pp.~962--984.
-
-\bibitem{petsc-user-ref}
-{\sc S.~Balay, S.~Abhyankar, M.~F. Adams, J.~Brown, P.~Brune, K.~Buschelman,
-  L.~Dalcin, A.~Dener, V.~Eijkhout, W.~D. Gropp, D.~Karpeyev, D.~Kaushik, M.~G.
-  Knepley, D.~A. May, L.~C. McInnes, R.~T. Mills, T.~Munson, K.~Rupp, P.~Sanan,
-  B.~F. Smith, S.~Zampini, H.~Zhang, and H.~Zhang}, {\em {PETS}c users manual},
-  Tech. Report ANL-95/11 - Revision 3.13, Argonne National Laboratory, 2020.
-
-\bibitem{petsc-web-page}
-{\sc S.~Balay, S.~Abhyankar, M.~F. Adams, J.~Brown, P.~Brune, K.~Buschelman,
-  L.~Dalcin, A.~Dener, V.~Eijkhout, W.~D. Gropp, D.~Karpeyev, D.~Kaushik, M.~G.
-  Knepley, D.~A. May, L.~C. McInnes, R.~T. Mills, T.~Munson, K.~Rupp, P.~Sanan,
-  B.~F. Smith, S.~Zampini, H.~Zhang, and H.~Zhang}, {\em {PETS}c web page},
-  2020, \url{http://www.mcs.anl.gov/petsc}.
-
-\bibitem{barrett1994templates}
-{\sc R.~Barrett, M.~Berry, T.~F. Chan, J.~Demmel, J.~Donato, J.~Dongarra,
-  V.~Eijkhout, R.~Pozo, C.~Romine, and H.~Van~der Vorst}, {\em Templates for
-  the solution of linear systems: building blocks for iterative methods}, SIAM,
-  1994.
+\expandafter\ifx\csname url\endcsname\relax
+  \def\url#1{\texttt{#1}}\fi
+\expandafter\ifx\csname urlprefix\endcsname\relax\def\urlprefix{URL }\fi
+\expandafter\ifx\csname href\endcsname\relax
+  \def\href#1#2{#2} \def\path#1{#1}\fi
 
 \bibitem{Bartlett:2017:XFT}
-{\sc R.~Bartlett, I.~Demeshko, T.~Gamblin, G.~Hammond, M.~A. Heroux,
-  J.~Johnson, A.~Klinvex, X.~Li, L.~C. McInnes, J.~D. Moulton, D.~Osei-Kuffuor,
-  J.~Sarich, B.~Smith, J.~Willenbring, and U.~M. Yang}, {\em {xSDK Foundations:
-  Toward an Extreme-scale Scientific Software Development Kit}}, Supercomputing
-  Frontiers and Innovations, 4 (2017).
+R.~Bartlett, I.~Demeshko, T.~Gamblin, G.~Hammond, M.~A. Heroux, J.~Johnson,
+  A.~Klinvex, X.~S. Li, L.~C. McInnes, J.~D. Moulton, D.~Osei-Kuffuor,
+  J.~Sarich, B.~F. Smith, J.~Willenbring, U.~M. Yang,
+  \href{https://xsdk.info}{{xSDK} foundations: Toward an extreme-scale
+  scientific software development kit}, Supercomputing Frontiers and
+  Innovations 4~(1) (2017).
+\newline\urlprefix\url{https://xsdk.info}
 
-\bibitem{bastian1998additive}
-{\sc P.~Bastian, G.~Wittum, and W.~Hackbusch}, {\em Additive and multiplicative
-  multi-grid—a comparison}, Computing, 60 (1998), pp.~345--364.
+\bibitem{petsc-web-page}
+S.~Balay, S.~Abhyankar, M.~F. Adams, J.~Brown, P.~Brune, K.~Buschelman,
+  L.~Dalcin, A.~Dener, V.~Eijkhout, W.~D. Gropp, D.~Karpeyev, D.~Kaushik, M.~G.
+  Knepley, D.~A. May, L.~C. McInnes, R.~T. Mills, T.~Munson, K.~Rupp, P.~Sanan,
+  B.~F. Smith, S.~Zampini, H.~Zhang, H.~Zhang,
+  \href{http://www.mcs.anl.gov/petsc}{{PETS}c web page} (2020).
+\newline\urlprefix\url{http://www.mcs.anl.gov/petsc}
 
-\bibitem{bavier2012amesos2}
-{\sc E.~Bavier, M.~Hoemmen, S.~Rajamanickam, and H.~Thornquist}, {\em {Amesos2
-  and Belos: Direct and Iterative Solvers for Large Sparse Linear Systems}},
-  Scientific Programming, 20 (2012), pp.~241--255.
-
-\bibitem{Benzi2011a}
-{\sc M.~Benzi, M.~A. Olshanskii, and Z.~Wang}, {\em {Modified augmented
-  Lagrangian preconditioners for the incompressible Navier--Stokes equations}},
-  International Journal for Numerical Methods in Fluids, 66 (2011),
-  pp.~486--508.
-
-\bibitem{10.1145/3232850}
-{\sc W.~Boukaram, G.~Turkiyyah, and D.~Keyes}, {\em {Hierarchical Matrix
-  Operations on GPUs: Matrix-Vector Multiplication and Compression}}, ACM
-  Transactions on Mathematical Software, 45 (2019).
-
-\bibitem{brown2012composable}
-{\sc J.~Brown, M.~G. Knepley, D.~A. May, L.~Curfman~McInnes, and B.~F. Smith},
-  {\em Composable linear solvers for multiphysics}, in 2012 11th International
-  Symposium on Parallel and Distributed Computing, IEEE, 2012, pp.~55--62.
-
-\bibitem{BursteddeWilcoxGhattas11}
-{\sc C.~Burstedde, L.~C. Wilcox, and O.~Ghattas}, {\em {\texttt{p4est}}:
-  Scalable algorithms for parallel adaptive mesh refinement on forests of
-  octrees}, SIAM Journal on Scientific Computing, 33 (2011), pp.~1103--1133,
-  \url{http://www.p4est.org}.
-
-\bibitem{butler2020high}
-{\sc R.~Butler, T.~Dodwell, A.~Reinarz, A.~Sandhu, R.~Scheichl, and
-  L.~Seelinger}, {\em High-performance dune modules for solving large-scale,
-  strongly anisotropic elliptic problems with applications to aerospace
-  composites}, Computer Physics Communications, 249 (2020).
-
-\bibitem{cai1999restricted}
-{\sc X.-C. Cai and M.~Sarkis}, {\em {A restricted additive Schwarz
-  preconditioner for general sparse linear systems}}, SIAM Journal on
-  Scientific Computing, 21 (1999), pp.~792--797.
-
-\bibitem{calandra2012flexible}
-{\sc H.~Calandra, S.~Gratton, J.~Langou, X.~Pinel, and X.~Vasseur}, {\em
-  {Flexible Variants of Block Restarted GMRES Methods with Application to
-  Geophysics}}, SIAM Journal on Scientific Computing, 34 (2012),
-  pp.~A714--A736.
-
-\bibitem{carvalho2011flexible}
-{\sc L.~M. Carvalho, S.~Gratton, R.~Lago, and X.~Vasseur}, {\em {A Flexible
-  Generalized Conjugate Residual Method With Inner Orthogonalization and
-  Deflated Restarting}}, SIAM Journal on Matrix Analysis and Applications, 32
-  (2011), pp.~1212--1235.
-
-\bibitem{conen2014coarse}
-{\sc L.~Conen, V.~Dolean, R.~Krause, and F.~Nataf}, {\em {A coarse space for
-  heterogeneous Helmholtz problems based on the Dirichlet-to-Neumann
-  operator}}, Journal of Computational and Applied Mathematics, 271 (2014),
-  pp.~83--99.
-
-\bibitem{da2014isogeometric}
-{\sc L.~B. Da~Veiga, L.~F. Pavarino, S.~Scacchi, O.~B. Widlund, and
-  S.~Zampini}, {\em {Isogeometric BDDC preconditioners with deluxe scaling}},
-  SIAM Journal on Scientific Computing, 36 (2014), pp.~A1118--A1139.
-
-\bibitem{davis2004algorithm}
-{\sc T.~A. Davis}, {\em Algorithm 832: {UMFPACK}—an unsymmetric-pattern
-  multifrontal method}, ACM Transactions on Mathematical Software, 30 (2004),
-  pp.~196--199.
-
-\bibitem{dolean2014ddm}
-{\sc V.~Dolean, P.~Jolivet, and F.~Nataf}, {\em An Introduction to Domain
-  Decomposition Methods\col\ Algorithms, Theory and Parallel Implementation},
-  SIAM, 2015.
-
-\bibitem{erhel1996restarted}
-{\sc J.~Erhel, K.~Burrage, and B.~Pohl}, {\em {Restarted GMRES preconditioned
-  by deflation}}, Journal of Computational and Applied Mathematics, 69 (1996),
-  pp.~303--318.
+\bibitem{petsc-user-ref}
+S.~Balay, S.~Abhyankar, M.~F. Adams, J.~Brown, P.~Brune, K.~Buschelman,
+  L.~Dalcin, A.~Dener, V.~Eijkhout, W.~D. Gropp, D.~Karpeyev, D.~Kaushik, M.~G.
+  Knepley, D.~A. May, L.~C. McInnes, R.~T. Mills, T.~Munson, K.~Rupp, P.~Sanan,
+  B.~F. Smith, S.~Zampini, H.~Zhang, H.~Zhang, {PETS}c users manual, Tech. Rep.
+  ANL-95/11 - Revision 3.13, Argonne National Laboratory (2020).
 
 \bibitem{falgout2002hypre}
-{\sc R.~Falgout and U.~M. Yang}, {\em \emph{hypre}: a library of high
-  performance preconditioners}, Computational Science---ICCS 2002,  (2002),
-  pp.~632--641, \url{https://www.llnl.gov/casc/hypre}.
-
-\bibitem{frommer2017block}
-{\sc A.~Frommer, K.~Lund, and D.~B. Szyld}, {\em {Block Krylov Subspace Methods
-  for Functions of Matrices}}, Electronic Transactions on Numerical Analysis,
-  47 (2017), pp.~100--126.
-
-\bibitem{gander2006optimized}
-{\sc M.~J. Gander}, {\em Optimized {S}chwarz {M}ethods}, SIAM Journal on
-  Numerical Analysis, 44 (2006), pp.~699--731.
-
-\bibitem{gander2019new}
-{\sc M.~J. Gander and S.~Van~Criekingen}, {\em {New Coarse Corrections for
-  Optimized Restricted Additive Schwarz Using PETSc}}, in International
-  Conference on Domain Decomposition Methods, Springer, 2019.
-
-\bibitem{gee2006ml}
-{\sc M.~W. Gee, C.~M. Siefert, J.~J. Hu, R.~S. Tuminaro, and M.~G. Sala}, {\em
-  {ML} 5.0 smoothed aggregation user's guide}, Tech. Report SAND2006-2649,
-  Sandia National Laboratories, 2006, \url{https://trilinos.github.io/ml.html}.
-
-\bibitem{gutknecht2006block}
-{\sc M.~H. Gutknecht}, {\em Block {K}rylov space methods for linear systems
-  with multiple right-hand sides: an introduction}, in Modern Mathematical
-  Models, Methods and Algorithms for Real World Systems, A.~Siddiqui, I.~Duff,
-  and O.~Christensen, eds., 2006, pp.~420--447.
-
-\bibitem{gutknecht2008updating}
-{\sc M.~H. Gutknecht and T.~Schmelzer}, {\em {Updating the $QR$ decomposition
-  of block tridiagonal and block Hessenberg matrices}}, {Applied Numerical
-  Mathematics}, 58 (2008), pp.~871--883.
-
-\bibitem{haferssas2017soras}
-{\sc R.~Haferssas, P.~Jolivet, and F.~Nataf}, {\em {An additive Schwarz method
-  type theory for Lions's algorithm and a Symmetrized Optimized Restricted
-  Additive Schwarz Method}}, Journal on Scientific Computing, 39 (2017),
-  pp.~A1345--A1365.
-
-\bibitem{hecht2012new}
-{\sc F.~Hecht}, {\em New development in {FreeFem++}}, Journal of Numerical
-  Mathematics, 20 (2012), pp.~251--266, \url{http://freefem.org}.
-
-\bibitem{heinecke2016libxsmm}
-{\sc A.~Heinecke, G.~Henry, M.~Hutchinson, and H.~Pabst}, {\em {LIBXSMM:
-  accelerating small matrix multiplications by runtime code generation}}, in
-  Proceedings of the 2016 International Conference for High Performance
-  Computing, Networking, Storage and Analysis, SC16, IEEE, 2016,
-  \url{https://github.com/hfp/libxsmm}.
-
-\bibitem{Heinlein:2016:PIT}
-{\sc A.~Heinlein, A.~Klawonn, and O.~Rheinbach}, {\em A parallel implementation
-  of a two-level overlapping {S}chwarz method with energy-minimizing coarse
-  space based on {T}rilinos}, SIAM Journal on Scientific Computing, 38 (2016),
-  pp.~C713--C747.
-
-\bibitem{hernandez2005ssf}
-{\sc V.~Hernandez, J.~E. Roman, and V.~Vidal}, {\em {SLEP}c: A scalable and
-  flexible toolkit for the solution of eigenvalue problems}, ACM Transactions
-  on Mathematical Software, 31 (2005), pp.~351--362,
-  \url{https://slepc.upv.es}.
-
-\bibitem{heroux2005overview}
-{\sc M.~A. Heroux, R.~A. Bartlett, V.~E. Howle, R.~J. Hoekstra, J.~J. Hu, T.~G.
-  Kolda, R.~B. Lehoucq, K.~R. Long, R.~P. Pawlowski, E.~T. Phipps, et~al.},
-  {\em {An overview of the Trilinos project}}, ACM Transactions on Mathematical
-  Software (TOMS), 31 (2005), pp.~397--423, \url{https://trilinos.github.io}.
-
-\bibitem{hestenes1952methods}
-{\sc M.~R. Hestenes and E.~Stiefel}, {\em {Methods of Conjugate Gradients for
-  Solving Linear Systems}}, Journal of Research of the National Bureau of
-  Standards, 49 (1952), pp.~409--436.
-
-\bibitem{hoefler2015scientific}
-{\sc T.~Hoefler and R.~Belli}, {\em Scientific benchmarking of parallel
-  computing systems: twelve ways to tell the masses when reporting performance
-  results}, in Proceedings of the 2015 International Conference for High
-  Performance Computing, Networking, Storage and Analysis, SC15, 2015.
-
-\bibitem{mkl-web-page}
-{\sc Intel}, {\em {MKL} web page}.
-\newblock
-  \url{https://software.intel.com/content/www/us/en/develop/tools/math-kernel-library.html},
-  2020.
-
-\bibitem{ji2017breakdown}
-{\sc H.~Ji and Y.~Li}, {\em A breakdown-free block conjugate gradient method},
-  BIT Numerical Mathematics, 57 (2017), pp.~379--403.
-
-\bibitem{jolivet2013scalable}
-{\sc P.~Jolivet, F.~Hecht, F.~Nataf, and C.~Prud'homme}, {\em {Scalable Domain
-  Decomposition Preconditioners for Heterogeneous Elliptic Problems}}, in
-  Proceedings of the International Conference on High Performance Computing,
-  Networking, Storage and Analysis, SC13, ACM, 2013.
-
-\bibitem{jolivet2016block}
-{\sc P.~Jolivet and P.-H. Tournier}, {\em {Block Iterative Methods and
-  Recycling for Improved Scalability of Linear Solvers}}, in Proceedings of the
-  2016 International Conference for High Performance Computing, Networking,
-  Storage and Analysis, SC16, IEEE, 2016.
-
-\bibitem{KALANTZIS2018136}
-{\sc V.~Kalantzis, A.~C.~I. Malossi, C.~Bekas, A.~Curioni, E.~Gallopoulos, and
-  Y.~Saad}, {\em A scalable iterative dense linear system solver for multiple
-  right-hand sides in data analytics}, Parallel Computing, 74 (2018),
-  pp.~136--153.
-
-\bibitem{karypis1998fast}
-{\sc G.~Karypis and V.~Kumar}, {\em A fast and high quality multilevel scheme
-  for partitioning irregular graphs}, SIAM Journal on Scientific Computing, 20
-  (1998), pp.~359--392,
-  \url{http://glaros.dtc.umn.edu/gkhome/metis/parmetis/overview}.
-
-\bibitem{knepley2009mesh}
-{\sc M.~G. Knepley and D.~A. Karpeev}, {\em {Mesh algorithms for PDE with Sieve
-  I: Mesh distribution}}, Scientific Programming, 17 (2009), pp.~215--230.
-
-\bibitem{knyazev2001toward}
-{\sc A.~V. Knyazev}, {\em {Toward the optimal preconditioned eigensolver:
-  Locally optimal block preconditioned conjugate gradient method}}, SIAM
-  journal on scientific computing, 23 (2001), pp.~517--541.
-
-\bibitem{li2005overview}
-{\sc X.~S. Li}, {\em {An overview of SuperLU: Algorithms, implementation, and
-  user interface}}, ACM Transactions on Mathematical Software, 31 (2005),
-  pp.~302--325.
-
-\bibitem{li2003superlu_dist}
-{\sc X.~S. Li and J.~Demmel}, {\em {SuperLU\_DIST: A scalable
-  distributed-memory sparse direct solver for unsymmetric linear systems}}, ACM
-  Transactions on Mathematical Software, 29 (2003), pp.~110--140.
-
-\bibitem{mandel1993balancing}
-{\sc J.~Mandel}, {\em Balancing domain decomposition}, Communications in
-  Numerical Methods in Engineering, 9 (1993), pp.~233--241.
-
-\bibitem{marchand2019two}
-{\sc P.~Marchand, X.~Claeys, P.~Jolivet, F.~Nataf, and P.-H. Tournier}, {\em
-  {Two-level preconditioning for $h$-version boundary element approximation of
-  hypersingular operator with GenEO}}, Numerische Mathematik,  (2019),
-  p.~submitted for publication.
-
-\bibitem{mathew2008domain}
-{\sc T.~Mathew}, {\em Domain decomposition methods for the numerical solution
-  of partial differential equations}, vol.~61, Springer Science \& Business
-  Media, 2008.
-
-\bibitem{may2016extreme}
-{\sc D.~A. May, P.~Sanan, K.~Rupp, M.~G. Knepley, and B.~F. Smith}, {\em
-  {Extreme-scale multigrid components within PETSc}}, in Proceedings of the
-  Platform for Advanced Scientific Computing Conference, 2016.
-
-\bibitem{moulin2018al}
-{\sc J.~Moulin, P.~Jolivet, and O.~Marquet}, {\em {Augmented Lagrangian
-  Preconditioner for Large-Scale Hydrodynamic Stability Analysis}}, Computer
-  Methods in Applied Mechanics and Engineering, 351 (2019), pp.~718--743,
-  \url{https://github.com/prj-/moulin2019al}.
-
-\bibitem{notay2000flexible}
-{\sc Y.~Notay}, {\em Flexible conjugate gradients}, SIAM Journal on Scientific
-  Computing, 22 (2000), pp.~1444--1460.
-
-\bibitem{cusparse-web-page}
-{\sc NVIDIA}, {\em {cuSPARSE} web page}.
-\newblock \url{https://docs.nvidia.com/cuda/cusparse}, 2020.
-
-\bibitem{oh2018bddc}
-{\sc D.-S. Oh, O.~B. Widlund, S.~Zampini, and C.~Dohrmann}, {\em {BDDC
-  algorithms with deluxe scaling and adaptive selection of primal constraints
-  for Raviart--Thomas vector fields}}, Mathematics of Computation, 87 (2018),
-  pp.~659--692.
-
-\bibitem{o1980block}
-{\sc D.~P. O'Leary}, {\em {The Block Conjugate Gradient Algorithm and Related
-  Methods}}, Linear Algebra and its Applications, 29 (1980), pp.~293--322.
-
-\bibitem{parks2006recycling}
-{\sc M.~L. Parks, E.~de~Sturler, G.~Mackey, D.~D. Johnson, and S.~Maiti}, {\em
-  {Recycling Krylov Subspaces for Sequences of Linear Systems}}, SIAM Journal
-  on Scientific Computing, 28 (2006), pp.~1651--1674.
-
-\bibitem{pechstein2012finite}
-{\sc C.~Pechstein}, {\em {Finite and Boundary Element Tearing and
-  Interconnecting Solvers for Multiscale Problems}}, vol.~90 of Lecture Notes
-  in Computational Science and Engineering, Springer, 2012.
-
-\bibitem{pechstein2017unified}
-{\sc C.~Pechstein and C.~R. Dohrmann}, {\em {A unified framework for adaptive
-  BDDC}}, Electronic Transactions on Numerical Analysis, 46 (2017),
-  pp.~273--336.
-
-\bibitem{poulson2013elemental}
-{\sc J.~Poulson, B.~Marker, R.~A. Van~de Geijn, J.~R. Hammond, and N.~A.
-  Romero}, {\em {Elemental: A new framework for distributed memory dense matrix
-  computations}}, ACM Transactions on Mathematical Software, 39 (2013).
-
-\bibitem{quarteroni1999domain}
-{\sc A.~Quarteroni and A.~Valli}, {\em Domain decomposition methods for partial
-  differential equations}, vol.~10, Clarendon Press, 1999.
-
-\bibitem{saad1993flexible}
-{\sc Y.~Saad}, {\em {A Flexible Inner--Outer Preconditioned GMRES Algorithm}},
-  SIAM Journal on Scientific Computing, 14 (1993), pp.~461--469.
-
-\bibitem{saad2003iterative}
-{\sc Y.~Saad}, {\em {Iterative Methods for Sparse Linear Systems}}, SIAM,
-  second~ed., 2003.
-
-\bibitem{saad1986gmres}
-{\sc Y.~Saad and M.~H. Schultz}, {\em {GMRES: a generalized minimal residual
-  algorithm for solving nonsymmetric linear systems}}, SIAM Journal on
-  Scientific and Statistical Computing, 7 (1986), pp.~856--869.
-
-\bibitem{saad2000deflated}
-{\sc Y.~Saad, M.~Yeung, J.~Erhel, and F.~Guyomarc'h}, {\em A deflated version
-  of the conjugate gradient algorithm}, SIAM Journal on Scientific Computing,
-  21 (2000), pp.~1909--1926.
-
-\bibitem{sakurai2003projection}
-{\sc T.~Sakurai and H.~Sugiura}, {\em A projection method for generalized
-  eigenvalue problems using numerical integration}, Journal of Computational
-  and Applied Mathematics, 159 (2003), pp.~119--128.
-
-\bibitem{sakurai2010application}
-{\sc T.~Sakurai, H.~Tadano, and Y.~Kuramashi}, {\em {Application of block
-  Krylov subspace algorithms to the Wilson--Dirac equation with multiple
-  right-hand sides in lattice QCD}}, Computer Physics Communications, 181
-  (2010), pp.~113--117.
+R.~Falgout, U.~M. Yang, \href{https://www.llnl.gov/casc/hypre}{\emph{hypre}: A
+  library of high performance preconditioners}, Computational Science---ICCS
+  2002 (2002) 632--641.
+\newline\urlprefix\url{https://www.llnl.gov/casc/hypre}
 
 \bibitem{si2013tet}
-{\sc H.~Si}, {\em {TetGen: A Quality Tetrahedral Mesh Generator and 3D Delaunay
-  Triangulator}}, Tech. Report~13, 2013,
-  \url{http://wias-berlin.de/software/tetgen}.
+H.~Si, \href{http://wias-berlin.de/software/tetgen}{{TetGen}: A quality
+  tetrahedral mesh generator and {3D D}elaunay triangulator}, Tech. Rep.~13
+  (2013).
+\newline\urlprefix\url{http://wias-berlin.de/software/tetgen}
 
-\bibitem{vsistek2013parallel}
-{\sc J.~{\v{S}}{\'\i}stek, J.~Mandel, B.~Soused{\'\i}k, and P.~Burda}, {\em
-  Parallel implementation of multilevel {BDDC}}, in Numerical Mathematics and
-  Advanced Applications 2011, Springer, 2013, pp.~681--689,
-  \url{http://users.math.cas.cz/~sistek/software/bddcml.html}.
+\bibitem{BursteddeWilcoxGhattas11}
+C.~Burstedde, L.~C. Wilcox, O.~Ghattas,
+  \href{http://www.p4est.org}{{\texttt{p4est}}: Scalable algorithms for
+  parallel adaptive mesh refinement on forests of octrees}, SIAM Journal on
+  Scientific Computing 33~(3) (2011) 1103--1133.
+\newline\urlprefix\url{http://www.p4est.org}
 
-\bibitem{smith2004domain}
-{\sc B.~F. Smith, P.~Bj{\o}rstad, and W.~D. Gropp}, {\em Domain decomposition:
-  parallel multilevel methods for elliptic partial differential equations},
-  Cambridge University Press, 2004.
+\bibitem{jolivet2013scalable}
+P.~Jolivet, F.~Hecht, F.~Nataf, C.~Prud'homme, Scalable domain decomposition
+  preconditioners for heterogeneous elliptic problems, in: Proceedings of the
+  International Conference on High Performance Computing, Networking, Storage
+  and Analysis, SC13, ACM, 2013.
 
-\bibitem{soodhalter2014krylov}
-{\sc K.~M. Soodhalter, D.~B. Szyld, and F.~Xue}, {\em Krylov subspace recycling
-  for sequences of shifted linear systems}, Applied Numerical Mathematics, 81
-  (2014), pp.~105--118.
+\bibitem{jolivet2016block}
+P.~Jolivet, P.-H. Tournier, Block iterative methods and recycling for improved
+  scalability of linear solvers, in: Proceedings of the 2016 International
+  Conference for High Performance Computing, Networking, Storage and Analysis,
+  SC16, IEEE, 2016.
 
-\bibitem{spillane2011robust}
-{\sc N.~Spillane, V.~Dolean, P.~Hauret, F.~Nataf, C.~Pechstein, and
-  R.~Scheichl}, {\em A robust two-level domain decomposition preconditioner for
-  systems of {PDE}s}, Comptes Rendus Mathématique, 349 (2011), pp.~1255--1259.
+\bibitem{hoefler2015scientific}
+T.~Hoefler, R.~Belli, Scientific benchmarking of parallel computing systems:
+  Twelve ways to tell the masses when reporting performance results, in:
+  Proceedings of the 2015 International Conference for High Performance
+  Computing, Networking, Storage and Analysis, SC15, 2015.
 
-\bibitem{spillane2013abstract}
-{\sc N.~Spillane, V.~Dolean, P.~Hauret, F.~Nataf, C.~Pechstein, and
-  R.~Scheichl}, {\em Abstract robust coarse spaces for systems of {PDEs} via
-  generalized eigenproblems in the overlaps}, Numerische Mathematik, 126
-  (2013), pp.~741--700.
+\bibitem{hernandez2005ssf}
+V.~Hernandez, J.~E. Roman, V.~Vidal, \href{https://slepc.upv.es}{{SLEP}c: A
+  scalable and flexible toolkit for the solution of eigenvalue problems}, ACM
+  Transactions on Mathematical Software 31~(3) (2005) 351--362.
+\newline\urlprefix\url{https://slepc.upv.es}
 
-\bibitem{spillane2013automatic}
-{\sc N.~Spillane and D.~J. Rixen}, {\em Automatic spectral coarse spaces for
-  robust finite element tearing and interconnecting and balanced domain
-  decomposition algorithms}, International Journal for Numerical Methods in
-  Engineering, 95 (2013), pp.~953--990.
+\bibitem{barrett1994templates}
+R.~Barrett, M.~Berry, T.~F. Chan, J.~Demmel, J.~Donato, J.~Dongarra,
+  V.~Eijkhout, R.~Pozo, C.~Romine, H.~Van~der Vorst, Templates for the Solution
+  of Linear Systems: Building Blocks for Iterative Methods, SIAM, 1994.
 
-\bibitem{stathopoulos2009deflation}
-{\sc A.~Stathopoulos, A.~Abdel-Rehim, and K.~Orginos}, {\em {Deflation for
-  inversion with multiple right-hand sides in QCD}}, in Journal of Physics:
-  Conference Series, vol.~180, IOP Publishing, 2009.
+\bibitem{saad2003iterative}
+Y.~Saad, Iterative Methods for Sparse Linear Systems, 2nd Edition, SIAM, 2003.
 
-\bibitem{stathopoulos2002block}
-{\sc A.~Stathopoulos and K.~Wu}, {\em {A Block Orthogonalization Procedure with
-  Constant Synchronization Requirements}}, SIAM Journal on Scientific
-  Computing, 23 (2002), pp.~2165--2182.
+\bibitem{saad1986gmres}
+Y.~Saad, M.~H. Schultz, {GMRES}: A generalized minimal residual algorithm for
+  solving nonsymmetric linear systems, SIAM Journal on Scientific and
+  Statistical Computing 7~(3) (1986) 856--869.
 
-\bibitem{Stewart2002}
-{\sc G.~W. Stewart}, {\em {A Krylov--Schur Algorithm for Large Eigenproblems}},
-  SIAM Journal on Matrix Analysis and Applications, 23 (2002), pp.~601--614.
-
-\bibitem{tang2009comparison}
-{\sc J.~Tang, R.~Nabben, C.~Vuik, and Y.~Erlangga}, {\em Comparison of
-  two-level preconditioners derived from deflation, domain decomposition and
-  multigrid methods}, Journal of Scientific Computing, 39 (2009), pp.~340--370.
-
-\bibitem{toselli2005domain}
-{\sc A.~Toselli and O.~B. Widlund}, {\em Domain decomposition methods:
-  algorithms and theory}, vol.~34 of Series in Computational Mathematics,
-  Springer, 2005.
-
-\bibitem{tournier2016micro}
-{\sc P.-H. Tournier, I.~Aliferis, M.~Bonazzoli, M.~de~Buhan, M.~Darbas,
-  V.~Dolean, F.~Hecht, P.~Jolivet, I.~El~Kanfoud, C.~Migliaccio, F.~Nataf,
-  C.~Pichot, and S.~Semenov}, {\em {Microwave Tomographic Imaging of
-  Cerebrovascular Accidents by Using High-Performance Computing}}, Parallel
-  Computing, 85 (2019), pp.~88--97.
+\bibitem{hestenes1952methods}
+M.~R. Hestenes, E.~Stiefel, Methods of conjugate gradients for solving linear
+  systems, Journal of Research of the National Bureau of Standards 49~(6)
+  (1952) 409--436.
 
 \bibitem{van1992bi}
-{\sc H.~A. Van~der Vorst}, {\em {Bi-CGSTAB: a fast and smoothly converging
-  variant of Bi-CG for the solution of nonsymmetric linear systems}}, SIAM
-  Journal on Scientific and Statistical Computing, 13 (1992), pp.~631--644.
+H.~A. Van~der Vorst, {Bi-CGSTAB}: A fast and smoothly converging variant of
+  {Bi-CG} for the solution of nonsymmetric linear systems, SIAM Journal on
+  Scientific and Statistical Computing 13~(2) (1992) 631--644.
+
+\bibitem{baker2005technique}
+A.~H. Baker, E.~R. Jessup, T.~Manteuffel, A technique for accelerating the
+  convergence of restarted {GMRES}, SIAM Journal on Matrix Analysis and
+  Applications 26~(4) (2005) 962--984.
+
+\bibitem{erhel1996restarted}
+J.~Erhel, K.~Burrage, B.~Pohl, Restarted {GMRES} preconditioned by deflation,
+  Journal of Computational and Applied Mathematics 69~(2) (1996) 303--318.
 
 \bibitem{wakam2013158}
-{\sc D.~N. Wakam and F.~Pacull}, {\em Memory efficient hybrid algebraic solvers
-  for linear systems arising from compressible flows}, Computers \& Fluids, 80
-  (2013), pp.~158--167.
+D.~N. Wakam, F.~Pacull, Memory efficient hybrid algebraic solvers for linear
+  systems arising from compressible flows, Computers \& Fluids 80 (2013)
+  158--167.
+
+\bibitem{saad1993flexible}
+Y.~Saad, A flexible inner--outer preconditioned {GMRES} algorithm, SIAM Journal
+  on Scientific Computing 14~(2) (1993) 461--469.
+
+\bibitem{eisenstat1983variational}
+S.~C. Eisenstat, H.~C. Elman, M.~H. Schultz, Variational iterative methods for
+  nonsymmetric systems of linear equations, SIAM Journal on Numerical Analysis
+  20~(2) (1983) 345--357.
+
+\bibitem{parks2006recycling}
+M.~L. Parks, E.~de~Sturler, G.~Mackey, D.~D. Johnson, S.~Maiti, Recycling
+  {K}rylov subspaces for sequences of linear systems, SIAM Journal on
+  Scientific Computing 28~(5) (2006) 1651--1674.
+
+\bibitem{gutknecht2006block}
+M.~H. Gutknecht, Block {K}rylov space methods for linear systems with multiple
+  right-hand sides: An introduction, in: A.~Siddiqui, I.~Duff, O.~Christensen
+  (Eds.), Modern Mathematical Models, Methods and Algorithms for Real World
+  Systems, 2006, pp. 420--447.
+
+\bibitem{frommer2017block}
+A.~Frommer, K.~Lund, D.~B. Szyld, Block {K}rylov subspace methods for functions
+  of matrices, Electronic Transactions on Numerical Analysis 47 (2017)
+  100--126.
+
+\bibitem{tournier2016micro}
+P.-H. Tournier, I.~Aliferis, M.~Bonazzoli, M.~de~Buhan, M.~Darbas, V.~Dolean,
+  F.~Hecht, P.~Jolivet, I.~El~Kanfoud, C.~Migliaccio, F.~Nataf, C.~Pichot,
+  S.~Semenov, Microwave tomographic imaging of cerebrovascular accidents by
+  using high-performance computing, Parallel Computing 85 (2019) 88--97.
+
+\bibitem{KALANTZIS2018136}
+V.~Kalantzis, A.~C.~I. Malossi, C.~Bekas, A.~Curioni, E.~Gallopoulos, Y.~Saad,
+  A scalable iterative dense linear system solver for multiple right-hand sides
+  in data analytics, Parallel Computing 74 (2018) 136--153.
+
+\bibitem{knyazev2001toward}
+A.~V. Knyazev, Toward the optimal preconditioned eigensolver: Locally optimal
+  block preconditioned conjugate gradient method, SIAM Journal on Scientific
+  Computing 23~(2) (2001) 517--541.
+
+\bibitem{calandra2012flexible}
+H.~Calandra, S.~Gratton, J.~Langou, X.~Pinel, X.~Vasseur, Flexible variants of
+  block restarted {GMRES} methods with application to geophysics, SIAM Journal
+  on Scientific Computing 34~(2) (2012) A714--A736.
+
+\bibitem{sakurai2010application}
+T.~Sakurai, H.~Tadano, Y.~Kuramashi, Application of block {K}rylov subspace
+  algorithms to the {W}ilson--{D}irac equation with multiple right-hand sides
+  in lattice {QCD}, Computer Physics Communications 181~(1) (2010) 113--117.
+
+\bibitem{heroux2005overview}
+M.~A. Heroux, R.~A. Bartlett, V.~E. Howle, R.~J. Hoekstra, J.~J. Hu, T.~G.
+  Kolda, R.~B. Lehoucq, K.~R. Long, R.~P. Pawlowski, E.~T. Phipps, et~al.,
+  \href{https://trilinos.github.io}{An overview of the {T}rilinos project}, ACM
+  Transactions on Mathematical Software (TOMS) 31~(3) (2005) 397--423.
+\newline\urlprefix\url{https://trilinos.github.io}
+
+\bibitem{bavier2012amesos2}
+E.~Bavier, M.~Hoemmen, S.~Rajamanickam, H.~Thornquist, {Amesos2} and {Belos}:
+  Direct and iterative solvers for large sparse linear systems, Scientific
+  Programming 20~(3) (2012) 241--255.
+
+\bibitem{notay2000flexible}
+Y.~Notay, Flexible conjugate gradients, SIAM Journal on Scientific Computing
+  22~(4) (2000) 1444--1460.
+
+\bibitem{carvalho2011flexible}
+L.~M. Carvalho, S.~Gratton, R.~Lago, X.~Vasseur, A flexible generalized
+  conjugate residual method with inner orthogonalization and deflated
+  restarting, SIAM Journal on Matrix Analysis and Applications 32~(4) (2011)
+  1212--1235.
+
+\bibitem{o1980block}
+D.~P. O'Leary, The block conjugate gradient algorithm and related methods,
+  Linear Algebra and its Applications 29 (1980) 293--322.
+
+\bibitem{ji2017breakdown}
+H.~Ji, Y.~Li, A breakdown-free block conjugate gradient method, BIT Numerical
+  Mathematics 57~(2) (2017) 379--403.
+
+\bibitem{saad2000deflated}
+Y.~Saad, M.~Yeung, J.~Erhel, F.~Guyomarc'h, A deflated version of the conjugate
+  gradient algorithm, SIAM Journal on Scientific Computing 21~(5) (2000)
+  1909--1926.
+
+\bibitem{stathopoulos2009deflation}
+A.~Stathopoulos, A.~Abdel-Rehim, K.~Orginos, Deflation for inversion with
+  multiple right-hand sides in {QCD}, in: Journal of Physics: Conference
+  Series, Vol. 180, IOP Publishing, 2009.
+
+\bibitem{soodhalter2014krylov}
+K.~M. Soodhalter, D.~B. Szyld, F.~Xue, Krylov subspace recycling for sequences
+  of shifted linear systems, Applied Numerical Mathematics 81 (2014) 105--118.
+
+\bibitem{amestoy2001fully}
+P.~Amestoy, I.~Duff, J.-Y. L'Excellent, J.~Koster,
+  \href{http://mumps.enseeiht.fr}{A fully asynchronous multifrontal solver
+  using distributed dynamic scheduling}, SIAM Journal on Matrix Analysis and
+  Applications 23~(1) (2001) 15--41.
+\newline\urlprefix\url{http://mumps.enseeiht.fr}
+
+\bibitem{stathopoulos2002block}
+A.~Stathopoulos, K.~Wu, A block orthogonalization procedure with constant
+  synchronization requirements, SIAM Journal on Scientific Computing 23~(6)
+  (2002) 2165--2182.
+
+\bibitem{gutknecht2008updating}
+M.~H. Gutknecht, T.~Schmelzer, Updating the {$QR$} decomposition of block
+  tridiagonal and block {H}essenberg matrices, {Applied Numerical Mathematics}
+  58~(6) (2008) 871--883.
+
+\bibitem{cusparse-web-page}
+NVIDIA, {cuSPARSE} web page, \url{https://docs.nvidia.com/cuda/cusparse}
+  (2020).
+
+\bibitem{10.1145/3232850}
+W.~Boukaram, G.~Turkiyyah, D.~Keyes, Hierarchical matrix operations on {GPU}s:
+  Matrix--vector multiplication and compression, ACM Transactions on
+  Mathematical Software 45 (2019).
+
+\bibitem{ambartsumyan2020hierarchical}
+I.~Ambartsumyan, W.~Boukaram, T.~Bui-Thanh, O.~Ghattas, D.~Keyes, G.~Stadler,
+  G.~Turkiyyah, S.~Zampini, Hierarchical matrix approximations of {H}essians
+  arising in inverse problems governed by {PDE}s, arXiv:2003.10173 (2020).
+
+\bibitem{davis2004algorithm}
+T.~A. Davis, Algorithm 832: {UMFPACK}—an unsymmetric-pattern multifrontal
+  method, ACM Transactions on Mathematical Software 30~(2) (2004) 196--199.
+
+\bibitem{mkl-web-page}
+Intel, {MKL} web page,
+  \url{https://software.intel.com/content/www/us/en/develop/tools/math-kernel-library.html}
+  (2020).
+
+\bibitem{li2005overview}
+X.~S. Li, An overview of {S}uper{LU}: Algorithms, implementation, and user
+  interface, ACM Transactions on Mathematical Software 31~(3) (2005) 302--325.
+
+\bibitem{li2003superlu_dist}
+X.~S. Li, J.~Demmel, {S}uper{LU\_DIST}: A scalable distributed-memory sparse
+  direct solver for unsymmetric linear systems, ACM Transactions on
+  Mathematical Software 29~(2) (2003) 110--140.
+
+\bibitem{poulson2013elemental}
+J.~Poulson, B.~Marker, R.~A. Van~de Geijn, J.~R. Hammond, N.~A. Romero,
+  Elemental: A new framework for distributed memory dense matrix computations,
+  ACM Transactions on Mathematical Software 39~(2) (2013).
+
+\bibitem{heinecke2016libxsmm}
+A.~Heinecke, G.~Henry, M.~Hutchinson, H.~Pabst,
+  \href{https://github.com/hfp/libxsmm}{{LIBXSMM}: Accelerating small matrix
+  multiplications by runtime code generation}, in: Proceedings of the 2016
+  International Conference for High Performance Computing, Networking, Storage
+  and Analysis, SC16, IEEE, 2016.
+\newline\urlprefix\url{https://github.com/hfp/libxsmm}
+
+\bibitem{hecht2012new}
+F.~Hecht, \href{http://freefem.org}{New development in {FreeFem++}}, Journal of
+  Numerical Mathematics 20~(3-4) (2012) 251--266.
+\newline\urlprefix\url{http://freefem.org}
+
+\bibitem{moulin2018al}
+J.~Moulin, P.~Jolivet, O.~Marquet,
+  \href{https://github.com/prj-/moulin2019al}{Augmented {L}agrangian
+  preconditioner for large-scale hydrodynamic stability analysis}, Computer
+  Methods in Applied Mechanics and Engineering 351 (2019) 718--743.
+\newline\urlprefix\url{https://github.com/prj-/moulin2019al}
+
+\bibitem{Stewart2002}
+G.~W. Stewart, A {K}rylov--{S}chur algorithm for large eigenproblems, SIAM
+  Journal on Matrix Analysis and Applications 23~(3) (2002) 601--614.
+
+\bibitem{Benzi2011a}
+M.~Benzi, M.~A. Olshanskii, Z.~Wang, Modified augmented {L}agrangian
+  preconditioners for the incompressible {N}avier--{S}tokes equations,
+  International Journal for Numerical Methods in Fluids 66~(4) (2011) 486--508.
+
+\bibitem{sakurai2003projection}
+T.~Sakurai, H.~Sugiura, A projection method for generalized eigenvalue problems
+  using numerical integration, Journal of Computational and Applied Mathematics
+  159~(1) (2003) 119--128.
+
+\bibitem{adams2004ultra}
+M.~Adams, H.~H. Bayraktar, T.~M. Keaveny, P.~Papadopoulos, Ultrascalable
+  implicit finite element analyses in solid mechanics with over a half a
+  billion degrees of freedom, in: Proceedings of the 2004 ACM/IEEE Conference
+  on Supercomputing, SC04, IEEE Computer Society, 2004, pp. \mbox{34:1--34:15}.
+
+\bibitem{smith2004domain}
+B.~F. Smith, P.~Bj{\o}rstad, W.~D. Gropp, Domain Decomposition: Parallel
+  Multilevel Methods for Elliptic Partial Differential Equations, Cambridge
+  University Press, 2004.
+
+\bibitem{dolean2014ddm}
+V.~Dolean, P.~Jolivet, F.~Nataf, An Introduction to Domain Decomposition
+  Methods\col\ Algorithms, Theory and Parallel Implementation, SIAM, 2015.
+
+\bibitem{toselli2005domain}
+A.~Toselli, O.~B. Widlund, Domain decomposition methods: algorithms and theory,
+  Vol.~34 of Series in Computational Mathematics, Springer, 2005.
+
+\bibitem{pechstein2012finite}
+C.~Pechstein, Finite and Boundary Element Tearing and Interconnecting Solvers
+  for Multiscale Problems, Vol.~90 of Lecture Notes in Computational Science
+  and Engineering, Springer, 2012.
+
+\bibitem{quarteroni1999domain}
+A.~Quarteroni, A.~Valli, Domain Decomposition Methods for Partial Differential
+  Equations, Vol.~10, Clarendon Press, 1999.
+
+\bibitem{mathew2008domain}
+T.~Mathew, Domain Decomposition Methods for the Numerical Solution of Partial
+  Differential Equations, Vol.~61, Springer Science \& Business Media, 2008.
+
+\bibitem{cai1999restricted}
+X.-C. Cai, M.~Sarkis, A restricted additive {S}chwarz preconditioner for
+  general sparse linear systems, SIAM Journal on Scientific Computing 21~(2)
+  (1999) 792--797.
+
+\bibitem{mandel1993balancing}
+J.~Mandel, Balancing domain decomposition, Communications in Numerical Methods
+  in Engineering 9~(3) (1993) 233--241.
 
 \bibitem{zampini2016pcbddc}
-{\sc S.~Zampini}, {\em {PCBDDC: a class of robust dual--primal methods in
-  PETSc}}, SIAM Journal on Scientific Computing, 38 (2016), pp.~S282--S306,
-  \url{https://www.mcs.anl.gov/petsc/petsc-master/docs/manualpages/PC/PCBDDC.html}.
+S.~Zampini,
+  \href{https://www.mcs.anl.gov/petsc/petsc-master/docs/manualpages/PC/PCBDDC.html}{{PCBDDC}:
+  A class of robust dual--primal methods in {PETS}c}, SIAM Journal on
+  Scientific Computing 38~(5) (2016) S282--S306.
+\newline\urlprefix\url{https://www.mcs.anl.gov/petsc/petsc-master/docs/manualpages/PC/PCBDDC.html}
+
+\bibitem{pechstein2017unified}
+C.~Pechstein, C.~R. Dohrmann, A unified framework for adaptive {BDDC},
+  Electronic Transactions on Numerical Analysis 46 (2017) 273--336.
 
 \bibitem{zampini2017balancing}
-{\sc S.~Zampini, P.~Vassilevski, V.~Dobrev, and T.~Kolev}, {\em {Balancing
-  Domain Decomposition by Constraints Algorithms for Curl-Conforming Spaces of
-  Arbitrary Order}}, in International Conference on Domain Decomposition
-  Methods, Springer, 2017, pp.~103--116.
+S.~Zampini, P.~Vassilevski, V.~Dobrev, T.~Kolev, Balancing domain decomposition
+  by constraints algorithms for curl-conforming spaces of arbitrary order, in:
+  International Conference on Domain Decomposition Methods, Springer, 2017, pp.
+  103--116.
+
+\bibitem{oh2018bddc}
+D.-S. Oh, O.~B. Widlund, S.~Zampini, C.~Dohrmann, {BDDC} algorithms with deluxe
+  scaling and adaptive selection of primal constraints for {R}aviart--{T}homas
+  vector fields, Mathematics of Computation 87~(310) (2018) 659--692.
+
+\bibitem{da2014isogeometric}
+L.~B. Da~Veiga, L.~F. Pavarino, S.~Scacchi, O.~B. Widlund, S.~Zampini,
+  Isogeometric {BDDC} preconditioners with deluxe scaling, SIAM Journal on
+  Scientific Computing 36~(3) (2014) A1118--A1139.
+
+\bibitem{gee2006ml}
+M.~W. Gee, C.~M. Siefert, J.~J. Hu, R.~S. Tuminaro, M.~G. Sala,
+  \href{https://trilinos.github.io/ml.html}{{ML} 5.0 smoothed aggregation
+  user's guide}, Tech. Rep. SAND2006-2649, Sandia National Laboratories (2006).
+\newline\urlprefix\url{https://trilinos.github.io/ml.html}
+
+\bibitem{Heinlein:2016:PIT}
+A.~Heinlein, A.~Klawonn, O.~Rheinbach, A parallel implementation of a two-level
+  overlapping {S}chwarz method with energy-minimizing coarse space based on
+  {T}rilinos, SIAM Journal on Scientific Computing 38~(6) (2016) C713--C747.
+
+\bibitem{vsistek2013parallel}
+J.~{\v{S}}{\'\i}stek, J.~Mandel, B.~Soused{\'\i}k, P.~Burda,
+  \href{http://users.math.cas.cz/~sistek/software/bddcml.html}{Parallel
+  implementation of multilevel {BDDC}}, in: Numerical Mathematics and Advanced
+  Applications 2011, Springer, 2013, pp. 681--689.
+\newline\urlprefix\url{http://users.math.cas.cz/~sistek/software/bddcml.html}
+
+\bibitem{badia2014highly}
+S.~Badia, A.~F. Mart{\'\i}n, J.~Principe, A highly scalable parallel
+  implementation of balancing domain decomposition by constraints, SIAM Journal
+  on Scientific Computing 36~(2) (2014) C190--C218.
+
+\bibitem{gander2006optimized}
+M.~J. Gander, Optimized {S}chwarz {M}ethods, SIAM Journal on Numerical Analysis
+  44~(2) (2006) 699--731.
+
+\bibitem{gander2019new}
+M.~J. Gander, S.~Van~Criekingen, New coarse corrections for optimized
+  restricted additive {S}chwarz using {PETS}c, in: International Conference on
+  Domain Decomposition Methods, Springer, 2019.
+
+\bibitem{spillane2011robust}
+N.~Spillane, V.~Dolean, P.~Hauret, F.~Nataf, C.~Pechstein, R.~Scheichl, A
+  robust two-level domain decomposition preconditioner for systems of {PDE}s,
+  Comptes Rendus Mathématique 349~(23) (2011) 1255--1259.
+
+\bibitem{spillane2013abstract}
+N.~Spillane, V.~Dolean, P.~Hauret, F.~Nataf, C.~Pechstein, R.~Scheichl,
+  Abstract robust coarse spaces for systems of {PDEs} via generalized
+  eigenproblems in the overlaps, Numerische Mathematik 126~(4) (2013) 741--700.
+
+\bibitem{marchand2019two}
+P.~Marchand, X.~Claeys, P.~Jolivet, F.~Nataf, P.-H. Tournier, Two-level
+  preconditioning for $h$-version boundary element approximation of
+  hypersingular operator with {GenEO}, Numerische Mathematik (2019) submitted
+  for publication.
+
+\bibitem{brown2012composable}
+J.~Brown, M.~G. Knepley, D.~A. May, L.~Curfman~McInnes, B.~F. Smith, Composable
+  linear solvers for multiphysics, in: 2012 11th International Symposium on
+  Parallel and Distributed Computing, IEEE, 2012, pp. 55--62.
+
+\bibitem{butler2020high}
+R.~Butler, T.~Dodwell, A.~Reinarz, A.~Sandhu, R.~Scheichl, L.~Seelinger,
+  High-performance \textsc{Dune} modules for solving large-scale, strongly
+  anisotropic elliptic problems with applications to aerospace composites,
+  Computer Physics Communications 249 (2020).
+
+\bibitem{may2016extreme}
+D.~A. May, P.~Sanan, K.~Rupp, M.~G. Knepley, B.~F. Smith, Extreme-scale
+  multigrid components within {PETS}c, in: Proceedings of the Platform for
+  Advanced Scientific Computing Conference, 2016.
+
+\bibitem{knepley2009mesh}
+M.~G. Knepley, D.~A. Karpeev, Mesh algorithms for {PDE} with {S}ieve {I}: Mesh
+  distribution, Scientific Programming 17~(3) (2009) 215--230.
+
+\bibitem{tang2009comparison}
+J.~Tang, R.~Nabben, C.~Vuik, Y.~Erlangga, Comparison of two-level
+  preconditioners derived from deflation, domain decomposition and multigrid
+  methods, Journal of Scientific Computing 39~(3) (2009) 340--370.
+
+\bibitem{bastian1998additive}
+P.~Bastian, G.~Wittum, W.~Hackbusch, Additive and multiplicative multi-grid—a
+  comparison, Computing 60~(4) (1998) 345--364.
+
+\bibitem{haferssas2017soras}
+R.~Haferssas, P.~Jolivet, F.~Nataf, An additive {S}chwarz method type theory
+  for {L}ions's algorithm and a symmetrized optimized restricted additive
+  {S}chwarz method, Journal on Scientific Computing 39~(4) (2017) A1345--A1365.
+
+\bibitem{conen2014coarse}
+L.~Conen, V.~Dolean, R.~Krause, F.~Nataf, A coarse space for heterogeneous
+  {H}elmholtz problems based on the {D}irichlet-to-{N}eumann operator, Journal
+  of Computational and Applied Mathematics 271 (2014) 83--99.
+
+\bibitem{aldaas2019multi}
+H.~Al~Daas, L.~Grigori, P.~Jolivet, P.-H. Tournier,
+  \href{https://github.com/prj-/aldaas2019multi}{A multilevel {S}chwarz
+  preconditioner based on a hierarchy of robust coarse spaces}, Journal of
+  Scientific Computing (2019) submitted for publication.
+\newline\urlprefix\url{https://github.com/prj-/aldaas2019multi}
+
+\bibitem{spillane2013automatic}
+N.~Spillane, D.~J. Rixen, Automatic spectral coarse spaces for robust finite
+  element tearing and interconnecting and balanced domain decomposition
+  algorithms, International Journal for Numerical Methods in Engineering
+  95~(11) (2013) 953--990.
+
+\bibitem{karypis1998fast}
+G.~Karypis, V.~Kumar,
+  \href{http://glaros.dtc.umn.edu/gkhome/metis/parmetis/overview}{A fast and
+  high quality multilevel scheme for partitioning irregular graphs}, SIAM
+  Journal on Scientific Computing 20~(1) (1998) 359--392.
+\newline\urlprefix\url{http://glaros.dtc.umn.edu/gkhome/metis/parmetis/overview}
+
+\bibitem{anderson2019mfem}
+R.~Anderson, J.~Andrej, A.~Barker, J.~Bramwell, J.-S. Camier, J.~Cerveny,
+  V.~Dobrev, Y.~Dudouit, A.~Fisher, T.~Kolev, W.~Pazner, M.~Stowell, V.~Tomov,
+  I.~Akkerman, J.~Dahm, D.~Medina, S.~Zampini, \href{http://mfem.org}{{MFEM}: A
+  modular finite element methods library}, Computers \& Mathematics with
+  Applications (2020).
+\newline\urlprefix\url{http://mfem.org}
 
 \bibitem{zhou2008block}
-{\sc Y.~Zhou and Y.~Saad}, {\em {Block Krylov--Schur method for large symmetric
-  eigenvalue problems}}, Numerical Algorithms, 47 (2008), pp.~341--359.
+Y.~Zhou, Y.~Saad, Block {K}rylov--{S}chur method for large symmetric eigenvalue
+  problems, Numerical Algorithms 47~(4) (2008) 341--359.
 
 \end{thebibliography}
 \end{document}
