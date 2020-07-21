@@ -1,38 +1,9 @@
-% SIAM Article Template
-\documentclass[review,onefignum,onetabnum]{siamart190516}
+\documentclass[3p,11pt]{elsarticle}
 
-% Information that is shared between the article and the supplement
-% (title and author information, macros, packages, etc.) goes into
-% ex_shared.tex. If there is no supplement, this file can be included
-% directly.
+\usepackage{lineno,hyperref}
+% \modulolinenumbers[5]
 
-\input{shared}
-
-% Optional PDF information
-\ifpdf
-\hypersetup{
-  pdftitle={KSPHPDDM and PCHPDDM: Extending PETSc with Robust Overlapping Schwarz Preconditioners and Advanced Krylov Methods},
-  pdfauthor={P. Jolivet, J. E. Roman, and S. Zampini}
-}
-\fi
-
-% The next statement enables references to information in the
-% supplement. See the xr-hyperref package for details.
-
-% \externaldocument{supplement}
-
-% FundRef data to be entered by SIAM
-%<funding-group specific-use="FundRef">
-%<award-group>
-%<funding-source>
-%<named-content content-type="funder-name">
-%</named-content>
-%<named-content content-type="funder-identifier">
-%</named-content>
-%</funding-source>
-%<award-id> </award-id>
-%</award-group>
-%</funding-group>
+\journal{Computers \& Mathematics with Applications}
 \newcommand\col{:}
 \newcommand{\pk}[1]{\texttt{#1}}
 \usepackage{stmaryrd}
@@ -66,13 +37,30 @@
     \@ifundefined{pgf@sh@ns@#1}{#3}{#2}%
 }
 \makeatother
-\usepackage{amsmath,etoolbox}
+\usepackage{amsmath,etoolbox,amssymb}
+\usepackage{cleveref}
 \AtBeginEnvironment{pmatrix}{\setlength{\arraycolsep}{2pt}}
 \pgfmathsetmacro{\dof}{4}
 \pgfmathsetmacro{\overlap}{1}
 \begin{document}
 
-\maketitle
+\begin{frontmatter}
+
+\title{KSPHPDDM and PCHPDDM: extending PETS\MakeLowercase{c} with advanced Krylov methods and robust multilevel Overlapping Schwarz preconditioners}
+
+\author[firstaddress]{Pierre Jolivet\corref{correspondingauthor}}
+\cortext[correspondingauthor]{Corresponding author}
+\ead{pierre.jolivet@enseeiht.fr}
+
+\author[secondaryaddress]{Jose E. Roman}
+\ead{jroman@dsic.upv.es}
+
+\author[thirdaddress]{Stefano Zampini}
+\ead{stefano.zampini@kaust.edu.sa}
+
+\address[firstaddress]{CNRS, IRIT--ENSEEIHT, Toulouse, France}
+\address[secondaryaddress]{Universitat Polit\`ecnica de Val\`encia, Val\`encia, Spain}
+\address[thirdaddress]{King Abdullah University of Science and Technology, Thuwal, Saudi Arabia}
 
 % REQUIRED
 \begin{abstract}
@@ -98,10 +86,9 @@
   Krylov methods, domain decomposition preconditioners, distributed-memory parallel computing
 \end{keywords}
 
-% REQUIRED
-\begin{AMS}
-  35Q68, 65Y05
-\end{AMS}
+\end{frontmatter}
+
+\linenumbers
 
 \section{Introduction}
 Computational science and engineering today enjoys unprecedented opportunities to transform
@@ -2190,7 +2177,7 @@ Jose E.~Roman was supported by the Spanish Agencia Estatal de Investigaci\'{o}n 
 % We would like to acknowledge the assistance of volunteers in putting
 % together this example manuscript and supplement.
 
-\bibliographystyle{siamplain}
+\bibliographystyle{elsarticle-num}
 \begin{thebibliography}{10}
 
 \bibitem{adams2004ultra}
