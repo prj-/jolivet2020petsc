@@ -22,7 +22,7 @@ load "PETSc"
 macro dimension()3//
 include "macro_ddm.idp"
 
-func Pk = P1;
+func Pk = P2;
 mesh3 Th;
 fespace Vh(Th, Pk);
 Mat A;
