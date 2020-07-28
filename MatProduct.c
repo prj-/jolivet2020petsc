@@ -27,7 +27,7 @@
     PetscStackPush(#func);                                     \
     __ierr = func args;                                        \
     PetscStackPop;                                             \
-    if (__ierr != SPARSE_STATUS_SUCCESS) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_LIB, "Error in %s(): error code %d",#func,(int)__ierr); \
+    if (__ierr != SPARSE_STATUS_SUCCESS) SETERRQ2(PETSC_COMM_SELF, PETSC_ERR_LIB, "Error in %s(): error code %d", #func, (int)__ierr); \
   } while (0)
 #else
 #define PetscStackCallMKLSparse(func, args) do {               \
@@ -69,9 +69,9 @@ int main(int argc, char** argv) {
     ntype = 1;
     ierr = PetscStrallocpy(MATSEQAIJ, &type[0]);CHKERRQ(ierr);
   }
-  ierr = PetscOptionsGetBool(NULL, NULL, "-check_results", &check, NULL);CHKERRQ(ierr);
-  ierr = PetscOptionsGetBool(NULL, NULL, "-test_trans", &trans, NULL);CHKERRQ(ierr);
-  for (int j = 0; j < nbs; ++j) {
+  ierr = PetscOptionsGetBool(NULL, NULL, "-check", &check, NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsGetBool(NULL, NULL, "-trans", &trans, NULL);CHKERRQ(ierr);
+  for (PetscInt j = 0; j < nbs; ++j) {
     ierr = PetscViewerBinaryOpen(PETSC_COMM_WORLD, file, FILE_MODE_READ, &viewer);CHKERRQ(ierr);
     ierr = MatCreate(PETSC_COMM_WORLD, &A);CHKERRQ(ierr);
     ierr = MatSetFromOptions(A);CHKERRQ(ierr);
@@ -126,9 +126,9 @@ int main(int argc, char** argv) {
       ierr = MatConvert(A, MATSEQAIJ, MAT_INPLACE_MATRIX, &A);CHKERRQ(ierr);
       ierr = MatSetOption(A, MAT_SYMMETRIC, PETSC_TRUE);CHKERRQ(ierr);
     }
-    for (int i = 0; i < ntype; ++i) {
+    for (PetscInt i = 0; i < ntype; ++i) {
       char        *tmp;
-      PetscInt    *ia_ptr, *ja_ptr;
+      PetscInt    *ia_ptr, *ja_ptr, k;
       PetscScalar *a_ptr;
 #if defined(PETSC_HAVE_MKL)
       struct matrix_descr descr;
@@ -161,7 +161,7 @@ int main(int argc, char** argv) {
       ierr = PetscObjectTypeCompareAny((PetscObject)A, &cuda, MATSEQAIJCUSPARSE, MATMPIAIJCUSPARSE, "");CHKERRQ(ierr);
       if (mkl) {
         const PetscInt *Ai, *Aj;
-        PetscInt       An, ii;
+        PetscInt       An;
         PetscBool      done;
 
         ierr = PetscObjectTypeCompareAny((PetscObject)A, &flg, MATSEQAIJ, MATSEQBAIJ, MATSEQSBAIJ, "");CHKERRQ(ierr);
@@ -172,22 +172,22 @@ int main(int argc, char** argv) {
         ierr = PetscMalloc1(An+1,&ia_ptr);CHKERRQ(ierr);
         ierr = PetscMalloc1(Ai[An],&ja_ptr);CHKERRQ(ierr);
         if (flg) { /* SeqAIJ */
-          for (ii = 0; ii < An+1; ii++) ia_ptr[ii] = Ai[ii];
-          for (ii = 0; ii < Ai[An]; ii++) ja_ptr[ii] = Aj[ii];
+          for (k = 0; k < An+1; k++) ia_ptr[k] = Ai[k];
+          for (k = 0; k < Ai[An]; k++) ja_ptr[k] = Aj[k];
           ierr = MatSeqAIJGetArray(A, &a_ptr);CHKERRQ(ierr);
           PetscStackCallMKLSparse(mkl_sparse_d_create_csr, (&spr, SPARSE_INDEX_BASE_ZERO, An, An, ia_ptr, ia_ptr + 1, ja_ptr, a_ptr));
         } else {
           ierr = PetscObjectTypeCompare((PetscObject)A, MATSEQBAIJ, &flg);CHKERRQ(ierr);
           if (flg) {
-            for (ii = 0; ii < An+1; ii++) ia_ptr[ii] = Ai[ii] + 1; /* Use fortran indexing to maximize cases covered by _mm routines */
-            for (ii = 0; ii < Ai[An]; ii++) ja_ptr[ii] = Aj[ii] + 1; /* Use fortran indexing to maximize cases covered by _mm routines */
+            for (k = 0; k < An+1; k++) ia_ptr[k] = Ai[k] + 1; /* Fortran indexing to maximize cases covered by _mm routines */
+            for (k = 0; k < Ai[An]; k++) ja_ptr[k] = Aj[k] + 1; /* Fortran indexing to maximize cases covered by _mm routines */
             ierr = MatSeqBAIJGetArray(A, &a_ptr);CHKERRQ(ierr);
             PetscStackCallMKLSparse(mkl_sparse_d_create_bsr, (&spr, SPARSE_INDEX_BASE_ONE, SPARSE_LAYOUT_COLUMN_MAJOR, An, An, bs[j], ia_ptr, ia_ptr + 1, ja_ptr, a_ptr));
           } else {
             ierr = PetscObjectTypeCompare((PetscObject)A, MATSEQSBAIJ, &flg);CHKERRQ(ierr);
             if (flg) {
-              for (ii = 0; ii < An+1; ii++) ia_ptr[ii] = Ai[ii] + 1; /* Use fortran indexing to maximize cases covered by _mm routines */
-              for (ii = 0; ii < Ai[An]; ii++) ja_ptr[ii] = Aj[ii] + 1; /* Use fortran indexing to maximize cases covered by _mm routines */
+              for (k = 0; k < An+1; k++) ia_ptr[k] = Ai[k] + 1; /* Fortran indexing to maximize cases covered by _mm routines */
+              for (k = 0; k < Ai[An]; k++) ja_ptr[k] = Aj[k] + 1; /* Fortran indexing to maximize cases covered by _mm routines */
               ierr = MatSeqSBAIJGetArray(A, &a_ptr);CHKERRQ(ierr);
               PetscStackCallMKLSparse(mkl_sparse_d_create_bsr, (&spr, SPARSE_INDEX_BASE_ONE, SPARSE_LAYOUT_COLUMN_MAJOR, An, An, bs[j], ia_ptr, ia_ptr + 1, ja_ptr, a_ptr));
 #if defined(PETSC_HAVE_MKL)
@@ -204,9 +204,9 @@ int main(int argc, char** argv) {
 
       ierr = MatViewFromOptions(A, NULL, "-A_view");CHKERRQ(ierr);
 
-      for(int k = 0; k < nN; ++k) {
+      for(k = 0; k < nN; ++k) {
         MatType       Atype, Ctype;
-        PetscInt      AM, AN, CM, CN, mm;
+        PetscInt      AM, AN, CM, CN, t;
         PetscLogStage stage, tstage;
         char          stage_s[256];
 
@@ -228,8 +228,10 @@ int main(int argc, char** argv) {
         ierr = MatGetSize(A, &AM, &AN);CHKERRQ(ierr);
         ierr = MatGetSize(C, &CM, &CN);CHKERRQ(ierr);
 
-        ierr = PetscSNPrintf(stage_s, sizeof(stage_s), "notrans_type_%s-bs_%D-N_%02d", type[i], bs[j], (int)N[k]);CHKERRQ(ierr);
-        ierr = PetscLogStageRegister(stage_s, &stage);CHKERRQ(ierr);
+        if (!maij || N[k] > 1) {
+          ierr = PetscSNPrintf(stage_s, sizeof(stage_s), "type_%s-bs_%D-N_%02d", type[i], bs[j], (int)N[k]);CHKERRQ(ierr);
+          ierr = PetscLogStageRegister(stage_s, &stage);CHKERRQ(ierr);
+        }
         if (trans && N[k] > 1) {
           ierr = PetscSNPrintf(stage_s, sizeof(stage_s), "trans_type_%s-bs_%D-N_%02d", type[i], bs[j], (int)N[k]);CHKERRQ(ierr);
           ierr = PetscLogStageRegister(stage_s, &tstage);CHKERRQ(ierr);
@@ -249,7 +251,7 @@ int main(int argc, char** argv) {
               ierr = MatProductNumeric(D);CHKERRQ(ierr);
               ierr = PetscPrintf(PETSC_COMM_WORLD, "Benchmarking MatProduct %s: with A %s %Dx%D and B %s %Dx%D\n", MatProductTypes[MATPRODUCT_AB], Atype, AM, AN, Ctype, CM, CN);
               ierr = PetscLogStagePush(stage);CHKERRQ(ierr);
-              for (mm = 0; mm < trial; ++mm) {
+              for (t = 0; t < trial; ++t) {
                 ierr = MatProductNumeric(D);CHKERRQ(ierr);
               }
               ierr = PetscLogStagePop();CHKERRQ(ierr);
@@ -268,7 +270,7 @@ int main(int argc, char** argv) {
               ierr = MatMult(E, cC, cD);CHKERRQ(ierr);
               ierr = PetscPrintf(PETSC_COMM_WORLD, "Benchmarking MatMult: with A %s %Dx%D and B %s %Dx%D\n", MATMAIJ, AM, AN, VECMPI, AM * N[k], 1);
               ierr = PetscLogStagePush(stage);CHKERRQ(ierr);
-              for (mm = 0; mm < trial; ++mm) {
+              for (t = 0; t < trial; ++t) {
                 ierr = MatMult(E, cC, cD);CHKERRQ(ierr);
               }
               ierr = PetscLogStagePop();CHKERRQ(ierr);
@@ -289,7 +291,7 @@ int main(int argc, char** argv) {
             PetscStackCallMKLSparse(mkl_sparse_d_mm,(SPARSE_OPERATION_NON_TRANSPOSE, 1.0, spr, descr, SPARSE_LAYOUT_COLUMN_MAJOR, c_ptr, CN, CM, 0.0, d_ptr, CM));
             ierr = PetscPrintf(PETSC_COMM_WORLD, "Benchmarking mkl_sparse_d_mm (COLUMN_MAJOR): with A %s %Dx%D and B %s %Dx%D\n", Atype, AM, AN, Ctype, CM, CN);
             ierr = PetscLogStagePush(stage);CHKERRQ(ierr);
-            for (mm = 0; mm < trial; ++mm) {
+            for (t = 0; t < trial; ++t) {
               PetscStackCallMKLSparse(mkl_sparse_d_mm, (SPARSE_OPERATION_NON_TRANSPOSE, 1.0, spr, descr, SPARSE_LAYOUT_COLUMN_MAJOR, c_ptr, CN, CM, 0.0, d_ptr, CM));
             }
             ierr = PetscLogStagePop();CHKERRQ(ierr);
@@ -308,7 +310,7 @@ int main(int argc, char** argv) {
           ierr = MatMult(A, cC, cD);CHKERRQ(ierr);
           ierr = PetscPrintf(PETSC_COMM_WORLD, "Benchmarking MatMult: with A %s %Dx%D\n", Atype, AM, AN);
           ierr = PetscLogStagePush(stage);CHKERRQ(ierr);
-          for (mm = 0; mm < trial; ++mm) {
+          for (t = 0; t < trial; ++t) {
             ierr = MatMult(A, cC, cD);CHKERRQ(ierr);
           }
           ierr = PetscLogStagePop();CHKERRQ(ierr);
@@ -323,7 +325,7 @@ int main(int argc, char** argv) {
           ierr = PetscPrintf(PETSC_COMM_WORLD, "Benchmarking mkl_sparse_d_mv: with A %s %Dx%D\n", Atype, AM, AN);
           PetscStackCallMKLSparse(mkl_sparse_d_mv, (SPARSE_OPERATION_NON_TRANSPOSE, 1.0, spr, descr, c_ptr, 0.0, d_ptr));
           ierr = PetscLogStagePush(stage);CHKERRQ(ierr);
-          for (mm = 0; mm < trial; ++mm) {
+          for (t = 0; t < trial; ++t) {
             PetscStackCallMKLSparse(mkl_sparse_d_mv, (SPARSE_OPERATION_NON_TRANSPOSE, 1.0, spr, descr, c_ptr, 0.0, d_ptr));
           }
           ierr = PetscLogStagePop();CHKERRQ(ierr);
@@ -344,53 +346,51 @@ int main(int argc, char** argv) {
         /* MKL implementation seems buggy for ABt */
         /* A*Bt */
         if (!mkl && trans && N[k] > 1) {
-          MatType Cttype;
-
-          ierr = MatTranspose(C, MAT_INITIAL_MATRIX, &Ct);CHKERRQ(ierr);
-          ierr = MatDestroy(&C);CHKERRQ(ierr);
-          ierr = MatGetType(Ct, &Cttype);CHKERRQ(ierr);
-
-          if (!mkl) {
-            ierr = MatProductCreateWithMat(A, Ct, NULL, D);CHKERRQ(ierr);
-            ierr = MatProductSetType(D, MATPRODUCT_ABt);CHKERRQ(ierr);
-            ierr = MatProductSetFromOptions(D);CHKERRQ(ierr);
-            ierr = MatProductSymbolic(D);CHKERRQ(ierr);
-            ierr = MatProductNumeric(D);CHKERRQ(ierr);
-            ierr = PetscPrintf(PETSC_COMM_WORLD, "Benchmarking MatProduct %s: with A %s %Dx%D and Bt %s %Dx%D\n", MatProductTypes[MATPRODUCT_ABt], Atype, AM, AN, Cttype, CM, CN);
-            ierr = PetscLogStagePush(tstage);CHKERRQ(ierr);
-            for (mm = 0; mm < trial; ++mm) {
+          ierr = PetscObjectTypeCompareAny((PetscObject)A, &flg, MATSEQAIJ, MATMPIAIJ, "");CHKERRQ(ierr);
+          if (flg) {
+            ierr = MatTranspose(C, MAT_INPLACE_MATRIX, &C);CHKERRQ(ierr);
+            ierr = MatGetType(C, &Ctype);CHKERRQ(ierr);
+            if (!mkl) {
+              ierr = MatProductCreateWithMat(A, C, NULL, D);CHKERRQ(ierr);
+              ierr = MatProductSetType(D, MATPRODUCT_ABt);CHKERRQ(ierr);
+              ierr = MatProductSetFromOptions(D);CHKERRQ(ierr);
+              ierr = MatProductSymbolic(D);CHKERRQ(ierr);
               ierr = MatProductNumeric(D);CHKERRQ(ierr);
-            }
-            ierr = PetscLogStagePop();CHKERRQ(ierr);
-          } else {
-            const PetscScalar *c_ptr;
-            PetscScalar       *d_ptr;
+              ierr = PetscPrintf(PETSC_COMM_WORLD, "Benchmarking MatProduct %s: with A %s %Dx%D and Bt %s %Dx%D\n", MatProductTypes[MATPRODUCT_ABt], Atype, AM, AN, Ctype, CM, CN);
+              ierr = PetscLogStagePush(tstage);CHKERRQ(ierr);
+              for (t = 0; t < trial; ++t) {
+                ierr = MatProductNumeric(D);CHKERRQ(ierr);
+              }
+              ierr = PetscLogStagePop();CHKERRQ(ierr);
+            } else {
+              const PetscScalar *c_ptr;
+              PetscScalar       *d_ptr;
 
-            PetscStackCallMKLSparse(mkl_sparse_set_mm_hint, (spr, SPARSE_OPERATION_NON_TRANSPOSE, descr, SPARSE_LAYOUT_ROW_MAJOR, N[k], 1 + trial));
-            PetscStackCallMKLSparse(mkl_sparse_optimize, (spr));
-            ierr = MatDenseGetArrayRead(Ct, &c_ptr);CHKERRQ(ierr);
-            ierr = MatDenseGetArrayWrite(D, &d_ptr);CHKERRQ(ierr);
-            ierr = PetscPrintf(PETSC_COMM_WORLD, "Benchmarking mkl_sparse_d_mm (ROW_MAJOR): with A %s %Dx%D and B %s %Dx%D\n", Atype, AM, AN, Cttype, CM, CN);
-            PetscStackCallMKLSparse(mkl_sparse_d_mm, (SPARSE_OPERATION_NON_TRANSPOSE, 1.0, spr, descr, SPARSE_LAYOUT_ROW_MAJOR, c_ptr, CN, CM, 0.0, d_ptr, CM));
-            ierr = PetscLogStagePush(stage);CHKERRQ(ierr);
-            for (mm = 0; mm < trial; ++mm) {
+              PetscStackCallMKLSparse(mkl_sparse_set_mm_hint, (spr, SPARSE_OPERATION_NON_TRANSPOSE, descr, SPARSE_LAYOUT_ROW_MAJOR, N[k], 1 + trial));
+              PetscStackCallMKLSparse(mkl_sparse_optimize, (spr));
+              ierr = MatDenseGetArrayRead(C, &c_ptr);CHKERRQ(ierr);
+              ierr = MatDenseGetArrayWrite(D, &d_ptr);CHKERRQ(ierr);
+              ierr = PetscPrintf(PETSC_COMM_WORLD, "Benchmarking mkl_sparse_d_mm (ROW_MAJOR): with A %s %Dx%D and B %s %Dx%D\n", Atype, AM, AN, Ctype, CM, CN);
               PetscStackCallMKLSparse(mkl_sparse_d_mm, (SPARSE_OPERATION_NON_TRANSPOSE, 1.0, spr, descr, SPARSE_LAYOUT_ROW_MAJOR, c_ptr, CN, CM, 0.0, d_ptr, CM));
+              ierr = PetscLogStagePush(stage);CHKERRQ(ierr);
+              for (t = 0; t < trial; ++t) {
+                PetscStackCallMKLSparse(mkl_sparse_d_mm, (SPARSE_OPERATION_NON_TRANSPOSE, 1.0, spr, descr, SPARSE_LAYOUT_ROW_MAJOR, c_ptr, CN, CM, 0.0, d_ptr, CM));
+              }
+              ierr = PetscLogStagePop();CHKERRQ(ierr);
+              ierr = MatDenseRestoreArrayWrite(D, &d_ptr);CHKERRQ(ierr);
+              ierr = MatDenseRestoreArrayRead(C, &c_ptr);CHKERRQ(ierr);
             }
-            ierr = PetscLogStagePop();CHKERRQ(ierr);
-            ierr = MatDenseRestoreArrayWrite(D, &d_ptr);CHKERRQ(ierr);
-            ierr = MatDenseRestoreArrayRead(Ct, &c_ptr);CHKERRQ(ierr);
           }
         }
 
-        if (Ct && check) {
-          ierr = MatMatTransposeMultEqual(A, Ct, D, 10, &flg);CHKERRQ(ierr);
+        if (!mkl && trans && N[k] > 1 && flg && check) {
+          ierr = MatMatTransposeMultEqual(A, C, D, 10, &flg);CHKERRQ(ierr);
           if (!flg) {
             MatType Dtype;
             ierr = MatGetType(D, &Dtype);CHKERRQ(ierr);
             ierr = PetscPrintf(PETSC_COMM_WORLD, "Error with A %s%s, C %s, D %s, Nk %D\n", Atype, mkl ? "mkl" : "", Ctype, Dtype, N[k]);CHKERRQ(ierr);
           }
         }
-        ierr = MatDestroy(&Ct);CHKERRQ(ierr);
         ierr = MatDestroy(&C);CHKERRQ(ierr);
         ierr = MatDestroy(&D);CHKERRQ(ierr);
       }
@@ -398,6 +398,10 @@ int main(int argc, char** argv) {
         PetscStackCallMKLSparse(mkl_sparse_destroy, (spr));
         ierr = PetscFree(ia_ptr);CHKERRQ(ierr);
         ierr = PetscFree(ja_ptr);CHKERRQ(ierr);
+      }
+      if (cuda && i != ntype - 1) {
+        ierr = PetscPrintf(PETSC_COMM_WORLD, "AIJCUSPARSE must be last, otherwise MatConvert() to another MatType is too slow\n");CHKERRQ(ierr);
+        break;
       }
     }
     ierr = MatDestroy(&A);CHKERRQ(ierr);
