@@ -962,7 +962,13 @@ nonlinear problems, using a continuation method on the Reynolds number. \\[-4pt]
 The Krylov--Schur algorithm converges in six outer iterations (restarts), with a total of 46 inner solves~\cref{eq:ks}.
 Recycling of Krylov subspaces with \pk{KSPHPDDM} provides algorithmic speedup by lowering the number of iterations per inner solve,
 as reported in~\cref{fig:comparison-slepc}, from 80 with \pk{KSPFGMRES} to 45.
-A similar speedup can be observed in terms of runtime, with the time spent for the solution of the eigenvalue problem being reduced from \SI[round-mode = places,round-precision=1,group-minimum-digits=3,group-separator = {,}]{1509}{\sec} to \SI[round-mode = places,round-precision=1,group-minimum-digits=3,group-separator = {,}]{1052}{\sec}. These timings, and all that follow, have been obtained on {Irène}, a system composed of \pgfmathprintnumber[assume math mode=true]{1656} nodes with two 24-core Intel Xeon Platinum 8168 clocked at \SI{2.7}{\giga\hertz}.
+A similar speedup can be observed in terms of runtime, with the time spent for
+the solution of the eigenvalue problem being reduced from \SI[round-mode = places,round-precision=1,group-minimum-digits=3,group-separator = {,}]{25.1}{\minute}
+to \SI[round-mode = places,round-precision=1,group-minimum-digits=3,group-separator = {,}]{17.5}{\minute}.
+These timings, and all that follow, have been obtained on
+Irène, a system composed of \pgfmathprintnumber[assume math mode=true]{1656}
+nodes with two 24-core Intel Xeon Platinum 8168 clocked at
+\SI{2.7}{\giga\hertz}.
 \pgfplotstableread{
 sys hpddm fgmres
 1   77    77
@@ -1028,9 +1034,9 @@ sys hpddm fgmres
     \end{figure}
 
 \subsubsection{Blocking inside SLEPc\label{sec:lobpcg}}
-The implementations of the Locally Optimal Block Preconditioned Conjugate
-Gradient~\cite{knyazev2001toward}~(LOBPCG) and the Contour Integral Spectrum
-Slicing method~\cite{sakurai2003projection}~(CISS) in SLEPc were previously not
+The implementations of the locally optimal block preconditioned conjugate
+gradient~\cite{knyazev2001toward}~(LOBPCG) and the contour integral spectrum
+slicing method~\cite{sakurai2003projection}~(CISS) in SLEPc were previously not
 using blocking when applying the preconditioner or solving linear systems. In
 version 3.14.0, these solvers have been adapted to employ \pk{KSPMatSolve} and
 \pk{PCMatApply}.  In the case of LOBPCG, which is a purely blocked method, all
@@ -1206,8 +1212,8 @@ FEMPAR-BDDC~\cite{badia2014highly}.
 HPDDM implements the same one-level overlapping Schwarz methods as PETSc as
 well as optimized Schwarz methods~\cite{gander2006optimized}, which may be used
 in PETSc with \pk{PCSetModifySubMatrices}, see~\cite{gander2019new}.  It also provides support for
-defining robust two-level methods using the Generalized Eigenvalue problem on
-the Overlap (GenEO) framework, for finite
+defining robust two-level methods using the generalized eigenvalue problem on
+the overlap (GenEO) framework, for finite
 elements~\cite{spillane2011robust,spillane2013abstract} and boundary
 elements~\cite{marchand2019two}. Results in this work present the first
 high-level access to GenEO from PETSc and its composable solver
@@ -1346,7 +1352,7 @@ from~\cref{eq:one} using a spectral coarse grid built in the following way:
 \begin{enumerate}
     \item have SLEPc solve the local generalized eigenvalue problem concurrently:
         \begin{equation}\label{eq:gevp}
-            \mathring{A}_i y_i = \lambda_i \tilde{R}_i R_i^T (R_i A R_i^T) \tilde{R}_i R_i^T y_i ;
+            \mathring{A}_i y_i = \lambda_i \tilde{R}_i R_i^T (R_i A R_i^T) R_i \tilde{R}_i^T y_i ;
         \end{equation}
     \item retrieve the $\nu_i$ smallest eigenpairs $\{y_{i_j}, \lambda_{i_j}\}_{j=1}^{\nu_i}$ and assemble a local deflation dense matrix $W_i = \begin{bmatrix} \tilde{R}_i R_i^T y_{i_1} & \cdots & \tilde{R}_i R_i^T y_{i_{\nu_i}} \end{bmatrix}$;
     \item define a global deflation matrix $P = \begin{bmatrix} R_1^T W_1 & \cdots & R_N^T W_N\end{bmatrix}$ and a new two-level preconditioner using the Galerkin product of $A$ and $P$:
@@ -2172,9 +2178,10 @@ thorough testbed with \pk{Mat} and \pk{PC} implementations that do exploit
 GPUs.
 
 \section*{Acknowledgments}
-The authors would like to thank S.~Balay, J.~Brown, V.~Hapla, M.~Knepley,
-and B.~Smith for reviewing the successive merge requests in PETSc
-repository. This work was granted access to the GENCI-sponsored HPC resources of:
+The authors would like to thank S.~Balay, J.~Brown, V.~Hapla, M.~Knepley, and
+B.~Smith for reviewing the successive merge requests in PETSc repository and
+for their feedback on this manuscript. This work was granted access to the
+GENCI-sponsored HPC resources of:
 \begin{itemize}
     \item TGCC@CEA under allocation A0070607519;
     \item IDRIS@CNRS under allocation AP010611780.
