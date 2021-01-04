@@ -9,15 +9,17 @@ The code available in this repository can reproduce the results from the followi
 @article{jolivet2020petsc,
     Author = {Jolivet, Pierre and Roman, Jose E. and Zampini, Stefano},
     Title = {{KSPHPDDM} and {PCHPDDM}: Extending {PETSc} with Robust Overlapping {Schwarz} Preconditioners and Advanced {Krylov} Methods},
-    Year = {2020},
-    Journal = {submitted for publication},
+    Year = {2021},
+    Publisher = {Elsevier},
+    Journal = {Computer \& Mathematics with Applications},
+    Pages = {accepted for publication},
     Url = {https://github.com/prj-/jolivet2020petsc}
 }
 ```
 
 ## Getting started
 ### Dependencies
-Make sure you have access to a recent [FreeFEM](https://freefem.org/) and/or [MFEM](https://mfem.org/) installation, compiled with PETSc and SLEPc support. More details about the HPDDM options used in the solver may be found in the [KSP](https://www.mcs.anl.gov/petsc/petsc-dev/docs/manualpages/KSP/KSPHPDDM.html) or the [PC](https://www.mcs.anl.gov/petsc/petsc-dev/docs/manualpages/PC/PCHPDDM.html) manual pages.
+Make sure you have access to a recent [FreeFEM](https://freefem.org/) and/or [MFEM](https://mfem.org/) installation, compiled with [PETSc](https://www.mcs.anl.gov/petsc/) and [SLEPc](https://slepc.upv.es/) support. More details about the HPDDM options used in the solver may be found in the [KSP](https://www.mcs.anl.gov/petsc/petsc-dev/docs/manualpages/KSP/KSPHPDDM.html) or the [PC](https://www.mcs.anl.gov/petsc/petsc-dev/docs/manualpages/PC/PCHPDDM.html) manual pages.
 
 ### Usage example
 One should be able to launch the following commands, which solves the Bratu equation or computes the eigenvalues of the Laplacian on the same geometrical configurations as in the paper.
