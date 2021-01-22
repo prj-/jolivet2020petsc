@@ -12,7 +12,8 @@ The code available in this repository can reproduce the results from the followi
     Year = {2021},
     Publisher = {Elsevier},
     Journal = {Computer \& Mathematics with Applications},
-    Pages = {accepted for publication},
+    Volume = {84},
+    Pages = {277--295},
     Url = {https://github.com/prj-/jolivet2020petsc}
 }
 ```
@@ -37,7 +38,7 @@ Here are the main command line parameters common to all scripts.
 For `blocking-slepc.edp`, default options for the three inner preconditioners compared in the paper are turned on with the additional command line parameters `-asm` (for `PCASM`), `-gamg` (for `PCGAMG`), or `-hpddm` (for `PCHPDDM`). It is also possible to switch from `EPSLOBPCG` to `EPSCISS` by using the command line option `-eps_type ciss`.
 
 ### `MatProduct` mini-app
-The source code of the mini-app is in the file `MatProduct.c`. It can be compiled using a recent PETSc installation (3.14.0 or above) and launched using the same parameters as in the paper. One can generate one's own `MatSeqAIJ` and then save it in binary format, or download the matrix used in the benchmark: [binaryoutput](http://jolivet.perso.enseeiht.fr/binaryoutput).
+The source code of the mini-app is in the file `MatProduct.c`. It is also available as [mat/tests/ex237.c](https://www.mcs.anl.gov/petsc/petsc-current/src/mat/tests/ex237.c.html) in the official PETSc test suite. It can be compiled using a recent PETSc installation (3.14.0 or above) and launched using the same parameters as in the paper. One can generate one's own `MatSeqAIJ` and then save it in binary format, or download the matrix used in the benchmark: [binaryoutput](http://jolivet.perso.enseeiht.fr/binaryoutput).
 
 ## Acknowledgements
 * HPC resources of [TGCC@CEA](http://www-hpc.cea.fr/index-en.htm), resp. [IDRIS@CNRS](http://www.idris.fr/), under the allocation A0070607519, resp. AP010611780, made by [GENCI](http://www.genci.fr/en)
