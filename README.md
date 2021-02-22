@@ -2,7 +2,7 @@
 
 > Extending PETSc with Robust Overlapping Schwarz Preconditioners and Advanced Krylov Methods.
 
-<p align="center"><img src="https://github.com/prj-/jolivet2020petsc/raw/master/header.png"></p>
+<p align="center"><img src="https://github.com/prj-/jolivet2020petsc/raw/main/header.png"></p>
 
 The code available in this repository can reproduce the results from the following [paper](http://jolivet.perso.enseeiht.fr/article.pdf).
 ```
@@ -43,4 +43,4 @@ The source code of the mini-app is in the file `MatProduct.c`. It is also availa
 ## Acknowledgements
 * HPC resources of [TGCC@CEA](http://www-hpc.cea.fr/index-en.htm), resp. [IDRIS@CNRS](http://www.idris.fr/), under the allocation A0070607519, resp. AP010611780, made by [GENCI](http://www.genci.fr/en)
 
-<p align="center"><img src="https://github.com/prj-/jolivet2020petsc/raw/master/footer.png" height="300"></p>
+<p align="center"><img src="https://github.com/prj-/jolivet2020petsc/raw/main/footer.png" height="300"></p>
